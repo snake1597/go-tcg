@@ -1,0 +1,1 @@
+遊戲規則請參考 [../gitbook-rules](../gitbook-rules)。
