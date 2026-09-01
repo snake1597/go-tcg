@@ -1,0 +1,186 @@
+{
+  "classes": [
+    "GUARDIAN"
+  ],
+  "cost_memory": null,
+  "cost_reserve": 3,
+  "cost": {
+    "type": "reserve",
+    "value": "3"
+  },
+  "created_at": "2025-05-27T20:27:36.974Z",
+  "durability": null,
+  "editions": [
+    {
+      "card_id": "cbNF64gCsS",
+      "collector_number": "200",
+      "configuration": "default",
+      "created_at": "2025-05-27T20:27:36.974+00:00",
+      "effect": null,
+      "effect_raw": null,
+      "flavor": null,
+      "illustrator": "Primea Studio",
+      "image": "/cards/images/bj7YbY4NjU.jpg",
+      "last_update": "2025-05-27T20:27:36.974+00:00",
+      "orientation": null,
+      "rarity": 3,
+      "slug": "furnace-drone-mrc-alter",
+      "thema_charm_foil": 158,
+      "thema_charm_nonfoil": 25,
+      "thema_ferocity_foil": 246,
+      "thema_ferocity_nonfoil": 39,
+      "thema_foil": 980,
+      "thema_grace_foil": 171,
+      "thema_grace_nonfoil": 27,
+      "thema_mystique_foil": 209,
+      "thema_mystique_nonfoil": 33,
+      "thema_nonfoil": 155,
+      "thema_valor_foil": 196,
+      "thema_valor_nonfoil": 31,
+      "thema_foil_dynamic": false,
+      "thema_nonfoil_dynamic": false,
+      "uuid": "bj7YbY4NjU",
+      "collaborators": [],
+      "circulationTemplates": [
+        {
+          "created_at": "2025-05-27T20:27:36.974+00:00",
+          "edition_id": "bj7YbY4NjU",
+          "foil": false,
+          "kind": "NONFOIL",
+          "last_update": "2025-05-27T20:27:36.974+00:00",
+          "name": "MRCA R NF",
+          "population": 22300,
+          "population_operator": "≈",
+          "printing": true,
+          "uuid": "H8NNkitXXW",
+          "variants": []
+        },
+        {
+          "created_at": "2025-05-27T20:27:36.974+00:00",
+          "edition_id": "bj7YbY4NjU",
+          "foil": true,
+          "kind": "FOIL",
+          "last_update": "2025-05-27T20:27:36.974+00:00",
+          "name": "MRCA R Foil",
+          "population": 380,
+          "population_operator": "≈",
+          "printing": true,
+          "uuid": "Zqf0n3FMEI",
+          "variants": []
+        }
+      ],
+      "circulations": [],
+      "other_orientations": [],
+      "set": {
+        "created_at": "2025-05-27T20:27:36.974+00:00",
+        "id": "a8950b3290",
+        "language": "EN",
+        "last_update": "2025-05-27T20:27:36.974+00:00",
+        "name": "Mercurial Heart Alter Edition",
+        "prefix": "MRC Alter",
+        "release_date": "2025-05-30T00:00:00"
+      },
+      "effect_html": null
+    }
+  ],
+  "effect": "As an additional cost to activate this card, banish three fire element and/or Automaton cards from your graveyard.\n\n**Taunt**\n\n[Class Bonus] **On Death:** Deal 3 damage to target champion.",
+  "effect_raw": "As an additional cost to activate this card, banish three fire element and/or Automaton cards from your graveyard.\n\nTaunt\n\n[Class Bonus] On Death: Deal 3 damage to target champion.",
+  "element": "FIRE",
+  "elements": [
+    "FIRE"
+  ],
+  "flavor": null,
+  "last_update": "2025-05-27T20:27:36.974Z",
+  "legality": null,
+  "level": null,
+  "life": 4,
+  "name": "Furnace Drone",
+  "power": 3,
+  "referenced_by": [],
+  "references": [],
+  "result_editions": [
+    {
+      "card_id": "cbNF64gCsS",
+      "collector_number": "200",
+      "configuration": "default",
+      "created_at": "2025-05-27T20:27:36.974+00:00",
+      "effect": null,
+      "effect_raw": null,
+      "flavor": null,
+      "illustrator": "Primea Studio",
+      "image": "/cards/images/bj7YbY4NjU.jpg",
+      "last_update": "2025-05-27T20:27:36.974+00:00",
+      "orientation": null,
+      "rarity": 3,
+      "slug": "furnace-drone-mrc-alter",
+      "thema_charm_foil": 158,
+      "thema_charm_nonfoil": 25,
+      "thema_ferocity_foil": 246,
+      "thema_ferocity_nonfoil": 39,
+      "thema_foil": 980,
+      "thema_grace_foil": 171,
+      "thema_grace_nonfoil": 27,
+      "thema_mystique_foil": 209,
+      "thema_mystique_nonfoil": 33,
+      "thema_nonfoil": 155,
+      "thema_valor_foil": 196,
+      "thema_valor_nonfoil": 31,
+      "thema_foil_dynamic": false,
+      "thema_nonfoil_dynamic": false,
+      "uuid": "bj7YbY4NjU",
+      "collaborators": [],
+      "circulationTemplates": [
+        {
+          "created_at": "2025-05-27T20:27:36.974+00:00",
+          "edition_id": "bj7YbY4NjU",
+          "foil": false,
+          "kind": "NONFOIL",
+          "last_update": "2025-05-27T20:27:36.974+00:00",
+          "name": "MRCA R NF",
+          "population": 22300,
+          "population_operator": "≈",
+          "printing": true,
+          "uuid": "H8NNkitXXW",
+          "variants": []
+        },
+        {
+          "created_at": "2025-05-27T20:27:36.974+00:00",
+          "edition_id": "bj7YbY4NjU",
+          "foil": true,
+          "kind": "FOIL",
+          "last_update": "2025-05-27T20:27:36.974+00:00",
+          "name": "MRCA R Foil",
+          "population": 380,
+          "population_operator": "≈",
+          "printing": true,
+          "uuid": "Zqf0n3FMEI",
+          "variants": []
+        }
+      ],
+      "circulations": [],
+      "other_orientations": [],
+      "set": {
+        "created_at": "2025-05-27T20:27:36.974+00:00",
+        "id": "a8950b3290",
+        "language": "EN",
+        "last_update": "2025-05-27T20:27:36.974+00:00",
+        "name": "Mercurial Heart Alter Edition",
+        "prefix": "MRC Alter",
+        "release_date": "2025-05-30T00:00:00"
+      },
+      "effect_html": null
+    }
+  ],
+  "rule": [],
+  "slug": "furnace-drone",
+  "speed": null,
+  "subtypes": [
+    "GUARDIAN",
+    "AUTOMATON"
+  ],
+  "types": [
+    "ALLY"
+  ],
+  "uuid": "cbNF64gCsS",
+  "effect_html": "<span class=\"effect__block\">As an additional cost to activate this card, banish three fire element and&#47;or Automaton cards from your graveyard.</span><span class=\"effect__block\"><span class=\"effect__label\">Taunt</span></span><span class=\"effect__bubble\">Class Bonus</span>  <span class=\"effect__label\">On Death:</span> Deal 3 damage to target champion."
+}

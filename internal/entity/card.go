@@ -1,34 +1,39 @@
 package entity
 
 import (
-	"database/sql"
 	"time"
 )
 
 type Card struct {
-	Classes      []string       `json:"classes"`
-	CostType     string         `json:"cost_type"`
-	CostValue    string         `json:"cost_value"`
-	CreatedAt    time.Time      `json:"created_at"`
-	Durability   sql.NullInt64  `json:"durability"`
-	Effect       string         `json:"effect"`
-	EffectRaw    string         `json:"effect_raw"`
-	Elements     []string       `json:"elements"`
-	Flavor       string         `json:"flavor"`
-	LastUpdate   time.Time      `json:"last_update"`
-	Legality     sql.NullString `json:"legality"`
-	Level        sql.NullInt64  `json:"level"`
-	Life         sql.NullInt64  `json:"life"`
-	Name         string         `json:"name"`
-	Power        sql.NullInt64  `json:"power"`
-	ReferencedBy []string       `json:"referenced_by"`
-	References   []*Reference   `json:"references"`
-	Rule         []string       `json:"rule"`
-	Slug         string         `json:"slug"`
-	Speed        sql.NullInt64  `json:"speed"`
-	Subtypes     []string       `json:"subtypes"`
-	Types        []string       `json:"types"`
-	UUID         string         `json:"uuid"`
+	Classes      []string     `json:"classes"`
+	CostType     string       `json:"cost_type"`
+	CostValue    string       `json:"cost_value"`
+	CreatedAt    time.Time    `json:"created_at"`
+	Durability   *int64       `json:"durability"`
+	Effect       string       `json:"effect"`
+	EffectRaw    string       `json:"effect_raw"`
+	Elements     []string     `json:"elements"`
+	Flavor       string       `json:"flavor"`
+	LastUpdate   time.Time    `json:"last_update"`
+	Legality     *string      `json:"legality"`
+	Level        *int64       `json:"level"`
+	Life         *int64       `json:"life"`
+	Name         string       `json:"name"`
+	Power        *int64       `json:"power"`
+	ReferencedBy []string     `json:"referenced_by"`
+	References   []*Reference `json:"references"`
+	Rule         []*Rule      `json:"rule"`
+	Slug         string       `json:"slug"`
+	Speed        *bool        `json:"speed"`
+	Subtypes     []string     `json:"subtypes"`
+	Types        []string     `json:"types"`
+	UUID         string       `json:"uuid"`
+}
+
+type Rule struct {
+	DateAdded   string `json:"date_added"`
+	Description string `json:"description"`
+	Title       string `json:"title"`
 }
 
 type Reference struct {

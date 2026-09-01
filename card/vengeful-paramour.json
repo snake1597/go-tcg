@@ -1,0 +1,192 @@
+{
+  "classes": [
+    "CLERIC"
+  ],
+  "cost_memory": null,
+  "cost_reserve": 2,
+  "cost": {
+    "type": "reserve",
+    "value": "2"
+  },
+  "created_at": "2025-07-18T16:20:49.391Z",
+  "durability": null,
+  "editions": [
+    {
+      "card_id": "4vjkezn49t",
+      "collector_number": "140",
+      "configuration": "default",
+      "created_at": "2025-07-18T16:20:49.391+00:00",
+      "effect": null,
+      "effect_raw": null,
+      "flavor": null,
+      "illustrator": "Dragonart",
+      "image": "/cards/images/zu0ulzluer.jpg",
+      "last_update": "2025-07-18T16:20:49.391+00:00",
+      "orientation": null,
+      "rarity": 2,
+      "slug": "vengeful-paramour-dtr",
+      "thema_charm_foil": 184,
+      "thema_charm_nonfoil": 23,
+      "thema_ferocity_foil": 176,
+      "thema_ferocity_nonfoil": 22,
+      "thema_foil": 893,
+      "thema_grace_foil": 176,
+      "thema_grace_nonfoil": 22,
+      "thema_mystique_foil": 205,
+      "thema_mystique_nonfoil": 26,
+      "thema_nonfoil": 112,
+      "thema_valor_foil": 152,
+      "thema_valor_nonfoil": 19,
+      "thema_foil_dynamic": false,
+      "thema_nonfoil_dynamic": false,
+      "uuid": "zu0ulzluer",
+      "collaborators": [],
+      "circulationTemplates": [
+        {
+          "created_at": "2025-07-18T16:20:49.391+00:00",
+          "edition_id": "zu0ulzluer",
+          "foil": false,
+          "kind": "NONFOIL",
+          "last_update": "2025-07-18T16:20:49.391+00:00",
+          "name": "DTR U NF",
+          "population": 60500,
+          "population_operator": "≈",
+          "printing": true,
+          "uuid": "hwJI8wwkLU",
+          "variants": []
+        },
+        {
+          "created_at": "2025-07-18T16:20:49.391+00:00",
+          "edition_id": "zu0ulzluer",
+          "foil": true,
+          "kind": "FOIL",
+          "last_update": "2025-07-18T16:20:49.391+00:00",
+          "name": "DTR U Foil",
+          "population": 1310,
+          "population_operator": "≈",
+          "printing": true,
+          "uuid": "rMcXeAy2rv",
+          "variants": []
+        }
+      ],
+      "circulations": [],
+      "other_orientations": [],
+      "set": {
+        "created_at": "2025-07-18T16:20:49.391+00:00",
+        "id": "f539744941",
+        "language": "EN",
+        "last_update": "2025-07-18T16:20:49.391+00:00",
+        "name": "Distorted Reflections",
+        "prefix": "DTR",
+        "release_date": "2025-07-25T00:00:00"
+      },
+      "effect_html": null
+    }
+  ],
+  "effect": "**On Enter**: As a Spell, if Vengeful Paramour is **ephemeral**, deal 2 damage to target champion. \n\n**Ephemerate** — (4) *(You may activate this card from your graveyard by paying this cost. Ally cards played this way become **ephemeral** as they enter the field.)*",
+  "effect_raw": "On Enter: As a Spell, if Vengeful Paramour is ephemeral, deal 2 damage to target champion. \n\nEphemerate — (4) (You may activate this card from your graveyard by paying this cost. Ally cards played this way become ephemeral as they enter the field.)",
+  "element": "FIRE",
+  "elements": [
+    "FIRE"
+  ],
+  "flavor": null,
+  "last_update": "2025-07-24T16:15:11.473Z",
+  "legality": null,
+  "level": null,
+  "life": 1,
+  "name": "Vengeful Paramour",
+  "power": 2,
+  "referenced_by": [],
+  "references": [],
+  "result_editions": [
+    {
+      "card_id": "4vjkezn49t",
+      "collector_number": "140",
+      "configuration": "default",
+      "created_at": "2025-07-18T16:20:49.391+00:00",
+      "effect": null,
+      "effect_raw": null,
+      "flavor": null,
+      "illustrator": "Dragonart",
+      "image": "/cards/images/zu0ulzluer.jpg",
+      "last_update": "2025-07-18T16:20:49.391+00:00",
+      "orientation": null,
+      "rarity": 2,
+      "slug": "vengeful-paramour-dtr",
+      "thema_charm_foil": 184,
+      "thema_charm_nonfoil": 23,
+      "thema_ferocity_foil": 176,
+      "thema_ferocity_nonfoil": 22,
+      "thema_foil": 893,
+      "thema_grace_foil": 176,
+      "thema_grace_nonfoil": 22,
+      "thema_mystique_foil": 205,
+      "thema_mystique_nonfoil": 26,
+      "thema_nonfoil": 112,
+      "thema_valor_foil": 152,
+      "thema_valor_nonfoil": 19,
+      "thema_foil_dynamic": false,
+      "thema_nonfoil_dynamic": false,
+      "uuid": "zu0ulzluer",
+      "collaborators": [],
+      "circulationTemplates": [
+        {
+          "created_at": "2025-07-18T16:20:49.391+00:00",
+          "edition_id": "zu0ulzluer",
+          "foil": false,
+          "kind": "NONFOIL",
+          "last_update": "2025-07-18T16:20:49.391+00:00",
+          "name": "DTR U NF",
+          "population": 60500,
+          "population_operator": "≈",
+          "printing": true,
+          "uuid": "hwJI8wwkLU",
+          "variants": []
+        },
+        {
+          "created_at": "2025-07-18T16:20:49.391+00:00",
+          "edition_id": "zu0ulzluer",
+          "foil": true,
+          "kind": "FOIL",
+          "last_update": "2025-07-18T16:20:49.391+00:00",
+          "name": "DTR U Foil",
+          "population": 1310,
+          "population_operator": "≈",
+          "printing": true,
+          "uuid": "rMcXeAy2rv",
+          "variants": []
+        }
+      ],
+      "circulations": [],
+      "other_orientations": [],
+      "set": {
+        "created_at": "2025-07-18T16:20:49.391+00:00",
+        "id": "f539744941",
+        "language": "EN",
+        "last_update": "2025-07-18T16:20:49.391+00:00",
+        "name": "Distorted Reflections",
+        "prefix": "DTR",
+        "release_date": "2025-07-25T00:00:00"
+      },
+      "effect_html": null
+    }
+  ],
+  "rule": [
+    {
+      "title": "",
+      "date_added": "2025-07-18",
+      "description": "Activating a card by ephemerate follows the card's timing restriction."
+    }
+  ],
+  "slug": "vengeful-paramour",
+  "speed": null,
+  "subtypes": [
+    "CLERIC",
+    "SPECTER"
+  ],
+  "types": [
+    "ALLY"
+  ],
+  "uuid": "4vjkezn49t",
+  "effect_html": "<span class=\"effect__block\"><span class=\"effect__label\">On Enter</span>: As a Spell, if Vengeful Paramour is <span class=\"effect__label\">ephemeral</span>, deal 2 damage to target champion. </span><span class=\"effect__label\">Ephemerate</span> — <span class=\"effect__bubble effect__bubble--yellow ml-2\">4</span><span class=\"effect__reminder\">(You may activate this card from your graveyard by paying this cost. Ally cards played this way become <span class=\"effect__label\">ephemeral</span> as they enter the field.)</span>"
+}

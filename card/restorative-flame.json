@@ -1,0 +1,186 @@
+{
+  "classes": [
+    "CLERIC"
+  ],
+  "cost_memory": null,
+  "cost_reserve": 2,
+  "cost": {
+    "type": "reserve",
+    "value": "2"
+  },
+  "created_at": "2025-03-04T21:56:32.906Z",
+  "durability": null,
+  "editions": [
+    {
+      "card_id": "ek7r2d7uz4",
+      "collector_number": "096",
+      "configuration": "default",
+      "created_at": "2025-03-04T21:56:32.906+00:00",
+      "effect": null,
+      "effect_raw": null,
+      "flavor": null,
+      "illustrator": "Primea Studio",
+      "image": "/cards/images/haf3tfsnfh.jpg",
+      "last_update": "2025-03-04T21:56:32.906+00:00",
+      "orientation": null,
+      "rarity": 1,
+      "slug": "restorative-flame-hvn",
+      "thema_charm_foil": 160,
+      "thema_charm_nonfoil": 14,
+      "thema_ferocity_foil": 171,
+      "thema_ferocity_nonfoil": 15,
+      "thema_foil": 744,
+      "thema_grace_foil": 114,
+      "thema_grace_nonfoil": 10,
+      "thema_mystique_foil": 185,
+      "thema_mystique_nonfoil": 16,
+      "thema_nonfoil": 65,
+      "thema_valor_foil": 114,
+      "thema_valor_nonfoil": 10,
+      "thema_foil_dynamic": false,
+      "thema_nonfoil_dynamic": false,
+      "uuid": "haf3tfsnfh",
+      "collaborators": [],
+      "circulationTemplates": [
+        {
+          "created_at": "2025-03-04T21:56:32.906+00:00",
+          "edition_id": "haf3tfsnfh",
+          "foil": true,
+          "kind": "FOIL",
+          "last_update": "2025-03-04T21:56:32.906+00:00",
+          "name": "HVN Common Foil",
+          "population": 1770,
+          "population_operator": "≈",
+          "printing": true,
+          "uuid": "JaDqLczfn6",
+          "variants": []
+        },
+        {
+          "created_at": "2025-03-04T21:56:32.906+00:00",
+          "edition_id": "haf3tfsnfh",
+          "foil": false,
+          "kind": "NONFOIL",
+          "last_update": "2025-03-04T21:56:32.906+00:00",
+          "name": "HVN Common",
+          "population": 115000,
+          "population_operator": "≈",
+          "printing": true,
+          "uuid": "wBRUZnTOuY",
+          "variants": []
+        }
+      ],
+      "circulations": [],
+      "other_orientations": [],
+      "set": {
+        "created_at": "2025-03-04T21:56:32.906+00:00",
+        "id": "67uvnnrprp",
+        "language": "EN",
+        "last_update": "2025-03-04T21:56:32.906+00:00",
+        "name": "Abyssal Heaven",
+        "prefix": "HVN",
+        "release_date": "2025-03-07T00:00:00"
+      },
+      "effect_html": null
+    }
+  ],
+  "effect": "Banish up to three fire element cards from your graveyard. For each card banished this way, **recover 2**. *(To **recover**, remove that many damage counters from your champion.)*",
+  "effect_raw": "Banish up to three fire element cards from your graveyard. For each card banished this way, recover 2. (To recover, remove that many damage counters from your champion.)",
+  "element": "FIRE",
+  "elements": [
+    "FIRE"
+  ],
+  "flavor": null,
+  "last_update": "2025-03-07T16:36:57.052Z",
+  "legality": null,
+  "level": null,
+  "life": null,
+  "name": "Restorative Flame",
+  "power": null,
+  "referenced_by": [],
+  "references": [],
+  "result_editions": [
+    {
+      "card_id": "ek7r2d7uz4",
+      "collector_number": "096",
+      "configuration": "default",
+      "created_at": "2025-03-04T21:56:32.906+00:00",
+      "effect": null,
+      "effect_raw": null,
+      "flavor": null,
+      "illustrator": "Primea Studio",
+      "image": "/cards/images/haf3tfsnfh.jpg",
+      "last_update": "2025-03-04T21:56:32.906+00:00",
+      "orientation": null,
+      "rarity": 1,
+      "slug": "restorative-flame-hvn",
+      "thema_charm_foil": 160,
+      "thema_charm_nonfoil": 14,
+      "thema_ferocity_foil": 171,
+      "thema_ferocity_nonfoil": 15,
+      "thema_foil": 744,
+      "thema_grace_foil": 114,
+      "thema_grace_nonfoil": 10,
+      "thema_mystique_foil": 185,
+      "thema_mystique_nonfoil": 16,
+      "thema_nonfoil": 65,
+      "thema_valor_foil": 114,
+      "thema_valor_nonfoil": 10,
+      "thema_foil_dynamic": false,
+      "thema_nonfoil_dynamic": false,
+      "uuid": "haf3tfsnfh",
+      "collaborators": [],
+      "circulationTemplates": [
+        {
+          "created_at": "2025-03-04T21:56:32.906+00:00",
+          "edition_id": "haf3tfsnfh",
+          "foil": true,
+          "kind": "FOIL",
+          "last_update": "2025-03-04T21:56:32.906+00:00",
+          "name": "HVN Common Foil",
+          "population": 1770,
+          "population_operator": "≈",
+          "printing": true,
+          "uuid": "JaDqLczfn6",
+          "variants": []
+        },
+        {
+          "created_at": "2025-03-04T21:56:32.906+00:00",
+          "edition_id": "haf3tfsnfh",
+          "foil": false,
+          "kind": "NONFOIL",
+          "last_update": "2025-03-04T21:56:32.906+00:00",
+          "name": "HVN Common",
+          "population": 115000,
+          "population_operator": "≈",
+          "printing": true,
+          "uuid": "wBRUZnTOuY",
+          "variants": []
+        }
+      ],
+      "circulations": [],
+      "other_orientations": [],
+      "set": {
+        "created_at": "2025-03-04T21:56:32.906+00:00",
+        "id": "67uvnnrprp",
+        "language": "EN",
+        "last_update": "2025-03-04T21:56:32.906+00:00",
+        "name": "Abyssal Heaven",
+        "prefix": "HVN",
+        "release_date": "2025-03-07T00:00:00"
+      },
+      "effect_html": null
+    }
+  ],
+  "rule": [],
+  "slug": "restorative-flame",
+  "speed": true,
+  "subtypes": [
+    "CLERIC",
+    "SPELL"
+  ],
+  "types": [
+    "ACTION"
+  ],
+  "uuid": "ek7r2d7uz4",
+  "effect_html": "Banish up to three fire element cards from your graveyard. For each card banished this way, <span class=\"effect__label\">recover 2</span>. <span class=\"effect__reminder\">(To <span class=\"effect__label\">recover</span>, remove that many damage counters from your champion.)</span>"
+}

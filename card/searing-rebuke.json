@@ -1,0 +1,187 @@
+{
+  "classes": [
+    "CLERIC"
+  ],
+  "cost_memory": null,
+  "cost_reserve": 2,
+  "cost": {
+    "type": "reserve",
+    "value": "2"
+  },
+  "created_at": "2025-03-04T21:56:32.906Z",
+  "durability": null,
+  "editions": [
+    {
+      "card_id": "hdvpug4d5m",
+      "collector_number": "100",
+      "configuration": "default",
+      "created_at": "2025-03-04T21:56:32.906+00:00",
+      "effect": null,
+      "effect_raw": null,
+      "flavor": null,
+      "illustrator": "Primea Studio",
+      "image": "/cards/images/nauaibdiil.jpg",
+      "last_update": "2025-03-04T21:56:32.906+00:00",
+      "orientation": null,
+      "rarity": 4,
+      "slug": "searing-rebuke-hvn",
+      "thema_charm_foil": 257,
+      "thema_charm_nonfoil": 48,
+      "thema_ferocity_foil": 268,
+      "thema_ferocity_nonfoil": 50,
+      "thema_foil": 1246,
+      "thema_grace_foil": 241,
+      "thema_grace_nonfoil": 45,
+      "thema_mystique_foil": 263,
+      "thema_mystique_nonfoil": 49,
+      "thema_nonfoil": 233,
+      "thema_valor_foil": 217,
+      "thema_valor_nonfoil": 41,
+      "thema_foil_dynamic": false,
+      "thema_nonfoil_dynamic": false,
+      "uuid": "nauaibdiil",
+      "collaborators": [],
+      "circulationTemplates": [
+        {
+          "created_at": "2025-03-04T21:56:32.906+00:00",
+          "edition_id": "nauaibdiil",
+          "foil": true,
+          "kind": "FOIL",
+          "last_update": "2025-03-04T21:56:32.906+00:00",
+          "name": "HVN Super Rare Foil",
+          "population": 610,
+          "population_operator": "≈",
+          "printing": true,
+          "uuid": "MLJXC0JgaR",
+          "variants": []
+        },
+        {
+          "created_at": "2025-03-04T21:56:32.906+00:00",
+          "edition_id": "nauaibdiil",
+          "foil": false,
+          "kind": "NONFOIL",
+          "last_update": "2025-03-04T21:56:32.906+00:00",
+          "name": "HVN Super Rare",
+          "population": 13500,
+          "population_operator": "≈",
+          "printing": true,
+          "uuid": "seMr6VRxxb",
+          "variants": []
+        }
+      ],
+      "circulations": [],
+      "other_orientations": [],
+      "set": {
+        "created_at": "2025-03-04T21:56:32.906+00:00",
+        "id": "67uvnnrprp",
+        "language": "EN",
+        "last_update": "2025-03-04T21:56:32.906+00:00",
+        "name": "Abyssal Heaven",
+        "prefix": "HVN",
+        "release_date": "2025-03-07T00:00:00"
+      },
+      "effect_html": null
+    }
+  ],
+  "effect": "Prevent the next 3 damage that would be dealt to your champion this turn.\n\n[Class Bonus] Whenever damage is prevented this way, deal 3 damage to target champion you don't control.",
+  "effect_raw": "Prevent the next 3 damage that would be dealt to your champion this turn.\n\n[Class Bonus] Whenever damage is prevented this way, deal 3 damage to target champion you don't control.",
+  "element": "FIRE",
+  "elements": [
+    "FIRE"
+  ],
+  "flavor": null,
+  "last_update": "2025-03-07T16:36:57.052Z",
+  "legality": null,
+  "level": null,
+  "life": null,
+  "name": "Searing Rebuke",
+  "power": null,
+  "referenced_by": [],
+  "references": [],
+  "result_editions": [
+    {
+      "card_id": "hdvpug4d5m",
+      "collector_number": "100",
+      "configuration": "default",
+      "created_at": "2025-03-04T21:56:32.906+00:00",
+      "effect": null,
+      "effect_raw": null,
+      "flavor": null,
+      "illustrator": "Primea Studio",
+      "image": "/cards/images/nauaibdiil.jpg",
+      "last_update": "2025-03-04T21:56:32.906+00:00",
+      "orientation": null,
+      "rarity": 4,
+      "slug": "searing-rebuke-hvn",
+      "thema_charm_foil": 257,
+      "thema_charm_nonfoil": 48,
+      "thema_ferocity_foil": 268,
+      "thema_ferocity_nonfoil": 50,
+      "thema_foil": 1246,
+      "thema_grace_foil": 241,
+      "thema_grace_nonfoil": 45,
+      "thema_mystique_foil": 263,
+      "thema_mystique_nonfoil": 49,
+      "thema_nonfoil": 233,
+      "thema_valor_foil": 217,
+      "thema_valor_nonfoil": 41,
+      "thema_foil_dynamic": false,
+      "thema_nonfoil_dynamic": false,
+      "uuid": "nauaibdiil",
+      "collaborators": [],
+      "circulationTemplates": [
+        {
+          "created_at": "2025-03-04T21:56:32.906+00:00",
+          "edition_id": "nauaibdiil",
+          "foil": true,
+          "kind": "FOIL",
+          "last_update": "2025-03-04T21:56:32.906+00:00",
+          "name": "HVN Super Rare Foil",
+          "population": 610,
+          "population_operator": "≈",
+          "printing": true,
+          "uuid": "MLJXC0JgaR",
+          "variants": []
+        },
+        {
+          "created_at": "2025-03-04T21:56:32.906+00:00",
+          "edition_id": "nauaibdiil",
+          "foil": false,
+          "kind": "NONFOIL",
+          "last_update": "2025-03-04T21:56:32.906+00:00",
+          "name": "HVN Super Rare",
+          "population": 13500,
+          "population_operator": "≈",
+          "printing": true,
+          "uuid": "seMr6VRxxb",
+          "variants": []
+        }
+      ],
+      "circulations": [],
+      "other_orientations": [],
+      "set": {
+        "created_at": "2025-03-04T21:56:32.906+00:00",
+        "id": "67uvnnrprp",
+        "language": "EN",
+        "last_update": "2025-03-04T21:56:32.906+00:00",
+        "name": "Abyssal Heaven",
+        "prefix": "HVN",
+        "release_date": "2025-03-07T00:00:00"
+      },
+      "effect_html": null
+    }
+  ],
+  "rule": [],
+  "slug": "searing-rebuke",
+  "speed": true,
+  "subtypes": [
+    "CLERIC",
+    "SPELL",
+    "REACTION"
+  ],
+  "types": [
+    "ACTION"
+  ],
+  "uuid": "hdvpug4d5m",
+  "effect_html": "<span class=\"effect__block\">Prevent the next 3 damage that would be dealt to your champion this turn.</span><span class=\"effect__bubble\">Class Bonus</span>  Whenever damage is prevented this way, deal 3 damage to target champion you don't control."
+}

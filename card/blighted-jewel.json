@@ -1,0 +1,187 @@
+{
+  "classes": [
+    "TAMER"
+  ],
+  "cost_memory": null,
+  "cost_reserve": 3,
+  "cost": {
+    "type": "reserve",
+    "value": "3"
+  },
+  "created_at": "2025-07-18T16:20:49.391Z",
+  "durability": null,
+  "editions": [
+    {
+      "card_id": "hbpu4fo8oo",
+      "collector_number": "047",
+      "configuration": "default",
+      "created_at": "2025-07-18T16:20:49.391+00:00",
+      "effect": null,
+      "effect_raw": null,
+      "flavor": null,
+      "illustrator": "Dragonart",
+      "image": "/cards/images/810xal1rrz.jpg",
+      "last_update": "2025-07-18T16:20:49.391+00:00",
+      "orientation": null,
+      "rarity": 3,
+      "slug": "blighted-jewel-dtr",
+      "thema_charm_foil": 222,
+      "thema_charm_nonfoil": 35,
+      "thema_ferocity_foil": 279,
+      "thema_ferocity_nonfoil": 44,
+      "thema_foil": 1060,
+      "thema_grace_foil": 139,
+      "thema_grace_nonfoil": 22,
+      "thema_mystique_foil": 281,
+      "thema_mystique_nonfoil": 44,
+      "thema_nonfoil": 167,
+      "thema_valor_foil": 139,
+      "thema_valor_nonfoil": 22,
+      "thema_foil_dynamic": false,
+      "thema_nonfoil_dynamic": false,
+      "uuid": "810xal1rrz",
+      "collaborators": [],
+      "circulationTemplates": [
+        {
+          "created_at": "2025-07-18T16:20:49.391+00:00",
+          "edition_id": "810xal1rrz",
+          "foil": true,
+          "kind": "FOIL",
+          "last_update": "2025-07-18T16:20:49.391+00:00",
+          "name": "DTR R Foil",
+          "population": 1000,
+          "population_operator": "≈",
+          "printing": true,
+          "uuid": "0UHuohVf9S",
+          "variants": []
+        },
+        {
+          "created_at": "2025-07-18T16:20:49.391+00:00",
+          "edition_id": "810xal1rrz",
+          "foil": false,
+          "kind": "NONFOIL",
+          "last_update": "2025-07-18T16:20:49.391+00:00",
+          "name": "DTR R Nonfoil",
+          "population": 25200,
+          "population_operator": "≈",
+          "printing": true,
+          "uuid": "GtCbktPC7B",
+          "variants": []
+        }
+      ],
+      "circulations": [],
+      "other_orientations": [],
+      "set": {
+        "created_at": "2025-07-18T16:20:49.391+00:00",
+        "id": "f539744941",
+        "language": "EN",
+        "last_update": "2025-07-18T16:20:49.391+00:00",
+        "name": "Distorted Reflections",
+        "prefix": "DTR",
+        "release_date": "2025-07-25T00:00:00"
+      },
+      "effect_html": null
+    }
+  ],
+  "effect": "**On Enter**: Blighted Jewel becomes **ephemeral**. Draw a card into your memory.\n\nEach **ephemeral** ally you control gets +1[POWER] as long as it entered the field this turn.",
+  "effect_raw": "On Enter: Blighted Jewel becomes ephemeral. Draw a card into your memory.\n\nEach ephemeral ally you control gets +1POWER as long as it entered the field this turn.",
+  "element": "NORM",
+  "elements": [
+    "NORM"
+  ],
+  "flavor": "Pressure makes diamonds.",
+  "last_update": "2025-07-24T16:15:11.473Z",
+  "legality": null,
+  "level": null,
+  "life": null,
+  "name": "Blighted Jewel",
+  "power": null,
+  "referenced_by": [],
+  "references": [],
+  "result_editions": [
+    {
+      "card_id": "hbpu4fo8oo",
+      "collector_number": "047",
+      "configuration": "default",
+      "created_at": "2025-07-18T16:20:49.391+00:00",
+      "effect": null,
+      "effect_raw": null,
+      "flavor": null,
+      "illustrator": "Dragonart",
+      "image": "/cards/images/810xal1rrz.jpg",
+      "last_update": "2025-07-18T16:20:49.391+00:00",
+      "orientation": null,
+      "rarity": 3,
+      "slug": "blighted-jewel-dtr",
+      "thema_charm_foil": 222,
+      "thema_charm_nonfoil": 35,
+      "thema_ferocity_foil": 279,
+      "thema_ferocity_nonfoil": 44,
+      "thema_foil": 1060,
+      "thema_grace_foil": 139,
+      "thema_grace_nonfoil": 22,
+      "thema_mystique_foil": 281,
+      "thema_mystique_nonfoil": 44,
+      "thema_nonfoil": 167,
+      "thema_valor_foil": 139,
+      "thema_valor_nonfoil": 22,
+      "thema_foil_dynamic": false,
+      "thema_nonfoil_dynamic": false,
+      "uuid": "810xal1rrz",
+      "collaborators": [],
+      "circulationTemplates": [
+        {
+          "created_at": "2025-07-18T16:20:49.391+00:00",
+          "edition_id": "810xal1rrz",
+          "foil": true,
+          "kind": "FOIL",
+          "last_update": "2025-07-18T16:20:49.391+00:00",
+          "name": "DTR R Foil",
+          "population": 1000,
+          "population_operator": "≈",
+          "printing": true,
+          "uuid": "0UHuohVf9S",
+          "variants": []
+        },
+        {
+          "created_at": "2025-07-18T16:20:49.391+00:00",
+          "edition_id": "810xal1rrz",
+          "foil": false,
+          "kind": "NONFOIL",
+          "last_update": "2025-07-18T16:20:49.391+00:00",
+          "name": "DTR R Nonfoil",
+          "population": 25200,
+          "population_operator": "≈",
+          "printing": true,
+          "uuid": "GtCbktPC7B",
+          "variants": []
+        }
+      ],
+      "circulations": [],
+      "other_orientations": [],
+      "set": {
+        "created_at": "2025-07-18T16:20:49.391+00:00",
+        "id": "f539744941",
+        "language": "EN",
+        "last_update": "2025-07-18T16:20:49.391+00:00",
+        "name": "Distorted Reflections",
+        "prefix": "DTR",
+        "release_date": "2025-07-25T00:00:00"
+      },
+      "effect_html": null
+    }
+  ],
+  "rule": [],
+  "slug": "blighted-jewel",
+  "speed": null,
+  "subtypes": [
+    "TAMER",
+    "SPECTER",
+    "CRYSTAL"
+  ],
+  "types": [
+    "ITEM"
+  ],
+  "uuid": "hbpu4fo8oo",
+  "effect_html": "<span class=\"effect__block\"><span class=\"effect__label\">On Enter</span>: Blighted Jewel becomes <span class=\"effect__label\">ephemeral</span>. Draw a card into your memory.</span>Each <span class=\"effect__label\">ephemeral</span> ally you control gets +1<span class=\"effect__icon effect__icon--sword\"></span> as long as it entered the field this turn."
+}

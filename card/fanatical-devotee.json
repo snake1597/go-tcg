@@ -1,0 +1,188 @@
+{
+  "classes": [
+    "CLERIC",
+    "TAMER"
+  ],
+  "cost_memory": null,
+  "cost_reserve": 3,
+  "cost": {
+    "type": "reserve",
+    "value": "3"
+  },
+  "created_at": "2024-01-26T12:00:00.000Z",
+  "durability": null,
+  "editions": [
+    {
+      "card_id": "1gxrpx8jyp",
+      "collector_number": "102",
+      "configuration": "default",
+      "created_at": "2024-01-26T12:00:00+00:00",
+      "effect": null,
+      "effect_raw": null,
+      "flavor": "",
+      "illustrator": "十尾",
+      "image": "/cards/images/yx0qv0but4.jpg",
+      "last_update": "2025-01-19T12:25:21.173+00:00",
+      "orientation": null,
+      "rarity": 2,
+      "slug": "fanatical-devotee-alc",
+      "thema_charm_foil": 237,
+      "thema_charm_nonfoil": 30,
+      "thema_ferocity_foil": 200,
+      "thema_ferocity_nonfoil": 25,
+      "thema_foil": 893,
+      "thema_grace_foil": 144,
+      "thema_grace_nonfoil": 18,
+      "thema_mystique_foil": 184,
+      "thema_mystique_nonfoil": 23,
+      "thema_nonfoil": 112,
+      "thema_valor_foil": 128,
+      "thema_valor_nonfoil": 16,
+      "thema_foil_dynamic": false,
+      "thema_nonfoil_dynamic": false,
+      "uuid": "yx0qv0but4",
+      "collaborators": [],
+      "circulationTemplates": [
+        {
+          "created_at": "2025-01-18T17:40:17.152+00:00",
+          "edition_id": "yx0qv0but4",
+          "foil": false,
+          "kind": "NONFOIL",
+          "last_update": "2025-01-18T17:40:17.152+00:00",
+          "name": "ALC Uncommon",
+          "population": 26300,
+          "population_operator": "≈",
+          "printing": true,
+          "uuid": "g761ecs7os",
+          "variants": []
+        },
+        {
+          "created_at": "2025-01-18T17:40:17.152+00:00",
+          "edition_id": "yx0qv0but4",
+          "foil": true,
+          "kind": "FOIL",
+          "last_update": "2025-01-18T17:40:17.152+00:00",
+          "name": "ALC Foil Uncommon",
+          "population": 616,
+          "population_operator": "≈",
+          "printing": true,
+          "uuid": "o2mpzwkubb",
+          "variants": []
+        }
+      ],
+      "circulations": [],
+      "other_orientations": [],
+      "set": {
+        "created_at": "2024-01-26T12:00:00+00:00",
+        "id": "ul4js2p1ru",
+        "language": "EN",
+        "last_update": "2025-01-18T17:40:17.152+00:00",
+        "name": "Alchemical Revolution",
+        "prefix": "ALC",
+        "release_date": "2024-01-26T00:00:00"
+      },
+      "effect_html": null
+    }
+  ],
+  "effect": "[Memory 4+] CARDNAME gets + 1 [POWER]. *(Apply this effect only if there are four or more cards in your memory.)*\n\n[Class Bonus] **On Death:** You may banish two other fire element cards from your graveyard. When you do, deal 3 damage to target champion.",
+  "effect_raw": "[Memory 4+] Fanatical Devotee gets + 1 POWER. (Apply this effect only if there are four or more cards in your memory.)\n\n[Class Bonus] On Death: You may banish two other fire element cards from your graveyard. When you do, deal 3 damage to target champion.",
+  "element": "FIRE",
+  "elements": [
+    "FIRE"
+  ],
+  "flavor": null,
+  "last_update": "2025-01-20T16:28:27.182Z",
+  "legality": null,
+  "level": null,
+  "life": 2,
+  "name": "Fanatical Devotee",
+  "power": 2,
+  "referenced_by": [],
+  "references": [],
+  "result_editions": [
+    {
+      "card_id": "1gxrpx8jyp",
+      "collector_number": "102",
+      "configuration": "default",
+      "created_at": "2024-01-26T12:00:00+00:00",
+      "effect": null,
+      "effect_raw": null,
+      "flavor": "",
+      "illustrator": "十尾",
+      "image": "/cards/images/yx0qv0but4.jpg",
+      "last_update": "2025-01-19T12:25:21.173+00:00",
+      "orientation": null,
+      "rarity": 2,
+      "slug": "fanatical-devotee-alc",
+      "thema_charm_foil": 237,
+      "thema_charm_nonfoil": 30,
+      "thema_ferocity_foil": 200,
+      "thema_ferocity_nonfoil": 25,
+      "thema_foil": 893,
+      "thema_grace_foil": 144,
+      "thema_grace_nonfoil": 18,
+      "thema_mystique_foil": 184,
+      "thema_mystique_nonfoil": 23,
+      "thema_nonfoil": 112,
+      "thema_valor_foil": 128,
+      "thema_valor_nonfoil": 16,
+      "thema_foil_dynamic": false,
+      "thema_nonfoil_dynamic": false,
+      "uuid": "yx0qv0but4",
+      "collaborators": [],
+      "circulationTemplates": [
+        {
+          "created_at": "2025-01-18T17:40:17.152+00:00",
+          "edition_id": "yx0qv0but4",
+          "foil": false,
+          "kind": "NONFOIL",
+          "last_update": "2025-01-18T17:40:17.152+00:00",
+          "name": "ALC Uncommon",
+          "population": 26300,
+          "population_operator": "≈",
+          "printing": true,
+          "uuid": "g761ecs7os",
+          "variants": []
+        },
+        {
+          "created_at": "2025-01-18T17:40:17.152+00:00",
+          "edition_id": "yx0qv0but4",
+          "foil": true,
+          "kind": "FOIL",
+          "last_update": "2025-01-18T17:40:17.152+00:00",
+          "name": "ALC Foil Uncommon",
+          "population": 616,
+          "population_operator": "≈",
+          "printing": true,
+          "uuid": "o2mpzwkubb",
+          "variants": []
+        }
+      ],
+      "circulations": [],
+      "other_orientations": [],
+      "set": {
+        "created_at": "2024-01-26T12:00:00+00:00",
+        "id": "ul4js2p1ru",
+        "language": "EN",
+        "last_update": "2025-01-18T17:40:17.152+00:00",
+        "name": "Alchemical Revolution",
+        "prefix": "ALC",
+        "release_date": "2024-01-26T00:00:00"
+      },
+      "effect_html": null
+    }
+  ],
+  "rule": [],
+  "slug": "fanatical-devotee",
+  "speed": null,
+  "subtypes": [
+    "CLERIC",
+    "TAMER",
+    "AUTOMATON"
+  ],
+  "types": [
+    "ALLY"
+  ],
+  "uuid": "1gxrpx8jyp",
+  "effect_html": "<span class=\"effect__block\"><span class=\"effect__bubble\">Memory 4+</span>  Fanatical Devotee gets + 1<span class=\"effect__icon effect__icon--sword\"></span>. <span class=\"effect__reminder\">(Apply this effect only if there are four or more cards in your memory.)</span></span><span class=\"effect__bubble\">Class Bonus</span>  <span class=\"effect__label\">On Death:</span> You may banish two other fire element cards from your graveyard. When you do, deal 3 damage to target champion."
+}
