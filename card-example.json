@@ -1,0 +1,44 @@
+{
+  "classes": [
+    "CLERIC"
+  ],
+  "cost": {
+    "type": "memory",
+    "value": "0"
+  },
+  "created_at": "2024-01-24T12:00:00.000Z",
+  "durability": null,
+  "effect": "(3), **Banish CARDNAME:** **Summon** a Powercell token rested. Draw a card into your memory.",
+  "effect_raw": "(3), Banish Backup Charger: Summon a Powercell token rested. Draw a card into your memory.",
+  "elements": [
+    "NORM"
+  ],
+  "flavor": "“Running out of energy too fast? In a pinch? Our prototype failsafe will guarantee you a fresh charge!”\n— Gearstride Automatics Advert",
+  "last_update": "2025-01-19T00:38:18.708Z",
+  "legality": null,
+  "level": null,
+  "life": null,
+  "name": "Backup Charger",
+  "power": null,
+  "referenced_by": [],
+  "references": [
+    {
+      "kind": "SUMMON",
+      "name": "Powercell",
+      "slug": "powercell",
+      "direction": "TO"
+    }
+  ],
+  "rule": [],
+  "slug": "backup-charger",
+  "speed": null,
+  "subtypes": [
+    "CLERIC",
+    "ACCESSORY"
+  ],
+  "types": [
+    "REGALIA",
+    "ITEM"
+  ],
+  "uuid": "9gv4vm4kj3"
+}

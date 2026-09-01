@@ -8,8 +8,6 @@
   "element": "NORM",
   "elements": ["NORM"],
   "level": 1,
-  "cost_memory": 1,
-  "cost_reserve": null,
   "cost": {
     "type": "memory",
     "value": "1"
