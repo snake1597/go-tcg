@@ -1,0 +1,187 @@
+{
+  "classes": [
+    "CLERIC"
+  ],
+  "cost_memory": null,
+  "cost_reserve": 4,
+  "cost": {
+    "type": "reserve",
+    "value": "4"
+  },
+  "created_at": "2025-03-04T21:56:32.906Z",
+  "durability": null,
+  "editions": [
+    {
+      "card_id": "stiyh3pmk3",
+      "collector_number": "077",
+      "configuration": "default",
+      "created_at": "2025-03-04T21:56:32.906+00:00",
+      "effect": null,
+      "effect_raw": null,
+      "flavor": null,
+      "illustrator": "Primea Studio",
+      "image": "/cards/images/slmivkusde.jpg",
+      "last_update": "2025-03-04T21:56:32.906+00:00",
+      "orientation": null,
+      "rarity": 1,
+      "slug": "cinder-geyser-hvn",
+      "thema_charm_foil": 160,
+      "thema_charm_nonfoil": 14,
+      "thema_ferocity_foil": 171,
+      "thema_ferocity_nonfoil": 15,
+      "thema_foil": 744,
+      "thema_grace_foil": 105,
+      "thema_grace_nonfoil": 9,
+      "thema_mystique_foil": 171,
+      "thema_mystique_nonfoil": 15,
+      "thema_nonfoil": 65,
+      "thema_valor_foil": 137,
+      "thema_valor_nonfoil": 12,
+      "thema_foil_dynamic": false,
+      "thema_nonfoil_dynamic": false,
+      "uuid": "slmivkusde",
+      "collaborators": [],
+      "circulationTemplates": [
+        {
+          "created_at": "2025-03-04T21:56:32.906+00:00",
+          "edition_id": "slmivkusde",
+          "foil": true,
+          "kind": "FOIL",
+          "last_update": "2025-03-04T21:56:32.906+00:00",
+          "name": "HVN Common Foil",
+          "population": 1770,
+          "population_operator": "≈",
+          "printing": true,
+          "uuid": "JaDqLczfn6",
+          "variants": []
+        },
+        {
+          "created_at": "2025-03-04T21:56:32.906+00:00",
+          "edition_id": "slmivkusde",
+          "foil": false,
+          "kind": "NONFOIL",
+          "last_update": "2025-03-04T21:56:32.906+00:00",
+          "name": "HVN Common",
+          "population": 115000,
+          "population_operator": "≈",
+          "printing": true,
+          "uuid": "wBRUZnTOuY",
+          "variants": []
+        }
+      ],
+      "circulations": [],
+      "other_orientations": [],
+      "set": {
+        "created_at": "2025-03-04T21:56:32.906+00:00",
+        "id": "67uvnnrprp",
+        "language": "EN",
+        "last_update": "2025-03-04T21:56:32.906+00:00",
+        "name": "Abyssal Heaven",
+        "prefix": "HVN",
+        "release_date": "2025-03-07T00:00:00"
+      },
+      "effect_html": null
+    }
+  ],
+  "effect": "[Class Bonus] As long as an opponent has four or more cards in their memory, this card costs 2 less to activate.\n\nDeal 4 damage to target unit.",
+  "effect_raw": "[Class Bonus] As long as an opponent has four or more cards in their memory, this card costs 2 less to activate.\n\nDeal 4 damage to target unit.",
+  "element": "FIRE",
+  "elements": [
+    "FIRE"
+  ],
+  "flavor": null,
+  "last_update": "2025-03-07T16:36:57.052Z",
+  "legality": null,
+  "level": null,
+  "life": null,
+  "name": "Cinder Geyser",
+  "power": null,
+  "referenced_by": [],
+  "references": [],
+  "result_editions": [
+    {
+      "card_id": "stiyh3pmk3",
+      "collector_number": "077",
+      "configuration": "default",
+      "created_at": "2025-03-04T21:56:32.906+00:00",
+      "effect": null,
+      "effect_raw": null,
+      "flavor": null,
+      "illustrator": "Primea Studio",
+      "image": "/cards/images/slmivkusde.jpg",
+      "last_update": "2025-03-04T21:56:32.906+00:00",
+      "orientation": null,
+      "rarity": 1,
+      "slug": "cinder-geyser-hvn",
+      "thema_charm_foil": 160,
+      "thema_charm_nonfoil": 14,
+      "thema_ferocity_foil": 171,
+      "thema_ferocity_nonfoil": 15,
+      "thema_foil": 744,
+      "thema_grace_foil": 105,
+      "thema_grace_nonfoil": 9,
+      "thema_mystique_foil": 171,
+      "thema_mystique_nonfoil": 15,
+      "thema_nonfoil": 65,
+      "thema_valor_foil": 137,
+      "thema_valor_nonfoil": 12,
+      "thema_foil_dynamic": false,
+      "thema_nonfoil_dynamic": false,
+      "uuid": "slmivkusde",
+      "collaborators": [],
+      "circulationTemplates": [
+        {
+          "created_at": "2025-03-04T21:56:32.906+00:00",
+          "edition_id": "slmivkusde",
+          "foil": true,
+          "kind": "FOIL",
+          "last_update": "2025-03-04T21:56:32.906+00:00",
+          "name": "HVN Common Foil",
+          "population": 1770,
+          "population_operator": "≈",
+          "printing": true,
+          "uuid": "JaDqLczfn6",
+          "variants": []
+        },
+        {
+          "created_at": "2025-03-04T21:56:32.906+00:00",
+          "edition_id": "slmivkusde",
+          "foil": false,
+          "kind": "NONFOIL",
+          "last_update": "2025-03-04T21:56:32.906+00:00",
+          "name": "HVN Common",
+          "population": 115000,
+          "population_operator": "≈",
+          "printing": true,
+          "uuid": "wBRUZnTOuY",
+          "variants": []
+        }
+      ],
+      "circulations": [],
+      "other_orientations": [],
+      "set": {
+        "created_at": "2025-03-04T21:56:32.906+00:00",
+        "id": "67uvnnrprp",
+        "language": "EN",
+        "last_update": "2025-03-04T21:56:32.906+00:00",
+        "name": "Abyssal Heaven",
+        "prefix": "HVN",
+        "release_date": "2025-03-07T00:00:00"
+      },
+      "effect_html": null
+    }
+  ],
+  "rule": [],
+  "slug": "cinder-geyser",
+  "speed": true,
+  "subtypes": [
+    "CLERIC",
+    "SPELL",
+    "REACTION"
+  ],
+  "types": [
+    "ACTION"
+  ],
+  "uuid": "stiyh3pmk3",
+  "effect_html": "<span class=\"effect__block\"><span class=\"effect__bubble\">Class Bonus</span>  As long as an opponent has four or more cards in their memory, this card costs 2 less to activate.</span>Deal 4 damage to target unit."
+}

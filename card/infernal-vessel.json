@@ -1,0 +1,198 @@
+{
+  "classes": [
+    "CLERIC"
+  ],
+  "cost_memory": 0,
+  "cost_reserve": null,
+  "cost": {
+    "type": "memory",
+    "value": "0"
+  },
+  "created_at": "2025-11-24T09:52:36.684Z",
+  "durability": null,
+  "editions": [
+    {
+      "card_id": "vgWgu1DUYv",
+      "collector_number": "018",
+      "configuration": "default",
+      "created_at": "2025-11-24T09:52:36.684+00:00",
+      "effect": null,
+      "effect_raw": null,
+      "flavor": "\"The tea is hot—careful not to burn your tongue!\"",
+      "illustrator": "Parhelion Studio Co.",
+      "image": "/cards/images/VWCAzFzKaA.jpg",
+      "last_update": "2025-11-24T16:18:03.555+00:00",
+      "orientation": null,
+      "rarity": 4,
+      "slug": "infernal-vessel-ptm",
+      "thema_charm_foil": 228,
+      "thema_charm_nonfoil": 43,
+      "thema_ferocity_foil": 284,
+      "thema_ferocity_nonfoil": 53,
+      "thema_foil": 1246,
+      "thema_grace_foil": 241,
+      "thema_grace_nonfoil": 45,
+      "thema_mystique_foil": 268,
+      "thema_mystique_nonfoil": 50,
+      "thema_nonfoil": 233,
+      "thema_valor_foil": 225,
+      "thema_valor_nonfoil": 42,
+      "thema_foil_dynamic": false,
+      "thema_nonfoil_dynamic": false,
+      "uuid": "VWCAzFzKaA",
+      "collaborators": [],
+      "circulationTemplates": [
+        {
+          "created_at": "2025-11-24T09:52:36.684+00:00",
+          "edition_id": "VWCAzFzKaA",
+          "foil": false,
+          "kind": "NONFOIL",
+          "last_update": "2025-11-24T09:52:36.684+00:00",
+          "name": "PTM SR Mat Nonfoil",
+          "population": 7500,
+          "population_operator": "≈",
+          "printing": true,
+          "uuid": "QE8Iob6HeF",
+          "variants": []
+        },
+        {
+          "created_at": "2025-11-24T09:52:36.684+00:00",
+          "edition_id": "VWCAzFzKaA",
+          "foil": true,
+          "kind": "FOIL",
+          "last_update": "2025-11-24T09:52:36.684+00:00",
+          "name": "PTM SR Foil",
+          "population": 500,
+          "population_operator": "≈",
+          "printing": true,
+          "uuid": "YHyIXAKv6U",
+          "variants": []
+        }
+      ],
+      "circulations": [],
+      "other_orientations": [],
+      "set": {
+        "created_at": "2025-11-24T09:52:36.684+00:00",
+        "id": "c15ff15598",
+        "language": "EN",
+        "last_update": "2025-11-24T09:52:36.684+00:00",
+        "name": "Phantom Monarchs",
+        "prefix": "PTM",
+        "release_date": "2025-12-05T00:00:00"
+      },
+      "effect_html": null
+    }
+  ],
+  "effect": "If a player would **recover** an amount, they **recover X** instead, where **X** is that amount minus 3. *(If a player would **recover 0** or less, they don't **recover**.)*",
+  "effect_raw": "If a player would recover an amount, they recover X instead, where X is that amount minus 3. (If a player would recover 0 or less, they don't recover.)",
+  "element": "FIRE",
+  "elements": [
+    "FIRE"
+  ],
+  "flavor": "\"The tea is hot, careful not to burn your tongue!\"",
+  "last_update": "2025-12-05T08:15:58.313Z",
+  "legality": null,
+  "level": null,
+  "life": null,
+  "name": "Infernal Vessel",
+  "power": null,
+  "referenced_by": [],
+  "references": [],
+  "result_editions": [
+    {
+      "card_id": "vgWgu1DUYv",
+      "collector_number": "018",
+      "configuration": "default",
+      "created_at": "2025-11-24T09:52:36.684+00:00",
+      "effect": null,
+      "effect_raw": null,
+      "flavor": "\"The tea is hot—careful not to burn your tongue!\"",
+      "illustrator": "Parhelion Studio Co.",
+      "image": "/cards/images/VWCAzFzKaA.jpg",
+      "last_update": "2025-11-24T16:18:03.555+00:00",
+      "orientation": null,
+      "rarity": 4,
+      "slug": "infernal-vessel-ptm",
+      "thema_charm_foil": 228,
+      "thema_charm_nonfoil": 43,
+      "thema_ferocity_foil": 284,
+      "thema_ferocity_nonfoil": 53,
+      "thema_foil": 1246,
+      "thema_grace_foil": 241,
+      "thema_grace_nonfoil": 45,
+      "thema_mystique_foil": 268,
+      "thema_mystique_nonfoil": 50,
+      "thema_nonfoil": 233,
+      "thema_valor_foil": 225,
+      "thema_valor_nonfoil": 42,
+      "thema_foil_dynamic": false,
+      "thema_nonfoil_dynamic": false,
+      "uuid": "VWCAzFzKaA",
+      "collaborators": [],
+      "circulationTemplates": [
+        {
+          "created_at": "2025-11-24T09:52:36.684+00:00",
+          "edition_id": "VWCAzFzKaA",
+          "foil": false,
+          "kind": "NONFOIL",
+          "last_update": "2025-11-24T09:52:36.684+00:00",
+          "name": "PTM SR Mat Nonfoil",
+          "population": 7500,
+          "population_operator": "≈",
+          "printing": true,
+          "uuid": "QE8Iob6HeF",
+          "variants": []
+        },
+        {
+          "created_at": "2025-11-24T09:52:36.684+00:00",
+          "edition_id": "VWCAzFzKaA",
+          "foil": true,
+          "kind": "FOIL",
+          "last_update": "2025-11-24T09:52:36.684+00:00",
+          "name": "PTM SR Foil",
+          "population": 500,
+          "population_operator": "≈",
+          "printing": true,
+          "uuid": "YHyIXAKv6U",
+          "variants": []
+        }
+      ],
+      "circulations": [],
+      "other_orientations": [],
+      "set": {
+        "created_at": "2025-11-24T09:52:36.684+00:00",
+        "id": "c15ff15598",
+        "language": "EN",
+        "last_update": "2025-11-24T09:52:36.684+00:00",
+        "name": "Phantom Monarchs",
+        "prefix": "PTM",
+        "release_date": "2025-12-05T00:00:00"
+      },
+      "effect_html": null
+    }
+  ],
+  "rule": [
+    {
+      "title": "",
+      "date_added": "2025-12-04",
+      "description": "Recovering 0 is not an act of recovering."
+    },
+    {
+      "title": "",
+      "date_added": "2025-12-04",
+      "description": "Infernal Vessel's effect doesn't modify recover costs or prevent recover costs from being paid. E.g. If a cost requires a payment of recover 5, your champion must have five damage counters on them in order to pay for this cost, but only two damage counters are removed as result of paying that cost."
+    }
+  ],
+  "slug": "infernal-vessel",
+  "speed": null,
+  "subtypes": [
+    "CLERIC",
+    "ACCESSORY"
+  ],
+  "types": [
+    "REGALIA",
+    "ITEM"
+  ],
+  "uuid": "vgWgu1DUYv",
+  "effect_html": "If a player would <span class=\"effect__label\">recover</span> an amount, they <span class=\"effect__label\">recover X</span> instead, where <span class=\"effect__label\">X</span> is that amount minus 3. <span class=\"effect__reminder\">(If a player would <span class=\"effect__label\">recover 0</span> or less, they don't <span class=\"effect__label\">recover</span>.)</span>"
+}

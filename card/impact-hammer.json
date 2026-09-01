@@ -1,0 +1,333 @@
+{
+  "classes": [
+    "GUARDIAN"
+  ],
+  "cost_memory": 0,
+  "cost_reserve": null,
+  "cost": {
+    "type": "memory",
+    "value": "0"
+  },
+  "created_at": "2024-05-17T12:00:00.000Z",
+  "durability": 2,
+  "editions": [
+    {
+      "card_id": "chsbalegbs",
+      "collector_number": "019",
+      "configuration": "default",
+      "created_at": "2024-05-17T12:00:00+00:00",
+      "effect": "[Class Bonus] CARDNAME gets +1 [POWER]. *(Apply this effect only if your champion’s class matches this card’s class.)*\n\nWhenever a unit %uses%wields% this weapon, deal 3 damage to it.",
+      "effect_raw": "[Class Bonus] Impact Hammer gets +1 POWER. (Apply this effect only if your champion’s class matches this card’s class.)\n\nWhenever a unit wields this weapon, deal 3 damage to it.",
+      "flavor": null,
+      "illustrator": "DragonArt TaroTarou",
+      "image": "/cards/images/nkcqjdmuih.jpg",
+      "last_update": "2026-08-20T04:45:45.809+00:00",
+      "orientation": null,
+      "rarity": 3,
+      "slug": "impact-hammer-mrc",
+      "thema_charm_foil": 203,
+      "thema_charm_nonfoil": 32,
+      "thema_ferocity_foil": 247,
+      "thema_ferocity_nonfoil": 39,
+      "thema_foil": 1060,
+      "thema_grace_foil": 190,
+      "thema_grace_nonfoil": 30,
+      "thema_mystique_foil": 190,
+      "thema_mystique_nonfoil": 30,
+      "thema_nonfoil": 167,
+      "thema_valor_foil": 230,
+      "thema_valor_nonfoil": 36,
+      "thema_foil_dynamic": false,
+      "thema_nonfoil_dynamic": false,
+      "uuid": "nkcqjdmuih",
+      "collaborators": [],
+      "circulationTemplates": [
+        {
+          "created_at": "2025-01-18T17:40:17.152+00:00",
+          "edition_id": "nkcqjdmuih",
+          "foil": false,
+          "kind": "NONFOIL",
+          "last_update": "2025-05-27T20:36:41.795+00:00",
+          "name": "MRC Regalia R",
+          "population": 9700,
+          "population_operator": "≈",
+          "printing": true,
+          "uuid": "s278fvscd0",
+          "variants": []
+        },
+        {
+          "created_at": "2025-01-18T17:40:17.152+00:00",
+          "edition_id": "nkcqjdmuih",
+          "foil": true,
+          "kind": "FOIL",
+          "last_update": "2025-05-27T20:27:36.974+00:00",
+          "name": "MRC R Foil",
+          "population": 935,
+          "population_operator": "≈",
+          "printing": true,
+          "uuid": "t0eof5o43m",
+          "variants": []
+        }
+      ],
+      "circulations": [],
+      "other_orientations": [],
+      "set": {
+        "created_at": "2024-05-17T12:00:00+00:00",
+        "id": "urjxrku1pp",
+        "language": "EN",
+        "last_update": "2025-01-18T17:40:17.152+00:00",
+        "name": "Mercurial Heart",
+        "prefix": "MRC",
+        "release_date": "2024-05-17T00:00:00"
+      },
+      "effect_html": "<span class=\"effect__block\"><span class=\"effect__bubble\">Class Bonus</span>  Impact Hammer gets +1<span class=\"effect__icon effect__icon--sword\"></span>. <span class=\"effect__reminder\">(Apply this effect only if your champion’s class matches this card’s class.)</span></span>Whenever a unit <span class=\"effect__strikethrough\">uses</span> <span class=\"effect__correction\">wields</span> this weapon, deal 3 damage to it."
+    },
+    {
+      "card_id": "chsbalegbs",
+      "collector_number": "007",
+      "configuration": "default",
+      "created_at": "2026-03-28T03:41:55.711+00:00",
+      "effect": null,
+      "effect_raw": null,
+      "flavor": null,
+      "illustrator": "DragonArt TaroTarou",
+      "image": "/cards/images/x1OU3zvSTI.jpg",
+      "last_update": "2026-04-01T21:11:30.213+00:00",
+      "orientation": null,
+      "rarity": 4,
+      "slug": "impact-hammer-rdoa",
+      "thema_charm_foil": 153,
+      "thema_charm_nonfoil": null,
+      "thema_ferocity_foil": 187,
+      "thema_ferocity_nonfoil": null,
+      "thema_foil": 800,
+      "thema_grace_foil": 144,
+      "thema_grace_nonfoil": null,
+      "thema_mystique_foil": 144,
+      "thema_mystique_nonfoil": null,
+      "thema_nonfoil": null,
+      "thema_valor_foil": 172,
+      "thema_valor_nonfoil": null,
+      "thema_foil_dynamic": false,
+      "thema_nonfoil_dynamic": false,
+      "uuid": "x1OU3zvSTI",
+      "collaborators": [],
+      "circulationTemplates": [],
+      "circulations": [
+        {
+          "created_at": "2026-03-28T03:41:55.711+00:00",
+          "edition_id": "x1OU3zvSTI",
+          "foil": true,
+          "kind": "FOIL",
+          "last_update": "2026-03-28T18:27:37.334+00:00",
+          "population": 540,
+          "population_operator": "≈",
+          "printing": false,
+          "uuid": "vnGP6ck9WJ",
+          "variants": [
+            {
+              "uuid": "qOPWiIH7ak",
+              "edition_id": "x1OU3zvSTI",
+              "description": "Quicksilver Foil",
+              "image": "/cards/images/x1OU3zvSTI.jpg",
+              "population_operator": "≈",
+              "population": 540,
+              "printing": false,
+              "kind": "FOIL",
+              "created_at": "2026-03-28T18:27:37.334+00:00",
+              "last_update": "2026-03-28T18:27:37.334+00:00"
+            }
+          ]
+        }
+      ],
+      "other_orientations": [],
+      "set": {
+        "created_at": "2026-03-28T03:41:55.711+00:00",
+        "id": "09586547ee",
+        "language": "EN",
+        "last_update": "2026-03-28T03:41:55.711+00:00",
+        "name": "Radiant Origins: Armaments",
+        "prefix": "RDOA",
+        "release_date": "2026-04-03T00:00:00"
+      },
+      "effect_html": null
+    }
+  ],
+  "effect": "[Class Bonus] CARDNAME gets +1 [POWER]. *(Apply this effect only if your champion’s class matches this card’s class.)*\n\nWhenever a unit uses this weapon for an attack, deal 3 damage to it.",
+  "effect_raw": "[Class Bonus] Impact Hammer gets +1 POWER. (Apply this effect only if your champion’s class matches this card’s class.)\n\nWhenever a unit uses this weapon for an attack, deal 3 damage to it.",
+  "element": "FIRE",
+  "elements": [
+    "FIRE"
+  ],
+  "flavor": null,
+  "last_update": "2026-08-20T04:45:45.809Z",
+  "legality": null,
+  "level": null,
+  "life": null,
+  "name": "Impact Hammer",
+  "power": 2,
+  "referenced_by": [],
+  "references": [],
+  "result_editions": [
+    {
+      "card_id": "chsbalegbs",
+      "collector_number": "019",
+      "configuration": "default",
+      "created_at": "2024-05-17T12:00:00+00:00",
+      "effect": "[Class Bonus] CARDNAME gets +1 [POWER]. *(Apply this effect only if your champion’s class matches this card’s class.)*\n\nWhenever a unit %uses%wields% this weapon, deal 3 damage to it.",
+      "effect_raw": "[Class Bonus] Impact Hammer gets +1 POWER. (Apply this effect only if your champion’s class matches this card’s class.)\n\nWhenever a unit wields this weapon, deal 3 damage to it.",
+      "flavor": null,
+      "illustrator": "DragonArt TaroTarou",
+      "image": "/cards/images/nkcqjdmuih.jpg",
+      "last_update": "2026-08-20T04:45:45.809+00:00",
+      "orientation": null,
+      "rarity": 3,
+      "slug": "impact-hammer-mrc",
+      "thema_charm_foil": 203,
+      "thema_charm_nonfoil": 32,
+      "thema_ferocity_foil": 247,
+      "thema_ferocity_nonfoil": 39,
+      "thema_foil": 1060,
+      "thema_grace_foil": 190,
+      "thema_grace_nonfoil": 30,
+      "thema_mystique_foil": 190,
+      "thema_mystique_nonfoil": 30,
+      "thema_nonfoil": 167,
+      "thema_valor_foil": 230,
+      "thema_valor_nonfoil": 36,
+      "thema_foil_dynamic": false,
+      "thema_nonfoil_dynamic": false,
+      "uuid": "nkcqjdmuih",
+      "collaborators": [],
+      "circulationTemplates": [
+        {
+          "created_at": "2025-01-18T17:40:17.152+00:00",
+          "edition_id": "nkcqjdmuih",
+          "foil": false,
+          "kind": "NONFOIL",
+          "last_update": "2025-05-27T20:36:41.795+00:00",
+          "name": "MRC Regalia R",
+          "population": 9700,
+          "population_operator": "≈",
+          "printing": true,
+          "uuid": "s278fvscd0",
+          "variants": []
+        },
+        {
+          "created_at": "2025-01-18T17:40:17.152+00:00",
+          "edition_id": "nkcqjdmuih",
+          "foil": true,
+          "kind": "FOIL",
+          "last_update": "2025-05-27T20:27:36.974+00:00",
+          "name": "MRC R Foil",
+          "population": 935,
+          "population_operator": "≈",
+          "printing": true,
+          "uuid": "t0eof5o43m",
+          "variants": []
+        }
+      ],
+      "circulations": [],
+      "other_orientations": [],
+      "set": {
+        "created_at": "2024-05-17T12:00:00+00:00",
+        "id": "urjxrku1pp",
+        "language": "EN",
+        "last_update": "2025-01-18T17:40:17.152+00:00",
+        "name": "Mercurial Heart",
+        "prefix": "MRC",
+        "release_date": "2024-05-17T00:00:00"
+      },
+      "effect_html": "<span class=\"effect__block\"><span class=\"effect__bubble\">Class Bonus</span>  Impact Hammer gets +1<span class=\"effect__icon effect__icon--sword\"></span>. <span class=\"effect__reminder\">(Apply this effect only if your champion’s class matches this card’s class.)</span></span>Whenever a unit <span class=\"effect__strikethrough\">uses</span> <span class=\"effect__correction\">wields</span> this weapon, deal 3 damage to it."
+    },
+    {
+      "card_id": "chsbalegbs",
+      "collector_number": "007",
+      "configuration": "default",
+      "created_at": "2026-03-28T03:41:55.711+00:00",
+      "effect": null,
+      "effect_raw": null,
+      "flavor": null,
+      "illustrator": "DragonArt TaroTarou",
+      "image": "/cards/images/x1OU3zvSTI.jpg",
+      "last_update": "2026-04-01T21:11:30.213+00:00",
+      "orientation": null,
+      "rarity": 4,
+      "slug": "impact-hammer-rdoa",
+      "thema_charm_foil": 153,
+      "thema_charm_nonfoil": null,
+      "thema_ferocity_foil": 187,
+      "thema_ferocity_nonfoil": null,
+      "thema_foil": 800,
+      "thema_grace_foil": 144,
+      "thema_grace_nonfoil": null,
+      "thema_mystique_foil": 144,
+      "thema_mystique_nonfoil": null,
+      "thema_nonfoil": null,
+      "thema_valor_foil": 172,
+      "thema_valor_nonfoil": null,
+      "thema_foil_dynamic": false,
+      "thema_nonfoil_dynamic": false,
+      "uuid": "x1OU3zvSTI",
+      "collaborators": [],
+      "circulationTemplates": [],
+      "circulations": [
+        {
+          "created_at": "2026-03-28T03:41:55.711+00:00",
+          "edition_id": "x1OU3zvSTI",
+          "foil": true,
+          "kind": "FOIL",
+          "last_update": "2026-03-28T18:27:37.334+00:00",
+          "population": 540,
+          "population_operator": "≈",
+          "printing": false,
+          "uuid": "vnGP6ck9WJ",
+          "variants": [
+            {
+              "uuid": "qOPWiIH7ak",
+              "edition_id": "x1OU3zvSTI",
+              "description": "Quicksilver Foil",
+              "image": "/cards/images/x1OU3zvSTI.jpg",
+              "population_operator": "≈",
+              "population": 540,
+              "printing": false,
+              "kind": "FOIL",
+              "created_at": "2026-03-28T18:27:37.334+00:00",
+              "last_update": "2026-03-28T18:27:37.334+00:00"
+            }
+          ]
+        }
+      ],
+      "other_orientations": [],
+      "set": {
+        "created_at": "2026-03-28T03:41:55.711+00:00",
+        "id": "09586547ee",
+        "language": "EN",
+        "last_update": "2026-03-28T03:41:55.711+00:00",
+        "name": "Radiant Origins: Armaments",
+        "prefix": "RDOA",
+        "release_date": "2026-04-03T00:00:00"
+      },
+      "effect_html": null
+    }
+  ],
+  "rule": [
+    {
+      "title": "ERRATA",
+      "date_added": "2026-08-16",
+      "description": "Whenever a unit uses this weapon for an attack, deal 3 damage to it. -> Whenever a unit wields this weapon, deal 3 damage to it."
+    }
+  ],
+  "slug": "impact-hammer",
+  "speed": null,
+  "subtypes": [
+    "GUARDIAN",
+    "HAMMER"
+  ],
+  "types": [
+    "REGALIA",
+    "WEAPON"
+  ],
+  "uuid": "chsbalegbs",
+  "effect_html": "<span class=\"effect__block\"><span class=\"effect__bubble\">Class Bonus</span>  Impact Hammer gets +1<span class=\"effect__icon effect__icon--sword\"></span>. <span class=\"effect__reminder\">(Apply this effect only if your champion’s class matches this card’s class.)</span></span>Whenever a unit uses this weapon for an attack, deal 3 damage to it."
+}

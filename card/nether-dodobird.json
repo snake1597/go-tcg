@@ -1,0 +1,214 @@
+{
+  "classes": [
+    "CLERIC"
+  ],
+  "cost_memory": null,
+  "cost_reserve": 3,
+  "cost": {
+    "type": "reserve",
+    "value": "3"
+  },
+  "created_at": "2025-11-24T09:52:36.684Z",
+  "durability": null,
+  "editions": [
+    {
+      "card_id": "wtHBZAdTSv",
+      "collector_number": "092",
+      "configuration": "default",
+      "created_at": "2025-11-24T09:52:36.684+00:00",
+      "effect": null,
+      "effect_raw": null,
+      "flavor": null,
+      "illustrator": "Primea Studio",
+      "image": "/cards/images/J8wlOvXD59.jpg",
+      "last_update": "2025-11-24T16:18:03.555+00:00",
+      "orientation": null,
+      "rarity": 2,
+      "slug": "nether-dodobird-ptm",
+      "thema_charm_foil": 200,
+      "thema_charm_nonfoil": 25,
+      "thema_ferocity_foil": 144,
+      "thema_ferocity_nonfoil": 18,
+      "thema_foil": 893,
+      "thema_grace_foil": 168,
+      "thema_grace_nonfoil": 21,
+      "thema_mystique_foil": 189,
+      "thema_mystique_nonfoil": 24,
+      "thema_nonfoil": 112,
+      "thema_valor_foil": 192,
+      "thema_valor_nonfoil": 24,
+      "thema_foil_dynamic": false,
+      "thema_nonfoil_dynamic": false,
+      "uuid": "J8wlOvXD59",
+      "collaborators": [],
+      "circulationTemplates": [
+        {
+          "created_at": "2025-11-24T09:52:36.684+00:00",
+          "edition_id": "J8wlOvXD59",
+          "foil": true,
+          "kind": "FOIL",
+          "last_update": "2025-11-24T09:52:36.684+00:00",
+          "name": "PTM U Foil",
+          "population": 1100,
+          "population_operator": "≈",
+          "printing": true,
+          "uuid": "ELqen2ZIse",
+          "variants": [
+            {
+              "uuid": "MHxIbAaqZL",
+              "edition_id": "J8wlOvXD59",
+              "description": "Fractured Curio Foil",
+              "image": "/cards/images/J8wlOvXD59.jpg",
+              "population_operator": "≈",
+              "population": 100,
+              "printing": false,
+              "kind": "FOIL",
+              "created_at": "2025-11-24T09:52:36.684+00:00",
+              "last_update": "2025-11-24T09:52:36.684+00:00"
+            }
+          ]
+        },
+        {
+          "created_at": "2025-11-24T09:52:36.684+00:00",
+          "edition_id": "J8wlOvXD59",
+          "foil": false,
+          "kind": "NONFOIL",
+          "last_update": "2025-11-24T09:52:36.684+00:00",
+          "name": "PTM U Nonfoil",
+          "population": 58500,
+          "population_operator": "≈",
+          "printing": true,
+          "uuid": "ZNpO0gSlgs",
+          "variants": []
+        }
+      ],
+      "circulations": [],
+      "other_orientations": [],
+      "set": {
+        "created_at": "2025-11-24T09:52:36.684+00:00",
+        "id": "c15ff15598",
+        "language": "EN",
+        "last_update": "2025-11-24T09:52:36.684+00:00",
+        "name": "Phantom Monarchs",
+        "prefix": "PTM",
+        "release_date": "2025-12-05T00:00:00"
+      },
+      "effect_html": null
+    }
+  ],
+  "effect": "**Sacrifice CARDNAME:** If CARDNAME was not **ephemeral**, draw a card into your memory. Otherwise, deal 2 damage to each champion you don't control. ",
+  "effect_raw": "Sacrifice Nether Dodobird: If Nether Dodobird was not ephemeral, draw a card into your memory. Otherwise, deal 2 damage to each champion you don't control. ",
+  "element": "FIRE",
+  "elements": [
+    "FIRE"
+  ],
+  "flavor": "\"What I was going to say was, that the best thing to get us dry would be a Caucus-race.\"",
+  "last_update": "2025-12-05T08:15:58.313Z",
+  "legality": null,
+  "level": null,
+  "life": 3,
+  "name": "Nether Dodobird",
+  "power": 1,
+  "referenced_by": [],
+  "references": [],
+  "result_editions": [
+    {
+      "card_id": "wtHBZAdTSv",
+      "collector_number": "092",
+      "configuration": "default",
+      "created_at": "2025-11-24T09:52:36.684+00:00",
+      "effect": null,
+      "effect_raw": null,
+      "flavor": null,
+      "illustrator": "Primea Studio",
+      "image": "/cards/images/J8wlOvXD59.jpg",
+      "last_update": "2025-11-24T16:18:03.555+00:00",
+      "orientation": null,
+      "rarity": 2,
+      "slug": "nether-dodobird-ptm",
+      "thema_charm_foil": 200,
+      "thema_charm_nonfoil": 25,
+      "thema_ferocity_foil": 144,
+      "thema_ferocity_nonfoil": 18,
+      "thema_foil": 893,
+      "thema_grace_foil": 168,
+      "thema_grace_nonfoil": 21,
+      "thema_mystique_foil": 189,
+      "thema_mystique_nonfoil": 24,
+      "thema_nonfoil": 112,
+      "thema_valor_foil": 192,
+      "thema_valor_nonfoil": 24,
+      "thema_foil_dynamic": false,
+      "thema_nonfoil_dynamic": false,
+      "uuid": "J8wlOvXD59",
+      "collaborators": [],
+      "circulationTemplates": [
+        {
+          "created_at": "2025-11-24T09:52:36.684+00:00",
+          "edition_id": "J8wlOvXD59",
+          "foil": true,
+          "kind": "FOIL",
+          "last_update": "2025-11-24T09:52:36.684+00:00",
+          "name": "PTM U Foil",
+          "population": 1100,
+          "population_operator": "≈",
+          "printing": true,
+          "uuid": "ELqen2ZIse",
+          "variants": [
+            {
+              "uuid": "MHxIbAaqZL",
+              "edition_id": "J8wlOvXD59",
+              "description": "Fractured Curio Foil",
+              "image": "/cards/images/J8wlOvXD59.jpg",
+              "population_operator": "≈",
+              "population": 100,
+              "printing": false,
+              "kind": "FOIL",
+              "created_at": "2025-11-24T09:52:36.684+00:00",
+              "last_update": "2025-11-24T09:52:36.684+00:00"
+            }
+          ]
+        },
+        {
+          "created_at": "2025-11-24T09:52:36.684+00:00",
+          "edition_id": "J8wlOvXD59",
+          "foil": false,
+          "kind": "NONFOIL",
+          "last_update": "2025-11-24T09:52:36.684+00:00",
+          "name": "PTM U Nonfoil",
+          "population": 58500,
+          "population_operator": "≈",
+          "printing": true,
+          "uuid": "ZNpO0gSlgs",
+          "variants": []
+        }
+      ],
+      "circulations": [],
+      "other_orientations": [],
+      "set": {
+        "created_at": "2025-11-24T09:52:36.684+00:00",
+        "id": "c15ff15598",
+        "language": "EN",
+        "last_update": "2025-11-24T09:52:36.684+00:00",
+        "name": "Phantom Monarchs",
+        "prefix": "PTM",
+        "release_date": "2025-12-05T00:00:00"
+      },
+      "effect_html": null
+    }
+  ],
+  "rule": [],
+  "slug": "nether-dodobird",
+  "speed": null,
+  "subtypes": [
+    "CLERIC",
+    "SPECTER",
+    "ANIMAL",
+    "BIRD"
+  ],
+  "types": [
+    "ALLY"
+  ],
+  "uuid": "wtHBZAdTSv",
+  "effect_html": "<span class=\"effect__label\">Sacrifice Nether Dodobird:</span> If Nether Dodobird was not <span class=\"effect__label\">ephemeral</span>, draw a card into your memory. Otherwise, deal 2 damage to each champion you don't control. "
+}
