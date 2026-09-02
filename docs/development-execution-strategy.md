@@ -37,13 +37,63 @@ Support Set、規則裁定   │
 
 #### 規格與內容工作軌
 
-1. 取得唯一固定 Standard Main Deck 與 Material Deck。
+1. 完成唯一固定 Standard Main Deck 與 Material Deck（見[固定 Standard 牌組](#固定-standard-牌組)）。
 2. 取得明確的 Outside Game Pool。
 3. 固定卡面資料來源、版本及所有穩定 Content ID。
 4. 從 [`card-support-matrix-template.md`](./card-support-matrix-template.md) 建立正式 `card-support-matrix.md`。
 5. 遞迴展開 Support Set 並建立 dependency graph。
 6. 列出需要的規則、Ability Slot、typed operation、continuous／replacement 類型及 ruling gate。
 7. 對被固定牌組觸及的規則歧義取得裁定或保持 blocked。
+
+## 固定 Standard 牌組
+
+此 manifest 是目前唯一可進入 production registry 的 Standard 牌組。卡牌識別一律使用 `entity.Card.UUID`（各 `card/*.json` 頂層的 `uuid`）；不使用 `editions` 或 `result_editions` 內的 UUID，因為後兩者是印刷版本而非卡牌定義。
+
+`entity.Card.Types` 決定牌組區域：`CHAMPION` 與 `REGALIA` 放入 Material Deck，其餘列出的卡牌放入 Main Deck。未列入 manifest 的 `card` 檔案不是這副牌的一部分。
+
+### Main Deck（60 張）
+
+前十一張與 `Nether Dodobird`、`Searing Rebuke`、`Vengeful Paramour` 各四張，`Incinerator Felindroid` 一張，`Volda, Smolder's Spite` 三張；總數為 `14 × 4 + 1 + 3 = 60`，每個名稱均不超過 Standard 的四張上限。
+
+| Card UUID | 名稱 | 張數 |
+| --- | --- | ---: |
+| `hbpu4fo8oo` | Blighted Jewel | 4 |
+| `v0gu8efq08` | Lingering Banshee | 4 |
+| `s9ICPMYPNx` | Bill, Chimney Sweep | 4 |
+| `stiyh3pmk3` | Cinder Geyser | 4 |
+| `BqDw4Mei4C` | Creative Shock | 4 |
+| `qzv380ujf5` | Duchess, Six of Hearts | 4 |
+| `PptfA8gG6h` | Emberwrath Witch | 4 |
+| `1gxrpx8jyp` | Fanatical Devotee | 4 |
+| `5pw07bh5wf` | Fractal of Sparks | 4 |
+| `cbNF64gCsS` | Furnace Drone | 4 |
+| `26ya6zaae8` | Incinerated Templar | 4 |
+| `Vl03t5rMSA` | Incinerator Felindroid | 1 |
+| `wtHBZAdTSv` | Nether Dodobird | 4 |
+| `hdvpug4d5m` | Searing Rebuke | 4 |
+| `4vjkezn49t` | Vengeful Paramour | 4 |
+| `ecZsQQAYJJ` | Volda, Smolder's Spite | 3 |
+
+### Material Deck（12 張）
+
+所有卡牌各一張；`Spirit of Fire` 的 `Level` 為 `0` 且 `Types` 含 `CHAMPION`，符合 Standard 起始 Champion 要求。
+
+| Card UUID | 名稱 | `Types` | `Level` | 張數 |
+| --- | --- | --- | ---: | ---: |
+| `LMyKyVC2O9` | Spirit of Fire | `CHAMPION` | 0 | 1 |
+| `GiQxfpKTUC` | Alice, Distorted Queen | `CHAMPION` | 1 | 1 |
+| `9gv4vm4kj3` | Backup Charger | `REGALIA`, `ITEM` | — | 1 |
+| `2gv7DC0KID` | Grand Crusader's Ring | `REGALIA`, `ITEM` | — | 1 |
+| `pol1nz0j1n` | Nullifying Mirror | `REGALIA`, `ITEM` | — | 1 |
+| `yj2rJBREH8` | Safeguard Amulet | `REGALIA`, `ITEM` | — | 1 |
+| `ScGcOmkoQt` | Smoke Bombs | `REGALIA`, `ITEM` | — | 1 |
+| `xnrw8qq1uw` | Tariff Ring | `REGALIA`, `ITEM` | — | 1 |
+| `s3572j3oda` | Viridian Protective Trinket | `REGALIA`, `ITEM` | — | 1 |
+| `chsbalegbs` | Impact Hammer | `REGALIA`, `WEAPON` | — | 1 |
+| `vgWgu1DUYv` | Infernal Vessel | `REGALIA`, `ITEM` | — | 1 |
+| `1ubrwubSQN` | Mantle of the Abyss | `REGALIA`, `ITEM` | — | 1 |
+
+Material Deck 已達 12 張上限，且卡名均唯一。`Everflame Staff` 與 `Fanned Synchron` 雖然也是 `REGALIA`，但不屬於這份固定 manifest，因此不會放入 Main Deck 或 Material Deck。
 
 #### Test-only walking skeleton 工作軌
 
@@ -359,9 +409,9 @@ RUL-001 未取得裁定前，正式 Opportunity 時序不能標為完成。
 
 ### DEC-01 固定牌組責任與期限
 
-誰負責提供 Main Deck、Material Deck、Outside Game Pool、穩定 ID 與卡面版本？預計何時提供？
+已完成：本文件的[固定 Standard 牌組](#固定-standard-牌組)是唯一的 Main Deck 與 Material Deck manifest；卡牌定義 ID 由 `entity.Card.UUID` 提供。
 
-建議：指定單一內容負責人，將上述資料作為 versioned manifest 一次交付。在此之前，正式卡牌 tickets 維持 blocked。
+仍待完成：指定 Outside Game Pool、卡面版本與其餘 Content ID；這些資料到位前，Support Set closure 與正式卡牌 tickets 仍維持 blocked。
 
 ### DEC-02 Walking skeleton 啟動決策
 
@@ -383,7 +433,7 @@ RUL-001 未取得裁定前，正式 Opportunity 時序不能標為完成。
 
 ## 下一個決策點
 
-完成 DEC-01～04 後，才進一步決定：
+完成 DEC-02～04，並補齊 DEC-01 尚待項目後，才進一步決定：
 
 - manifest 的正式 schema 與保存位置。
 - walking skeleton 的第一個 executable scenario。
