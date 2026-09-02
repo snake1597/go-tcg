@@ -1,0 +1,40 @@
+# Grand Archive 開發文件索引
+
+目前狀態：核心架構與開發流程已定案，產品程式碼尚未開始。進入正式卡牌實作前，仍需由專案負責人提供唯一固定牌組、Outside Game Pool 與卡面資料版本，並依規則裁定 gate 排除阻擋項目。
+
+## 建議閱讀順序
+
+1. [`development-plan.md`](./development-plan.md)：首版範圍、核心模型、vertical slices 與 release gate。
+2. [`../CONTEXT.md`](../CONTEXT.md)：全專案共用的領域詞彙。
+3. [`testing.md`](./testing.md)：rule-example-first TDD、測試 seam 與禁止模式。
+4. [`card-support-matrix-template.md`](./card-support-matrix-template.md)：取得固定牌組後建立正式 Support Set 的工作入口。
+5. [`rules-issues.md`](./rules-issues.md)：會阻擋相關 slice 的官方規則歧義。
+6. [`adr/`](./adr/)：已確認且難以逆轉的架構決策。
+
+研究背景：
+
+- [`research/full-rules-review.md`](./research/full-rules-review.md)：完整閱讀 108 份鎖定規則文件後的風險清單與落地狀態。
+- [`research/card-game-engine-patterns.md`](./research/card-game-engine-patterns.md)：成熟遊戲引擎的一手來源模式研究。
+
+## ADR 索引
+
+| ADR | 決策 |
+| --- | --- |
+| [0001](./adr/0001-authoritative-deterministic-rule-engine.md) | 權威且確定性的 Game Module |
+| [0002](./adr/0002-reject-unsupported-card-mechanics-before-play.md) | 開局前驗證封閉 Support Set |
+| [0003](./adr/0003-pin-rules-snapshot-per-engine-version.md) | 每個引擎版本鎖定規則快照 |
+| [0004](./adr/0004-use-guided-choices-and-atomic-actions.md) | Guided choices 與 DeclarationTransaction |
+| [0005](./adr/0005-implement-card-behavior-in-go.md) | 首版卡牌行為使用 typed Go |
+| [0006](./adr/0006-expose-player-scoped-views-to-controllers.md) | KnowledgeState、PlayerView 與 ViewHandle |
+| [0007](./adr/0007-keep-storage-outside-the-rule-engine.md) | 儲存基礎設施位於 Game Module 外 |
+| [0008](./adr/0008-record-replays-as-versioned-inputs.md) | 版本化輸入序列 replay |
+| [0009](./adr/0009-use-a-modular-monolith-with-a-deep-game-module.md) | 模組化單體與深層 Game Module |
+| [0010](./adr/0010-serialize-state-transitions-within-each-game.md) | 序列化輸入、scheduler、fixed point 與 trigger ordering |
+| [0011](./adr/0011-stop-on-unsupported-rules-ambiguity.md) | 未裁定歧義停止而不猜測 |
+| [0012](./adr/0012-separate-card-object-and-stack-identities.md) | Card、Object、Ability、來源卡與 StackItem 身分 |
+| [0013](./adr/0013-preserve-event-batches-and-causality.md) | EventBatch 與因果關係 |
+| [0014](./adr/0014-centralize-derived-characteristics-and-replacements.md) | 中央 derived evaluator 與 replacement pipeline |
+
+## 下一個可執行動作
+
+收到固定牌組資料後，先從範本建立 `docs/card-support-matrix.md`，完成內容閉包與規則依賴排序。矩陣達到 `ready` 前不開始正式卡牌 handler；仍可先依開發計畫的里程碑 1 建立 test-only walking skeleton。
