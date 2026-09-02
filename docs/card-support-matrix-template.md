@@ -2,6 +2,21 @@
 
 取得固定牌組後，複製本文件為 `docs/card-support-matrix.md`，填完所有欄位並刪除範例提示。矩陣是正式 registry、開發排序與 release gate 的共同輸入；不能只維護一份沒有規則依賴的牌表。
 
+## 官方 card JSON 對照
+
+每列卡牌以父卡 `uuid` 為 Card ID，`slug` 用於重抓與人工核對。CardFace ID 必須由本專案 registry 配置；它不是官方卡片 JSON 的欄位。
+
+| 資料用途 | 官方欄位 | 匯入與矩陣規則 |
+| --- | --- | --- |
+| 身分與版本 | `uuid`、`slug`、`name`、`created_at`、`last_update` | `uuid` 為 Card ID；在「卡面資料來源／版本」填寫資料集版本或抓取時的 `last_update`。 |
+| 費用 | `cost.type`、`cost.value` | 規則費用取自巢狀 `cost`。deprecated 的 `cost_memory`、`cost_reserve` 不匯入。 |
+| 卡牌特徵與數值 | `classes`、`types`、`subtypes`、`elements`、`level`、`life`、`power`、`durability`、`speed` | 逐欄匯入並測試可為 `null` 的數值。`element` 僅是 `elements` 的單數投影，不另作規則來源。 |
+| 規則與顯示文字 | `effect`、`effect_raw`、`effect_html`、`flavor` | 以 `effect`／`effect_raw` 解析與核對規則。`effect_html`、`flavor` 只供展示，不能驅動遊戲行為。 |
+| 規則關聯與限制 | `references`、`referenced_by`、`rule`、`legality` | 維持來源物件結構。可建立或執行的關聯項目列入內容閉包；只按卡名查詢的關聯列入卡名索引依賴。 |
+| 暫不使用資料 | `editions`、`result_editions` | 印刷版資料目前不匯入，不納入固定牌組或 support matrix。 |
+
+填表前驗證：父卡 UUID、slug、name 可相互核對；`cost` 含有可識別的 type 與 value；`references` 與 `referenced_by` 未被降成僅卡名的字串。
+
 ## 版本與狀態
 
 | 欄位 | 值 |
@@ -19,13 +34,13 @@
 
 ### 主牌組（Main Deck）
 
-| Card ID | 卡名 | 數量 | CardFace ID | 備註 |
+| Card UUID | 卡名 | 數量 | CardFace ID | 備註 |
 | --- | --- | ---: | --- | --- |
 | `<待填>` | `<待填>` | 0 | `<待填>` |  |
 
 ### Material Deck
 
-| Card ID | 卡名 | 數量 | CardFace ID | 是否為起始 Level 0 Champion | 備註 |
+| Card UUID | 卡名 | 數量 | CardFace ID | 是否為起始 Level 0 Champion | 備註 |
 | --- | --- | ---: | --- | --- | --- |
 | `<待填>` | `<待填>` | 0 | `<待填>` | 是／否 |  |
 
@@ -39,9 +54,9 @@
 
 每一列代表 Support Set 中一個可實際建立或執行的內容。雙面卡的所有 faces、token、生成卡、Mastery、Status、copy 可讀取的來源行為及其他衍生內容都要列入。只要求指定卡名、但不建立或執行該卡時，改記錄於「卡名索引依賴」。
 
-| Content ID | 種類 | 從何內容可達 | 可達方式 | 所有 CardFace／Ability Slot | 實作狀態 | 測試狀態 | 阻擋項目 |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| `<待填>` | card／token／mastery／status／其他 | `<Card ID>` | deck／generate／create／copy／transform／level up | `<待填>` | unsupported／supported | missing／passing | `<RUL-ID 或無>` |
+| Content ID | 種類 | 官方 Card UUID／來源 | 從何內容可達 | 可達方式 | 所有 CardFace／Ability Slot | 實作狀態 | 測試狀態 | 阻擋項目 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `<待填>` | card／token／mastery／status／其他 | `<Card UUID 或不適用>` | `<Content ID>` | deck／generate／create／copy／transform／level up | `<待填>` | unsupported／supported | missing／passing | `<RUL-ID 或無>` |
 
 ### 卡名索引依賴
 
@@ -85,7 +100,7 @@ Issue 定義與處理流程見 [`rules-issues.md`](./rules-issues.md)。任何�
 
 ## 完成條件
 
-- Deck Manifest 通過 Standard 格式與數量驗證。
+- Deck Manifest 通過 Standard 格式與數量驗證，且每個 Card UUID 與 CardFace ID 的對應皆可回溯到官方資料與 registry。
 - 從三個牌池出發重新計算閉包，不會發現矩陣外的可達內容。
 - 每個內容、Ability Slot 與機制都為 `supported`，且至少有來源可追溯的正常與邊界測試。
 - 沒有被觸及且仍待裁定的 issue。
