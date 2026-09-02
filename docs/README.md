@@ -6,11 +6,12 @@
 
 1. [`development-plan.md`](./development-plan.md)：首版範圍、核心模型、vertical slices 與 release gate。
 2. [`implementation-features.md`](./implementation-features.md)：依牌組、單局、卡牌能力、觸發、效果、戰鬥與介面拆解的功能實作清單。
-3. [`../CONTEXT.md`](../CONTEXT.md)：全專案共用的領域詞彙。
-4. [`testing.md`](./testing.md)：rule-example-first TDD、測試 seam 與禁止模式。
-5. [`card-support-matrix-template.md`](./card-support-matrix-template.md)：取得固定牌組後建立正式 Support Set 的工作入口。
-6. [`rules-issues.md`](./rules-issues.md)：會阻擋相關 slice 的官方規則歧義。
-7. [`adr/`](./adr/)：已確認且難以逆轉的架構決策。
+3. [`development-execution-strategy.md`](./development-execution-strategy.md)：實作順序、並行工作軌、spec／ticket gate、前置作業與待確認決策。
+4. [`../CONTEXT.md`](../CONTEXT.md)：全專案共用的領域詞彙。
+5. [`testing.md`](./testing.md)：rule-example-first TDD、測試 seam 與禁止模式。
+6. [`card-support-matrix-template.md`](./card-support-matrix-template.md)：取得固定牌組後建立正式 Support Set 的工作入口。
+7. [`rules-issues.md`](./rules-issues.md)：會阻擋相關 slice 的官方規則歧義。
+8. [`adr/`](./adr/)：已確認且難以逆轉的架構決策。
 
 研究背景：
 
