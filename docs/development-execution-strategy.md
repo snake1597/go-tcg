@@ -37,7 +37,7 @@ Support Set、規則裁定   │
 
 #### 規格與內容工作軌
 
-1. 取得唯一固定 Standard Main Deck 與 Material Deck。
+1. 完成唯一固定 Standard Main Deck 與 Material Deck（見[固定 Standard 牌組](#固定-standard-牌組)）。
 2. 取得明確的 Outside Game Pool。
 3. 固定卡面資料來源、版本及所有穩定 Content ID。
 4. 從 [`card-support-matrix-template.md`](./card-support-matrix-template.md) 建立正式 `card-support-matrix.md`。
@@ -45,9 +45,59 @@ Support Set、規則裁定   │
 6. 列出需要的規則、Ability Slot、typed operation、continuous／replacement 類型及 ruling gate。
 7. 對被固定牌組觸及的規則歧義取得裁定或保持 blocked。
 
+## 固定 Standard 牌組
+
+此 manifest 是目前唯一可進入 production registry 的 Standard 牌組。卡牌識別一律使用 `entity.Card.UUID`（各 `card/*.json` 頂層的 `uuid`）；不使用 `editions` 或 `result_editions` 內的 UUID，因為後兩者是印刷版本而非卡牌定義。
+
+`entity.Card.Types` 決定牌組區域：`CHAMPION` 與 `REGALIA` 放入 Material Deck，其餘列出的卡牌放入 Main Deck。未列入 manifest 的 `card` 檔案不是這副牌的一部分。
+
+### Main Deck（60 張）
+
+前十一張與 `Nether Dodobird`、`Searing Rebuke`、`Vengeful Paramour` 各四張，`Incinerator Felindroid` 一張，`Volda, Smolder's Spite` 三張；總數為 `14 × 4 + 1 + 3 = 60`，每個名稱均不超過 Standard 的四張上限。
+
+| Card UUID | 名稱 | 張數 |
+| --- | --- | ---: |
+| `hbpu4fo8oo` | Blighted Jewel | 4 |
+| `v0gu8efq08` | Lingering Banshee | 4 |
+| `s9ICPMYPNx` | Bill, Chimney Sweep | 4 |
+| `stiyh3pmk3` | Cinder Geyser | 4 |
+| `BqDw4Mei4C` | Creative Shock | 4 |
+| `qzv380ujf5` | Duchess, Six of Hearts | 4 |
+| `PptfA8gG6h` | Emberwrath Witch | 4 |
+| `1gxrpx8jyp` | Fanatical Devotee | 4 |
+| `5pw07bh5wf` | Fractal of Sparks | 4 |
+| `cbNF64gCsS` | Furnace Drone | 4 |
+| `26ya6zaae8` | Incinerated Templar | 4 |
+| `Vl03t5rMSA` | Incinerator Felindroid | 1 |
+| `wtHBZAdTSv` | Nether Dodobird | 4 |
+| `hdvpug4d5m` | Searing Rebuke | 4 |
+| `4vjkezn49t` | Vengeful Paramour | 4 |
+| `ecZsQQAYJJ` | Volda, Smolder's Spite | 3 |
+
+### Material Deck（12 張）
+
+所有卡牌各一張；`Spirit of Fire` 的 `Level` 為 `0` 且 `Types` 含 `CHAMPION`，符合 Standard 起始 Champion 要求。
+
+| Card UUID | 名稱 | `Types` | `Level` | 張數 |
+| --- | --- | --- | ---: | ---: |
+| `LMyKyVC2O9` | Spirit of Fire | `CHAMPION` | 0 | 1 |
+| `GiQxfpKTUC` | Alice, Distorted Queen | `CHAMPION` | 1 | 1 |
+| `9gv4vm4kj3` | Backup Charger | `REGALIA`, `ITEM` | — | 1 |
+| `2gv7DC0KID` | Grand Crusader's Ring | `REGALIA`, `ITEM` | — | 1 |
+| `pol1nz0j1n` | Nullifying Mirror | `REGALIA`, `ITEM` | — | 1 |
+| `yj2rJBREH8` | Safeguard Amulet | `REGALIA`, `ITEM` | — | 1 |
+| `ScGcOmkoQt` | Smoke Bombs | `REGALIA`, `ITEM` | — | 1 |
+| `xnrw8qq1uw` | Tariff Ring | `REGALIA`, `ITEM` | — | 1 |
+| `s3572j3oda` | Viridian Protective Trinket | `REGALIA`, `ITEM` | — | 1 |
+| `chsbalegbs` | Impact Hammer | `REGALIA`, `WEAPON` | — | 1 |
+| `vgWgu1DUYv` | Infernal Vessel | `REGALIA`, `ITEM` | — | 1 |
+| `1ubrwubSQN` | Mantle of the Abyss | `REGALIA`, `ITEM` | — | 1 |
+
+Material Deck 已達 12 張上限，且卡名均唯一。`Everflame Staff` 與 `Fanned Synchron` 雖然也是 `REGALIA`，但不屬於這份固定 manifest，因此不會放入 Main Deck 或 Material Deck。
+
 #### Test-only walking skeleton 工作軌
 
-在正式牌組尚未到位時，以不可能進入 production registry 的 fixture 走通：
+在正式 registry 仍因內容 metadata 不完整而 blocked 時，以不可能進入 production registry 的 fixture 走通：
 
 1. 啟動 CLI。
 2. 建立測試單局。
@@ -109,7 +159,7 @@ walking skeleton 只驗證端到端 seam，不代表任何正式卡牌已被支�
 8. Opportunity、讓過與階段推進。
 9. 牌庫耗盡與投降結束。
 
-RUL-001 未取得裁定前，正式 Opportunity 時序不能標為完成。
+正式 Opportunity 時序依 [ADR 0015](./adr/0015-retain-opportunity-until-the-holder-passes.md) 實作：玩家完成需要 Opportunity 的行動後保有 Opportunity，直到讓過才依 turn order 移交。
 
 ### 階段 4：第一張正式可操作卡牌
 
@@ -187,7 +237,7 @@ RUL-001 未取得裁定前，正式 Opportunity 時序不能標為完成。
 
 ### 現在可以建立的 spec
 
-下列規格不依賴尚未提供的固定牌組，可以立即完成：
+下列規格不依賴尚未補齊的 production registry 內容，可以立即完成：
 
 1. Game Module 最小 use-case contract。
 2. Game／PlayerView／PlayerAction／PendingChoice 的狀態協定。
@@ -207,7 +257,7 @@ RUL-001 未取得裁定前，正式 Opportunity 時序不能標為完成。
 - 跨卡互動與特殊關鍵字。
 - 固定牌組的完整 bot 評分策略。
 
-這些規格必須等待固定牌組、卡面版本、Content ID 與規則裁定到位。
+這些規格必須等待 Outside Game Pool、卡面版本、CardFace／Ability Slot ID 與相關規則輸入到位。
 
 ## Ticket 建立時機
 
@@ -359,31 +409,31 @@ RUL-001 未取得裁定前，正式 Opportunity 時序不能標為完成。
 
 ### DEC-01 固定牌組責任與期限
 
-誰負責提供 Main Deck、Material Deck、Outside Game Pool、穩定 ID 與卡面版本？預計何時提供？
+已完成：本文件的[固定 Standard 牌組](#固定-standard-牌組)是唯一的 Main Deck 與 Material Deck manifest；卡牌定義 ID 由 `entity.Card.UUID` 提供。
 
-建議：指定單一內容負責人，將上述資料作為 versioned manifest 一次交付。在此之前，正式卡牌 tickets 維持 blocked。
+仍待完成：指定 Outside Game Pool、卡面版本與其餘 Content ID；這些資料到位前，Support Set closure 與正式卡牌 tickets 仍維持 blocked。
 
 ### DEC-02 Walking skeleton 啟動決策
 
-是否在牌組尚未到位時，先使用 test-only fixture 完成建立單局、PlayerView、投降、replay 與 hash 驗證？
+是否在 production registry 尚未 ready 時，先使用 test-only fixture 完成建立單局、PlayerView、投降、replay 與 hash 驗證？
 
 建議：立即開始，優先驗證整體 seam 與確定性模型。
 
 ### DEC-03 第一張正式卡牌選擇原則
 
-取得固定牌組後，應選效果最簡單的卡，還是最能揭露引擎風險的卡？
+從已固定的牌組選擇第一張正式卡牌時，應選效果最簡單的卡，還是最能揭露引擎風險的卡？
 
 建議：選擇依賴少，但能完整經過 DeclarationTransaction、StackItem、Opportunity、結算與 checkpoint 的卡。
 
-### DEC-04 未裁定規則政策
+### DEC-04 未裁定規則政策（已完成）
 
-固定牌組碰到 RUL-001、RUL-002 或 RUL-004 時，要等待官方 ruling、替換牌組，還是接受專案自訂裁定？
+RUL-001 未取得可唯一決定行為的官方 ruling，專案負責人已選擇以 [ADR 0015](./adr/0015-retain-opportunity-until-the-holder-passes.md) 記錄專案自訂裁定。RUL-002 與 RUL-004 已由官方來源解決。
 
-建議：第一個 slice 優先避開被阻擋的內容；完整牌組無法避開時，再由負責人明確選擇等待 ruling 或以 ADR 記錄自訂裁定。
+決策：RUL-001 不再阻擋 Opportunity slice；實作與測試必須明確遵循 ADR 0015。未來若出現新的未裁定 issue，仍依規則治理流程保持 blocked，直到取得官方裁定或專案負責人批准新的 ADR。
 
 ## 下一個決策點
 
-完成 DEC-01～04 後，才進一步決定：
+完成 DEC-02～03，並補齊 DEC-01 尚待項目後，才進一步決定；DEC-04 已完成：
 
 - manifest 的正式 schema 與保存位置。
 - walking skeleton 的第一個 executable scenario。
