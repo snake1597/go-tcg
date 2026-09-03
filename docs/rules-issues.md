@@ -11,13 +11,17 @@
 
 ## RUL-001：玩家行動後的 Opportunity 擁有者
 
-狀態：`待官方裁定`
+狀態：`專案自訂裁定`
 
 - [Timing and Permissions](game-mechanics/game-mechanics-timing-and-permissions.md) 與 card activation／Materialization 規則表示行動執行者繼續取得 Opportunity。
 - [Activated Abilities](game-mechanics/game-mechanics-abilities/abilities-activated-abilities.md) 表示 ability 進入 Stack 後先交給回合玩家。
 - [Game Terms](glossary/game-terms.md) 的 Player Action order 也先指向回合玩家。
 
-影響：Opportunity scheduler、回合外 activated ability 與 bot 合法行動。此項會阻擋里程碑 2 的完整 Opportunity 行為；取得裁定前只能完成不宣稱正式時序正確的 test fixture 骨架。
+採用：每次成功完成一個需要 Opportunity 的玩家行動後，在 state-based checks 與必要強制流程完成後，由該行動的玩家取得並保有 Opportunity。持有者讓過後，Opportunity 才依 turn order 交給下一位玩家；所有玩家連續讓過完整一輪後，才結算 Effects Stack 頂端或在 Stack 為空時推進規則流程。此裁定同樣適用於非回合玩家啟動 fast card、materialize card 或 activated ability。
+
+依據：專案負責人已批准 [ADR 0015](adr/0015-retain-opportunity-until-the-holder-passes.md)。此為專案自訂裁定，明確偏離 `Activated Abilities` 與 Player Action glossary 中「先交給回合玩家」的衝突表述；若官方日後發布可唯一決定行為的更正或 ruling，需重新檢視本裁定。
+
+影響：Opportunity scheduler、回合外 activated ability 與 bot 合法行動不再被 RUL-001 阻擋。實作必須加入非回合玩家連續採取 fast 行動及讓過後才移交 Opportunity 的情境測試。
 
 查證記錄（2026-09-02；規則 commit `5ab1f61`）：已查 `Timing and Permissions`、`Activated Abilities`、`Game Terms`、README changelog，以及三份規則檔的 `git log`／`git blame`。搜尋詞：`Opportunity`, `turn player`, `activated ability`。三段文字仍未由較新的官方變更唯一化；下次應追蹤官方 judge ruling 或直接修訂 Opportunity／Activated Abilities 的 commit。
 
@@ -80,4 +84,4 @@
 4. 找不到裁定時，從 Support Set 排除相關內容；若運行時才發現，引擎以 `NeedsRuling` 結束並輸出 issue ID、replay 與 state hash。
 5. 若專案負責人選擇 house rule，新增 ADR，標示與官方規則的差異，再將本表狀態改為 `專案自訂裁定`。不得只修改本表便視為已批准。
 
-公開官方 GitHub 規則庫已於 2026-09-02 重新檢查（commit `5ab1f61`）；RUL-002 已依 2026-04-10 的官方 State-based Checks 澄清解決，RUL-004 已依 2025-09-27 的官方 Game Effects 澄清解決。RUL-001 仍未找到可唯一決定行為的正式裁定。查證方法與記錄格式見 [規則查證指南](rules-research.md)。
+公開官方 GitHub 規則庫已於 2026-09-02 重新檢查（commit `5ab1f61`）；RUL-002 已依 2026-04-10 的官方 State-based Checks 澄清解決，RUL-004 已依 2025-09-27 的官方 Game Effects 澄清解決。RUL-001 未找到可唯一決定行為的正式官方裁定，現依專案負責人批准的 [ADR 0015](adr/0015-retain-opportunity-until-the-holder-passes.md) 採用專案自訂裁定。查證方法與記錄格式見 [規則查證指南](rules-research.md)。

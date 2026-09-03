@@ -1,6 +1,6 @@
 # Grand Archive 開發文件索引
 
-目前狀態：核心架構與開發流程已定案，產品程式碼尚未開始。進入正式卡牌實作前，仍需由專案負責人提供唯一固定牌組、Outside Game Pool 與卡面資料版本，並依規則裁定 gate 排除阻擋項目。
+目前狀態：核心架構與開發流程已定案，唯一固定 Standard Main Deck 與 Material Deck 已建立，初版 Support Set 也已記錄於 [`card-support-matrix.md`](./card-support-matrix.md)；產品程式碼尚未開始。進入正式卡牌實作前，仍需補齊 Outside Game Pool、CardFace／Ability Slot ID 與卡面資料版本。已登錄的規則 issue 目前皆已有正式處理結果。
 
 ## 建議閱讀順序
 
@@ -9,7 +9,7 @@
 3. [`development-execution-strategy.md`](./development-execution-strategy.md)：實作順序、並行工作軌、spec／ticket gate、前置作業與待確認決策。
 4. [`../CONTEXT.md`](../CONTEXT.md)：全專案共用的領域詞彙。
 5. [`testing.md`](./testing.md)：rule-example-first TDD、測試 seam 與禁止模式。
-6. [`card-support-matrix-template.md`](./card-support-matrix-template.md)：取得固定牌組後建立正式 Support Set 的工作入口。
+6. [`card-support-matrix.md`](./card-support-matrix.md)：目前固定 Standard 牌組的正式 Support Set 與阻擋狀態；[`card-support-matrix-template.md`](./card-support-matrix-template.md) 保留為日後建立新矩陣的格式。
 7. [`rules-issues.md`](./rules-issues.md)：會阻擋相關 slice 的官方規則歧義。
 8. [`adr/`](./adr/)：已確認且難以逆轉的架構決策。
 
@@ -36,7 +36,8 @@
 | [0012](./adr/0012-separate-card-object-and-stack-identities.md) | Card、Object、Ability、來源卡與 StackItem 身分 |
 | [0013](./adr/0013-preserve-event-batches-and-causality.md) | EventBatch 與因果關係 |
 | [0014](./adr/0014-centralize-derived-characteristics-and-replacements.md) | 中央 derived evaluator 與 replacement pipeline |
+| [0015](./adr/0015-retain-opportunity-until-the-holder-passes.md) | Opportunity 由行動者保留至讓過 |
 
 ## 下一個可執行動作
 
-收到固定牌組資料後，先從範本建立 `docs/card-support-matrix.md`，完成內容閉包與規則依賴排序。矩陣達到 `ready` 前不開始正式卡牌 handler；仍可先依開發計畫的里程碑 1 建立 test-only walking skeleton。
+固定 Main Deck、Material Deck 與初版內容閉包已建立。下一步先依開發計畫的里程碑 1 建立 test-only walking skeleton，同時補齊 Outside Game Pool、CardFace／Ability Slot ID 與卡面資料版本；矩陣達到 `ready` 前不開始正式卡牌 handler。

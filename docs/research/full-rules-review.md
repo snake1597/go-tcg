@@ -18,7 +18,7 @@
 | 8. 宣告交易 | 已決定 | [ADR 0004](../adr/0004-use-guided-choices-and-atomic-actions.md) |
 | 9. PendingChoice 中的 Concede | 已決定 | [ADR 0010](../adr/0010-serialize-state-transitions-within-each-game.md) |
 | 10. Level 0 Champion 開局依賴 | 已納入流程 | [開發計畫里程碑 2](../development-plan.md#2-standard-開局與回合生命週期) |
-| 11–15. 規則文字疑點 | 已登錄 | [`rules-issues.md`](../rules-issues.md)；RUL-003 已由官方 changelog 解決，RUL-005 為非語意錯字，其餘待官方裁定 |
+| 11–15. 規則文字疑點 | 已處理 | [`rules-issues.md`](../rules-issues.md)；RUL-001 依 [ADR 0015](../adr/0015-retain-opportunity-until-the-holder-passes.md) 採用專案自訂裁定，RUL-002～004 已由官方來源解決，RUL-005 為非語意錯字 |
 
 ## P0：會影響核心模型
 
@@ -155,4 +155,4 @@ Game Zones 總覽宣稱共有 9 個 zone，但同一句實際列出 Main Deck、
 
 現有高階方向仍成立：權威確定性 Game Module、序列化輸入、玩家視角、Go typed effects、fail-fast 支援清單與 vertical-slice TDD 都沒有被完整規則推翻。
 
-原先需要重新確認的四組核心問題均已完成決策並落入 ADR、領域詞彙、開發計畫與測試策略，不需要繼續 grill。剩餘工作是取得固定牌組後建立 Support Set，並依 [`rules-issues.md`](../rules-issues.md) 處理實際被牌組觸及的外部規則裁定；未裁定處仍不得用產品偏好替代官方語意。
+原先需要重新確認的四組核心問題均已完成決策並落入 ADR、領域詞彙、開發計畫與測試策略，不需要繼續 grill。固定 Main Deck、Material Deck 與初版 Support Set 已建立；剩餘內容工作是補齊 Outside Game Pool、CardFace／Ability Slot ID、卡面資料版本及可執行 registry。實際被牌組觸及的規則 issue 已依 [`rules-issues.md`](../rules-issues.md) 處理；未來新增的未裁定處仍不得以未記錄的產品偏好替代官方語意。

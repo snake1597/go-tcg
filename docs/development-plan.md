@@ -185,7 +185,7 @@ Canonical replay 包含：
 
 只在當前 vertical slice 需要時閱讀相關規則，不預先完整實作規則庫。每個行為測試需標註規則 commit、來源檔案與條目。
 
-遇到歧義時，依 [`rules-issues.md`](./rules-issues.md) 登錄並尋找官方規則或正式 ruling；沒有裁定便保持未支援。若未知歧義於執行期間出現，引擎停止該局並輸出 `NeedsRuling`、issue ID、replay 與狀態 hash。任何專案自訂裁定必須先由專案負責人確認，另以 ADR 記錄並標示偏離官方規則。目前 RUL-001、RUL-002 與 RUL-004 仍待官方裁定；只阻擋實際觸及它們的正式 slice，不阻擋 test-only walking skeleton。
+遇到歧義時，依 [`rules-issues.md`](./rules-issues.md) 登錄並尋找官方規則或正式 ruling；沒有裁定便保持未支援。若未知歧義於執行期間出現，引擎停止該局並輸出 `NeedsRuling`、issue ID、replay 與狀態 hash。任何專案自訂裁定必須先由專案負責人確認，另以 ADR 記錄並標示偏離官方規則。RUL-001 已依 [ADR 0015](./adr/0015-retain-opportunity-until-the-holder-passes.md) 採用專案自訂裁定；RUL-002 與 RUL-004 已由官方來源解決。目前登錄項目沒有仍為 `待官方裁定` 的規則 issue。
 
 ## 垂直切片就緒門檻
 
@@ -202,7 +202,7 @@ Canonical replay 包含：
 
 ### 0. 規格入口
 
-取得唯一固定牌組、Outside Game Pool 與卡面版本，從範本建立 `docs/card-support-matrix.md`，遞迴完成 Support Set、規則依賴、evaluator operation 與 ruling gate。起始 Level 0 Champion 排在第一個正式內容節點。若可達內容牽涉未支援機制或未裁定 issue，矩陣維持 `blocked`，再由專案負責人更換牌組、縮小 allowlist、等待 ruling 或明確擴大範圍。本里程碑等待牌組時，不阻擋里程碑 1 的 test-only 骨架。
+唯一固定 Main Deck、Material Deck 與初版 `docs/card-support-matrix.md` 已建立。此里程碑剩餘工作是補齊 Outside Game Pool、CardFace／Ability Slot ID 與卡面資料版本，並完成 Support Set、規則依賴及 evaluator operation 的可執行 registry。起始 Level 0 Champion 排在第一個正式內容節點。若可達內容仍有未支援機制或未裁定 issue，矩陣維持 `blocked`，再由專案負責人縮小 allowlist、等待 ruling 或明確擴大範圍；這些缺口不阻擋里程碑 1 的 test-only 骨架。
 
 ### 1. 最小端到端骨架
 
@@ -210,11 +210,11 @@ Canonical replay 包含：
 
 ### 2. Standard 開局與回合生命週期
 
-加入 deterministic scheduler、state-based fixed point、Standard 第一回合修正、Wake Up、Materialize、Recollection、Draw、Main、End、Opportunity 與讓過。先以 fixture 驗證流程，但完成條件必須使用固定牌組的 Level 0 Champion On Enter abilities 依 turn order 取得起始手牌；全部完成前不能授予 Opportunity。正式對局可推進並以 deckout 結束。RUL-001 未解決前，本里程碑不能宣告 Opportunity 時序完成。
+加入 deterministic scheduler、state-based fixed point、Standard 第一回合修正、Wake Up、Materialize、Recollection、Draw、Main、End、Opportunity 與讓過。先以 fixture 驗證流程，但完成條件必須使用固定牌組的 Level 0 Champion On Enter abilities 依 turn order 取得起始手牌；全部完成前不能授予 Opportunity。正式對局可推進並以 deckout 結束。Opportunity 時序依 [ADR 0015](./adr/0015-retain-opportunity-until-the-holder-passes.md) 實作並以情境測試驗證。
 
 ### 3. 第一張可操作卡牌
 
-在起始 Champion 之後，選一張最簡單且能代表固定牌組依賴的卡牌，走通 DeclarationTransaction、費用與 PRNG rollback、區域移動、activation 或 Materialization、來源卡／StackItem 關聯、逐步選擇、Opportunity、結算、trigger flush、狀態檢查與 fizzle。若是多必要目標卡牌，RUL-002 必須先解決。
+在起始 Champion 之後，選一張最簡單且能代表固定牌組依賴的卡牌，走通 DeclarationTransaction、費用與 PRNG rollback、區域移動、activation 或 Materialization、來源卡／StackItem 關聯、逐步選擇、Opportunity、結算、trigger flush、狀態檢查與 fizzle。若是多必要目標卡牌，依 RUL-002 已採用的官方裁定處理部分目標失效。
 
 ### 4. 戰鬥縱切
 

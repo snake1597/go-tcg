@@ -135,9 +135,9 @@
 
 | Issue ID | 是否由 Support Set 觸及 | 狀態 | 裁定來源／排除理由 | 對應測試 |
 | --- | --- | --- | --- | --- |
-| `RUL-001` | 是 | 待官方裁定 | 固定牌組含 activation、trigger、copy 與 Opportunity 互動。 | `MEC-003`、`MEC-004`、`MEC-009` |
-| `RUL-002` | 是 | 待官方裁定 | 多張卡有必要或條件目標。 | `MEC-003` |
-| `RUL-004` | 是 | 待官方裁定 | `token:powercell` 可由 Backup Charger 建立；token 離場時點會影響其後續 trigger 與引用。 | `MEC-008` |
+| `RUL-001` | 是 | 專案自訂裁定 | [ADR 0015](./adr/0015-retain-opportunity-until-the-holder-passes.md)：玩家完成需要 Opportunity 的行動後保有 Opportunity，直到讓過。 | `MEC-003`、`MEC-004`、`MEC-009` |
+| `RUL-002` | 是 | 已由官方來源解決 | 只在所有必要目標都非法或不存在時 fizzle；仍有合法必要目標時對其結算。 | `MEC-003` |
+| `RUL-004` | 是 | 已由官方來源解決 | token 先完成 zone change，於下一次 state-based checks 中 cease to exist；已產生的 trigger 可使用 LKI。 | `MEC-008` |
 
 ## 實作順序
 

@@ -8,7 +8,7 @@
 
 - 狀態只使用 `待實作`、`進行中`、`被阻擋`、`完成`。
 - 功能只有在其驗收條件與相關測試都通過後才能標為完成。
-- 正式卡牌功能必須先列入 `docs/card-support-matrix.md`；該文件要在固定牌組、Outside Game Pool 與卡面資料版本到位後，由範本建立。
+- 正式卡牌功能必須先列入 `docs/card-support-matrix.md`。目前矩陣已由固定 Main Deck 與 Material Deck 建立，但在 Outside Game Pool、CardFace／Ability Slot ID 與卡面資料版本補齊前維持 `blocked`。
 - 功能實作依照垂直切片推進，不應先把本文件的每個章節各做一個不相連的框架。
 - 所有規則測試都要標註規則 commit `602c917f2f8fd4df7198429a72eb596bf7f647c6`、來源檔案與條目。
 
@@ -140,7 +140,7 @@
 - Game Module 明確保存當前 Opportunity 擁有者與連續讓過狀態。
 - 玩家可取得的行動由當前時序、速度、階段、堆疊與 permission 決定。
 - 所有人依法讓過後，結算最上方 StackItem 或推進規則流程。
-- RUL-001 裁定前，正式 Opportunity 時序維持被阻擋。
+- 依 [ADR 0015](./adr/0015-retain-opportunity-until-the-holder-passes.md)，玩家完成需要 Opportunity 的行動後保有 Opportunity，直到讓過才依 turn order 移交。
 
 ### GAME-05 單局結果
 
@@ -199,7 +199,7 @@
 
 - 結算前重新檢查目標合法性。
 - 依正式裁定區分完整 fizzle、仍對合法目標結算及不受影響的無目標效果。
-- RUL-002 尚未裁定前，不啟用會碰觸該歧義的正式卡牌 slice。
+- 依 RUL-002 的官方裁定，只有所有必要目標都非法或不存在時完整 fizzle；仍有合法必要目標時對其結算。
 
 ## ABILITY：能力模型與卡牌行為
 
@@ -492,7 +492,7 @@ internal/cli/
 
 | 里程碑 | 應完成的主要功能 |
 | --- | --- |
-| 0. 規格入口 | DECK-01～04、ABILITY-02、GOVERN-01～02 的資料與 gate；等待固定牌組時允許維持 blocked |
+| 0. 規格入口 | 固定 Main／Material Deck 與初版矩陣已完成；補齊 DECK-01～04、ABILITY-02、GOVERN-01～02 的其餘資料與 gate |
 | 1. 最小端到端骨架 | CORE-01／04、ACTION-01／03 的最小 fixture、VIEW-01～03、RNG、REPLAY、CLI 啟動與投降 |
 | 2. Standard 生命週期 | GAME-01～05、RULE、EVENT、Level 0 Champion On Enter 與 deckout |
 | 3. 第一張可操作卡 | ACTION-02、STACK、ABILITY、TRIGGER，以及該卡所需的最小 EFFECT operation |
@@ -502,11 +502,10 @@ internal/cli/
 
 ## 目前阻擋項目
 
-正式卡牌與完整首版目前不能排出最終工作量，直到專案負責人提供：
+正式卡牌與完整首版目前不能排出最終工作量，直到補齊：
 
-1. 唯一固定 Standard Main Deck 與 Material Deck 清單。
-2. 明確的 Outside Game Pool。
-3. 每張卡及所有可達內容的穩定 ID。
-4. 卡面資料來源與鎖定版本／日期。
+1. 明確的 Outside Game Pool，包含 `Rile the Abyss` 的 Card JSON 與數量。
+2. 每張卡及所有可達內容的 CardFace／Ability Slot ID。
+3. 卡面資料來源的鎖定版本／日期與可驗證 manifest。
 
-此外，RUL-001、RUL-002 與 RUL-004 仍待官方裁定；只阻擋實際碰觸相應時序、目標失效或 token 消失語意的正式切片。里程碑 1 的 test-only walking skeleton 可先開始，但不能誤列為正式卡牌支援。
+規則裁定目前不再構成 blocker：RUL-001 依 [ADR 0015](./adr/0015-retain-opportunity-until-the-holder-passes.md) 採用專案自訂裁定，RUL-002 與 RUL-004 已由官方來源解決。里程碑 1 的 test-only walking skeleton 可先開始，但不能誤列為正式卡牌支援。
