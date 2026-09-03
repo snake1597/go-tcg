@@ -15,7 +15,7 @@
 | --- | --- |
 | 牌組 ID／版本 | `standard-alice-fire-v1` |
 | 規則 commit | `602c917f2f8fd4df7198429a72eb596bf7f647c6` |
-| 卡面資料來源／版本 | 本機 `card/` snapshot；逐卡 `last_update` 尚未彙整為版本 manifest |
+| 卡面資料來源／版本 | Repository `./card/*.json`；[`card-data-v1`](../card-data-manifest.json)，資料集 SHA-256 `40558216461a31bb9c203f91cf7555c3dfc7b794f9e1a9203e286c2d0eb676bf` |
 | 引擎最低版本 | 未建立 |
 | 負責人 | 未指定 |
 | 狀態 | `blocked` |

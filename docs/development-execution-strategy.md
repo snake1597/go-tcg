@@ -257,7 +257,7 @@ walking skeleton 只驗證端到端 seam，不代表任何正式卡牌已被支�
 - 跨卡互動與特殊關鍵字。
 - 固定牌組的完整 bot 評分策略。
 
-這些規格必須等待 Outside Game Pool、卡面版本、CardFace／Ability Slot ID 與相關規則輸入到位。
+這些規格仍須等待 Outside Game Pool、CardFace／Ability Slot ID 與相關規則輸入到位；卡面資料已鎖定為 `card-data-v1`。
 
 ## Ticket 建立時機
 
@@ -411,7 +411,9 @@ walking skeleton 只驗證端到端 seam，不代表任何正式卡牌已被支�
 
 已完成：本文件的[固定 Standard 牌組](#固定-standard-牌組)是唯一的 Main Deck 與 Material Deck manifest；卡牌定義 ID 由 `entity.Card.UUID` 提供。
 
-仍待完成：指定 Outside Game Pool、卡面版本與其餘 Content ID；這些資料到位前，Support Set closure 與正式卡牌 tickets 仍維持 blocked。
+已完成：卡面資料以 repository `./card/*.json` 為唯一來源，並由 `card-data-v1` manifest 固定與驗證。
+
+仍待完成：指定 Outside Game Pool 與其餘 Content ID；這些資料到位前，Support Set closure 與正式卡牌 tickets 仍維持 blocked。
 
 ### DEC-02 Walking skeleton 啟動決策
 

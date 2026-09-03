@@ -1,6 +1,6 @@
 # Grand Archive 開發文件索引
 
-目前狀態：核心架構與開發流程已定案，唯一固定 Standard Main Deck 與 Material Deck 已建立，初版 Support Set 也已記錄於 [`card-support-matrix.md`](./card-support-matrix.md)；產品程式碼尚未開始。進入正式卡牌實作前，仍需補齊 Outside Game Pool、CardFace／Ability Slot ID 與卡面資料版本。已登錄的規則 issue 目前皆已有正式處理結果。
+目前狀態：核心架構與開發流程已定案，唯一固定 Standard Main Deck 與 Material Deck 已建立，卡面資料已鎖定為 `card-data-v1`，初版 Support Set 也已記錄於 [`card-support-matrix.md`](./card-support-matrix.md)。進入正式卡牌實作前，仍需補齊 Outside Game Pool 與 CardFace／Ability Slot ID。已登錄的規則 issue 目前皆已有正式處理結果。
 
 ## 建議閱讀順序
 
@@ -10,8 +10,9 @@
 4. [`../CONTEXT.md`](../CONTEXT.md)：全專案共用的領域詞彙。
 5. [`testing.md`](./testing.md)：rule-example-first TDD、測試 seam 與禁止模式。
 6. [`card-support-matrix.md`](./card-support-matrix.md)：目前固定 Standard 牌組的正式 Support Set 與阻擋狀態；[`card-support-matrix-template.md`](./card-support-matrix-template.md) 保留為日後建立新矩陣的格式。
-7. [`rules-issues.md`](./rules-issues.md)：會阻擋相關 slice 的官方規則歧義。
-8. [`adr/`](./adr/)：已確認且難以逆轉的架構決策。
+7. [`card-data-versioning.md`](./card-data-versioning.md)：`./card` 權威快照、manifest 格式與更新流程。
+8. [`rules-issues.md`](./rules-issues.md)：會阻擋相關 slice 的官方規則歧義。
+9. [`adr/`](./adr/)：已確認且難以逆轉的架構決策。
 
 研究背景：
 
@@ -40,4 +41,4 @@
 
 ## 下一個可執行動作
 
-固定 Main Deck、Material Deck 與初版內容閉包已建立。下一步先依開發計畫的里程碑 1 建立 test-only walking skeleton，同時補齊 Outside Game Pool、CardFace／Ability Slot ID 與卡面資料版本；矩陣達到 `ready` 前不開始正式卡牌 handler。
+固定 Main Deck、Material Deck、`card-data-v1` 與初版內容閉包已建立。下一步整合並驗收里程碑 1 的 test-only walking skeleton，同時補齊 Outside Game Pool 與 CardFace／Ability Slot ID；矩陣達到 `ready` 前不開始正式卡牌 handler。

@@ -4,7 +4,7 @@
 
 首版交付一個可信、可測試且可重播的 Grand Archive 規則引擎：一名真人透過 CLI，使用唯一固定牌組與啟發式 bot 進行 Standard 鏡像對戰，並能依支援的官方規則完成整場單局。
 
-首版規則基準鎖定 `rules` 儲存庫 commit `602c917f2f8fd4df7198429a72eb596bf7f647c6`（2026-08-24）。固定牌組與卡面資料版本由專案負責人稍後指定。
+首版規則基準鎖定 `rules` 儲存庫 commit `602c917f2f8fd4df7198429a72eb596bf7f647c6`（2026-08-24）。固定牌組版本為 `standard-alice-fire-v1`；卡面資料以 repository `./card/*.json` 為唯一來源，鎖定為 [`card-data-v1`](../card-data-manifest.json)。
 
 ## 首版範圍
 
@@ -202,7 +202,7 @@ Canonical replay 包含：
 
 ### 0. 規格入口
 
-唯一固定 Main Deck、Material Deck 與初版 `docs/card-support-matrix.md` 已建立。此里程碑剩餘工作是補齊 Outside Game Pool、CardFace／Ability Slot ID 與卡面資料版本，並完成 Support Set、規則依賴及 evaluator operation 的可執行 registry。起始 Level 0 Champion 排在第一個正式內容節點。若可達內容仍有未支援機制或未裁定 issue，矩陣維持 `blocked`，再由專案負責人縮小 allowlist、等待 ruling 或明確擴大範圍；這些缺口不阻擋里程碑 1 的 test-only 骨架。
+唯一固定 Main Deck、Material Deck、`card-data-v1` 與初版 `docs/card-support-matrix.md` 已建立。此里程碑剩餘工作是補齊 Outside Game Pool、CardFace／Ability Slot ID，並完成 Support Set、規則依賴及 evaluator operation 的可執行 registry。起始 Level 0 Champion 排在第一個正式內容節點。若可達內容仍有未支援機制或未裁定 issue，矩陣維持 `blocked`，再由專案負責人縮小 allowlist、等待 ruling 或明確擴大範圍；這些缺口不阻擋里程碑 1 的 test-only 骨架。
 
 ### 1. 最小端到端骨架
 
@@ -266,6 +266,6 @@ Canonical replay 包含：
 1. 唯一固定牌組的完整 Standard 主牌與 Material Deck 清單。
 2. 明確列出的 Outside Game Pool。
 3. 每張卡及所有可達內容對應的穩定 ID。
-4. 卡面資料來源與欲鎖定的版本或日期。
+4. ~~卡面資料來源與欲鎖定的版本或日期。~~ 已完成：repository `./card/*.json` 與 `card-data-v1` manifest。
 
 除此之外，首版核心計畫沒有尚待決定的架構選擇。尚未取得的官方裁定屬外部規則輸入，集中追蹤於 [`rules-issues.md`](./rules-issues.md)，不由實作自行決定。
