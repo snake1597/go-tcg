@@ -13,9 +13,9 @@
 
 狀態：`專案自訂裁定`
 
-- [Timing and Permissions](game-mechanics/game-mechanics-timing-and-permissions.md) 與 card activation／Materialization 規則表示行動執行者繼續取得 Opportunity。
-- [Activated Abilities](game-mechanics/game-mechanics-abilities/abilities-activated-abilities.md) 表示 ability 進入 Stack 後先交給回合玩家。
-- [Game Terms](glossary/game-terms.md) 的 Player Action order 也先指向回合玩家。
+- [Timing and Permissions](../rules/game-mechanics/game-mechanics-timing-and-permissions.md) 與 card activation／Materialization 規則表示行動執行者繼續取得 Opportunity。
+- [Activated Abilities](../rules/game-mechanics/game-mechanics-abilities/abilities-activated-abilities.md) 表示 ability 進入 Stack 後先交給回合玩家。
+- [Game Terms](../rules/glossary/game-terms.md) 的 Player Action order 也先指向回合玩家。
 
 採用：每次成功完成一個需要 Opportunity 的玩家行動後，在 state-based checks 與必要強制流程完成後，由該行動的玩家取得並保有 Opportunity。持有者讓過後，Opportunity 才依 turn order 交給下一位玩家；所有玩家連續讓過完整一輪後，才結算 Effects Stack 頂端或在 Stack 為空時推進規則流程。此裁定同樣適用於非回合玩家啟動 fast card、materialize card 或 activated ability。
 
@@ -29,8 +29,8 @@
 
 狀態：`已由官方來源解決`
 
-- [State-based Checks](game-mechanics/game-mechanics-miscellaneous-topics/state-based-checks-and-effects.md) 表示所有必要目標都非法或不存在時才 fizzle。
-- [Resolution](game-mechanics/game-mechanics-playing-cards/playing-cards-resolution.md) 表示任一必要目標非法時便不結算。
+- [State-based Checks](../rules/game-mechanics/game-mechanics-miscellaneous-topics/state-based-checks-and-effects.md) 表示所有必要目標都非法或不存在時才 fizzle。
+- [Resolution](../rules/game-mechanics/game-mechanics-playing-cards/playing-cards-resolution.md) 表示任一必要目標非法時便不結算。
 
 影響：具有多個必要目標的 activation、Materialization 或 ability。固定 Support Set 若沒有這類效果，可以標記為不適用首版；一旦可達便阻擋該卡牌 slice。
 
@@ -44,9 +44,9 @@
 
 狀態：`已由官方來源解決`
 
-採用 [Starting the Game](general-rules/general-rules-starting-the-game.md) 的 Standard step 6：所有玩家在第一回合前揭示並將起始 Level 0 Champion 放入場上，再依 turn order 結算取得起始手牌的 On Enter abilities，全部完成前玩家不能取得 Opportunity。
+採用 [Starting the Game](../rules/general-rules/general-rules-starting-the-game.md) 的 Standard step 6：所有玩家在第一回合前揭示並將起始 Level 0 Champion 放入場上，再依 turn order 結算取得起始手牌的 On Enter abilities，全部完成前玩家不能取得 Opportunity。
 
-依據：官方規則庫的 [2025-12-04 changelog](https://github.com/weebsoftheshore/gitbook-rules/blob/602c917f2f8fd4df7198429a72eb596bf7f647c6/README.md) 明確將此列為規則變更；[Champion](general-rules/general-rules-card-types/card-types-champion.md) 中「各玩家第一回合才放置」視為尚未同步的舊文字，而非專案 house rule。
+依據：官方規則庫的 [2025-12-04 changelog](https://github.com/weebsoftheshore/gitbook-rules/blob/602c917f2f8fd4df7198429a72eb596bf7f647c6/README.md) 明確將此列為規則變更；[Champion](../rules/general-rules/general-rules-card-types/card-types-champion.md) 中「各玩家第一回合才放置」視為尚未同步的舊文字，而非專案 house rule。
 
 影響：正式 Standard setup 必須由固定牌組的 Level 0 Champion 行為取得起始手牌，不能以通用 draw 或 fixture 直接發牌取代。
 
@@ -56,9 +56,9 @@
 
 狀態：`已由官方來源解決`
 
-- [Tokens](game-mechanics/game-mechanics-tokens.md) 表示 token 移往非 Field zone 時 cease to exist，之後不能再進行區域移動。
-- [Token glossary](glossary/game-terms.md) 表示移動仍完成 state-based checks、triggers 與必要 actions，到 Opportunity 傳遞時才 cease to exist。
-- [Game Effects](game-mechanics/game-mechanics-types-of-effects/types-of-effects-game-effects.md) 明確將 token 位於非 Field zone 時 cease to exist 列為 game state checks 中的 game effect。
+- [Tokens](../rules/game-mechanics/game-mechanics-tokens.md) 表示 token 移往非 Field zone 時 cease to exist，之後不能再進行區域移動。
+- [Token glossary](../rules/glossary/game-terms.md) 表示移動仍完成 state-based checks、triggers 與必要 actions，到 Opportunity 傳遞時才 cease to exist。
+- [Game Effects](../rules/game-mechanics/game-mechanics-types-of-effects/types-of-effects-game-effects.md) 明確將 token 位於非 Field zone 時 cease to exist 列為 game state checks 中的 game effect。
 
 採用：token 的 zone change 先完成；On Leave／On Death 等 trigger 從 field 上的 source 產生，並以 last-known information 判定。下一次 state-based checks 中，位於非 Field zone 的 token cease to exist；這發生在任何玩家重新取得 Opportunity 前。已產生的 trigger 仍可結算並讀取 last-known information，但後續效果不能再移動、選擇或引用該 token 作為現存的 zone 物件。
 
@@ -72,7 +72,7 @@
 
 狀態：`非語意錯字`
 
-[Game Zones](game-mechanics/game-mechanics-game-zones/README.md) 宣稱 9 個 zone，但同一句明確列出 Main Deck、Material Deck、Hand、Memory、Field、Graveyard、Banishment、Intent、Pantheon 與 Effects Stack 共 10 個。引擎以明確列出的 10 個名稱作為 zone vocabulary；Standard MVP 不建立 Pantheon gameplay，遇到 Pantheon 內容由 Support Set 驗證拒絕。這不改變任何 Standard 合法行動。
+[Game Zones](../rules/game-mechanics/game-mechanics-game-zones/README.md) 宣稱 9 個 zone，但同一句明確列出 Main Deck、Material Deck、Hand、Memory、Field、Graveyard、Banishment、Intent、Pantheon 與 Effects Stack 共 10 個。引擎以明確列出的 10 個名稱作為 zone vocabulary；Standard MVP 不建立 Pantheon gameplay，遇到 Pantheon 內容由 Support Set 驗證拒絕。這不改變任何 Standard 合法行動。
 
 查證記錄（2026-09-02；規則 commit `5ab1f61`）：已查 Game Zones 與明確 zone 列舉。搜尋詞：`9 zones`, `Effects Stack`, `Pantheon`。同一句的完整列舉唯一決定 vocabulary；後續只需在官方修改 zone 列舉時重查。
 

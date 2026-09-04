@@ -4,7 +4,7 @@
 
 首版交付一個可信、可測試且可重播的 Grand Archive 規則引擎：一名真人透過 CLI，使用唯一固定牌組與啟發式 bot 進行 Standard 鏡像對戰，並能依支援的官方規則完成整場單局。
 
-首版規則基準鎖定 `rules` 儲存庫 commit `602c917f2f8fd4df7198429a72eb596bf7f647c6`（2026-08-24）。固定牌組版本為 `standard-alice-fire-v1`；卡面資料以 repository `./card/*.json` 為唯一來源，鎖定為 [`card-data-v1`](../card-data-manifest.json)。
+首版規則基準鎖定 `rules` 儲存庫 commit `602c917f2f8fd4df7198429a72eb596bf7f647c6`（2026-08-24）。目前固定牌組、卡面資料版本及 Support Set 由 [`card.md`](./card.md) 唯一管理。
 
 ## 首版範圍
 
@@ -141,7 +141,7 @@ Replacement effects 使用獨立 pipeline，不塞入 layer evaluator。事件�
 
 ## 卡牌支援流程
 
-固定牌組確定後，從 [`card-support-matrix-template.md`](./card-support-matrix-template.md) 建立正式卡牌覆蓋矩陣與封閉的 `Support Set`。固定牌組 manifest 必須包含 Main Deck、Material Deck 與明確的 `Outside Game Pool`；Support Set 需遞迴包含所有可能實際建立或執行的 token、生成卡、Mastery、Status、雙面卡面及其他衍生內容。Generate 只可從 Outside Game Pool 選擇，列入該 pool 即代表玩家具備規則要求的數位副本；允許無界生成且沒有封閉 allowlist 的卡牌維持未支援。單純指定卡名但不建立或執行該卡時，只要求完整卡名索引。
+固定牌組、CardFace／Ability Slot 與封閉的 `Support Set` 統一登錄於 [`card.md`](./card.md)。固定牌組 manifest 必須包含 Main Deck、Material Deck 與明確的 `Outside Game Pool`；Support Set 需遞迴包含所有可能實際建立或執行的 token、生成卡、Mastery、Status、雙面卡面及其他衍生內容。Generate 只可從 Outside Game Pool 選擇，列入該 pool 即代表玩家具備規則要求的數位副本；允許無界生成且沒有封閉 allowlist 的卡牌維持未支援。單純指定卡名但不建立或執行該卡時，只要求完整卡名索引。
 
 每個不同 card ID 或衍生內容至少記錄：
 
@@ -198,40 +198,6 @@ Canonical replay 包含：
 5. 沒有被此 slice 觸及且仍為 `待官方裁定` 的規則 issue。
 6. 可從正式 Game Module Interface 觀察結果，不要求新增只供測試使用的 production seam。
 
-## 開發里程碑
-
-### 0. 規格入口
-
-唯一固定 Main Deck、Material Deck、`card-data-v1` 與初版 `docs/card-support-matrix.md` 已建立。此里程碑剩餘工作是補齊 Outside Game Pool、CardFace／Ability Slot ID，並完成 Support Set、規則依賴及 evaluator operation 的可執行 registry。起始 Level 0 Champion 排在第一個正式內容節點。若可達內容仍有未支援機制或未裁定 issue，矩陣維持 `blocked`，再由專案負責人縮小 allowlist、等待 ruling 或明確擴大範圍；這些缺口不阻擋里程碑 1 的 test-only 骨架。
-
-### 1. 最小端到端骨架
-
-以 test-only fixture 走通「啟動 CLI → 建立單局 → 取得 PlayerView → 真人或 bot 提交一個選擇 → 投降結束 → 寫出 replay → 重播驗證 hash」的完整路徑。Fixture 同時驗證 revision、ViewHandle 與非法輸入無副作用。這是第一個 tracer bullet；正式 registry 與正式 CLI 仍不得接受 fixture 或未完整支援的牌組。
-
-### 2. Standard 開局與回合生命週期
-
-加入 deterministic scheduler、state-based fixed point、Standard 第一回合修正、Wake Up、Materialize、Recollection、Draw、Main、End、Opportunity 與讓過。先以 fixture 驗證流程，但完成條件必須使用固定牌組的 Level 0 Champion On Enter abilities 依 turn order 取得起始手牌；全部完成前不能授予 Opportunity。正式對局可推進並以 deckout 結束。Opportunity 時序依 [ADR 0015](./adr/0015-retain-opportunity-until-the-holder-passes.md) 實作並以情境測試驗證。
-
-### 3. 第一張可操作卡牌
-
-在起始 Champion 之後，選一張最簡單且能代表固定牌組依賴的卡牌，走通 DeclarationTransaction、費用與 PRNG rollback、區域移動、activation 或 Materialization、來源卡／StackItem 關聯、逐步選擇、Opportunity、結算、trigger flush、狀態檢查與 fizzle。若是多必要目標卡牌，依 RUL-002 已採用的官方裁定處理部分目標失效。
-
-### 4. 戰鬥縱切
-
-加入攻擊宣告、Opportunity 回應、Retaliation、EventBatch 同時傷害、On Hit／On Kill、單位死亡與 Champion 敗北，使正式支援內容可以透過正常戰鬥結束。
-
-### 5. 固定牌組擴充
-
-依覆蓋矩陣的 dependency graph，一次完成一張正式卡牌或一個最小跨卡互動。遇到 continuous、permission、replacement、token、Mastery 或 Status 時，在該 slice 內加入中央 evaluator 所需的最小 typed operation 與完整排序測試；不先橫向完成所有效果元件。每完成一列便重新執行 Support Set closure validation。
-
-### 6. 首版收尾
-
-啟用完整固定牌組、移除任何誤入 production 的 fixture 路徑、調整啟發式 bot、改善 CLI 可讀性、完成 replay 回歸、fuzz/property tests、批次 bot 對戰及文件。只有通過 release gate 才發布正式 CLI。
-
-### 7. 首版之後
-
-若需要保存牌組、單局摘要與 replay，新增持久化 use case，並在外部 Adapter 使用 PostgreSQL 與 GORM。只有伺服器、跨程序進行中單局、配對或分散式協調出現具體需求時才評估 Redis。
-
 ## 每個垂直切片的強制流程
 
 1. 從覆蓋矩陣選擇一個最小可觀察行為。
@@ -259,13 +225,6 @@ Canonical replay 包含：
 - `go test ./...`、`go test -race ./...` 與設定時限的 fuzz/property tests 全數通過。
 - `CONTEXT.md`、ADR、規則 issue、卡牌覆蓋矩陣與 CLI 使用說明同步完成，且文件連結檢查通過。
 
-## 尚待提供的輸入
+## 內容與規則輸入
 
-開始正式卡牌實作前，專案負責人必須提供：
-
-1. 唯一固定牌組的完整 Standard 主牌與 Material Deck 清單。
-2. 明確列出的 Outside Game Pool。
-3. 每張卡及所有可達內容對應的穩定 ID。
-4. ~~卡面資料來源與欲鎖定的版本或日期。~~ 已完成：repository `./card/*.json` 與 `card-data-v1` manifest。
-
-除此之外，首版核心計畫沒有尚待決定的架構選擇。尚未取得的官方裁定屬外部規則輸入，集中追蹤於 [`rules-issues.md`](./rules-issues.md)，不由實作自行決定。
+正式卡牌實作所需的固定牌組、Outside Game Pool、CardFace／Ability Slot ID 與卡面資料版本均由 [`card.md`](./card.md) 管理，不在本計畫重複列出。首版核心計畫沒有尚待決定的架構選擇；未來若出現尚未取得的官方裁定，集中追蹤於 [`rules-issues.md`](./rules-issues.md)，不由實作自行決定。

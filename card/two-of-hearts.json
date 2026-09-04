@@ -1,0 +1,193 @@
+{
+  "classes": [
+    "WARRIOR"
+  ],
+  "cost_memory": null,
+  "cost_reserve": 2,
+  "cost": {
+    "type": "reserve",
+    "value": "2"
+  },
+  "created_at": "2025-07-18T16:20:49.391Z",
+  "durability": null,
+  "editions": [
+    {
+      "card_id": "rufki4o41y",
+      "collector_number": "139",
+      "configuration": "default",
+      "created_at": "2025-07-18T16:20:49.391+00:00",
+      "effect": null,
+      "effect_raw": null,
+      "flavor": null,
+      "illustrator": "Dragonart",
+      "image": "/cards/images/r8y2vca8a9.jpg",
+      "last_update": "2025-07-18T16:20:49.391+00:00",
+      "orientation": null,
+      "rarity": 2,
+      "slug": "two-of-hearts-dtr",
+      "thema_charm_foil": 181,
+      "thema_charm_nonfoil": 23,
+      "thema_ferocity_foil": 200,
+      "thema_ferocity_nonfoil": 25,
+      "thema_foil": 893,
+      "thema_grace_foil": 168,
+      "thema_grace_nonfoil": 21,
+      "thema_mystique_foil": 160,
+      "thema_mystique_nonfoil": 20,
+      "thema_nonfoil": 112,
+      "thema_valor_foil": 184,
+      "thema_valor_nonfoil": 23,
+      "thema_foil_dynamic": false,
+      "thema_nonfoil_dynamic": false,
+      "uuid": "r8y2vca8a9",
+      "collaborators": [],
+      "circulationTemplates": [
+        {
+          "created_at": "2025-07-18T16:20:49.391+00:00",
+          "edition_id": "r8y2vca8a9",
+          "foil": false,
+          "kind": "NONFOIL",
+          "last_update": "2025-07-18T16:20:49.391+00:00",
+          "name": "DTR U NF",
+          "population": 60500,
+          "population_operator": "≈",
+          "printing": true,
+          "uuid": "hwJI8wwkLU",
+          "variants": []
+        },
+        {
+          "created_at": "2025-07-18T16:20:49.391+00:00",
+          "edition_id": "r8y2vca8a9",
+          "foil": true,
+          "kind": "FOIL",
+          "last_update": "2025-07-18T16:20:49.391+00:00",
+          "name": "DTR U Foil",
+          "population": 1310,
+          "population_operator": "≈",
+          "printing": true,
+          "uuid": "rMcXeAy2rv",
+          "variants": []
+        }
+      ],
+      "circulations": [],
+      "other_orientations": [],
+      "set": {
+        "created_at": "2025-07-18T16:20:49.391+00:00",
+        "id": "f539744941",
+        "language": "EN",
+        "last_update": "2025-07-18T16:20:49.391+00:00",
+        "name": "Distorted Reflections",
+        "prefix": "DTR",
+        "release_date": "2025-07-25T00:00:00"
+      },
+      "effect_html": null
+    }
+  ],
+  "effect": "***Cardistry*** — (2): Two of Hearts gets +2[POWER] until end of turn. This ability costs (1) less to activate for each Suited object you control with different reserve costs. Activate this ability only once.",
+  "effect_raw": "Cardistry — (2): Two of Hearts gets +2POWER until end of turn. This ability costs (1) less to activate for each Suited object you control with different reserve costs. Activate this ability only once.",
+  "element": "FIRE",
+  "elements": [
+    "FIRE"
+  ],
+  "flavor": "\"Let's paint these roses red.\"",
+  "last_update": "2025-07-24T16:15:11.473Z",
+  "legality": null,
+  "level": null,
+  "life": 1,
+  "name": "Two of Hearts",
+  "power": 1,
+  "referenced_by": [],
+  "references": [],
+  "result_editions": [
+    {
+      "card_id": "rufki4o41y",
+      "collector_number": "139",
+      "configuration": "default",
+      "created_at": "2025-07-18T16:20:49.391+00:00",
+      "effect": null,
+      "effect_raw": null,
+      "flavor": null,
+      "illustrator": "Dragonart",
+      "image": "/cards/images/r8y2vca8a9.jpg",
+      "last_update": "2025-07-18T16:20:49.391+00:00",
+      "orientation": null,
+      "rarity": 2,
+      "slug": "two-of-hearts-dtr",
+      "thema_charm_foil": 181,
+      "thema_charm_nonfoil": 23,
+      "thema_ferocity_foil": 200,
+      "thema_ferocity_nonfoil": 25,
+      "thema_foil": 893,
+      "thema_grace_foil": 168,
+      "thema_grace_nonfoil": 21,
+      "thema_mystique_foil": 160,
+      "thema_mystique_nonfoil": 20,
+      "thema_nonfoil": 112,
+      "thema_valor_foil": 184,
+      "thema_valor_nonfoil": 23,
+      "thema_foil_dynamic": false,
+      "thema_nonfoil_dynamic": false,
+      "uuid": "r8y2vca8a9",
+      "collaborators": [],
+      "circulationTemplates": [
+        {
+          "created_at": "2025-07-18T16:20:49.391+00:00",
+          "edition_id": "r8y2vca8a9",
+          "foil": false,
+          "kind": "NONFOIL",
+          "last_update": "2025-07-18T16:20:49.391+00:00",
+          "name": "DTR U NF",
+          "population": 60500,
+          "population_operator": "≈",
+          "printing": true,
+          "uuid": "hwJI8wwkLU",
+          "variants": []
+        },
+        {
+          "created_at": "2025-07-18T16:20:49.391+00:00",
+          "edition_id": "r8y2vca8a9",
+          "foil": true,
+          "kind": "FOIL",
+          "last_update": "2025-07-18T16:20:49.391+00:00",
+          "name": "DTR U Foil",
+          "population": 1310,
+          "population_operator": "≈",
+          "printing": true,
+          "uuid": "rMcXeAy2rv",
+          "variants": []
+        }
+      ],
+      "circulations": [],
+      "other_orientations": [],
+      "set": {
+        "created_at": "2025-07-18T16:20:49.391+00:00",
+        "id": "f539744941",
+        "language": "EN",
+        "last_update": "2025-07-18T16:20:49.391+00:00",
+        "name": "Distorted Reflections",
+        "prefix": "DTR",
+        "release_date": "2025-07-25T00:00:00"
+      },
+      "effect_html": null
+    }
+  ],
+  "rule": [
+    {
+      "title": "",
+      "date_added": "2025-06-27",
+      "description": "The \"activate this ability only once\" applies to each instance of a Cardistry ability on a card. If you have multiple copies of a card with the same Cardistry ability in play, each one can activate its ability one time."
+    }
+  ],
+  "slug": "two-of-hearts",
+  "speed": null,
+  "subtypes": [
+    "WARRIOR",
+    "SUITED",
+    "HUMAN"
+  ],
+  "types": [
+    "ALLY"
+  ],
+  "uuid": "rufki4o41y",
+  "effect_html": "<span class=\"effect__label\"><span class=\"effect__reminder\">Cardistry</span></span> — <span class=\"effect__bubble effect__bubble--yellow ml-2\">2</span>: Two of Hearts gets +2<span class=\"effect__icon effect__icon--sword\"></span> until end of turn. This ability costs <span class=\"effect__bubble effect__bubble--yellow ml-2\">1</span>less to activate for each Suited object you control with different reserve costs. Activate this ability only once."
+}

@@ -1,0 +1,186 @@
+{
+  "classes": [
+    "WARRIOR"
+  ],
+  "cost_memory": null,
+  "cost_reserve": 3,
+  "cost": {
+    "type": "reserve",
+    "value": "3"
+  },
+  "created_at": "2024-10-11T12:00:00.000Z",
+  "durability": null,
+  "editions": [
+    {
+      "card_id": "td460e8ig0",
+      "collector_number": "107",
+      "configuration": "default",
+      "created_at": "2024-10-11T12:00:00+00:00",
+      "effect": null,
+      "effect_raw": null,
+      "flavor": "\"I dare anyone to try and lay a hand on Diao Chan.\"",
+      "illustrator": "Pinakes",
+      "image": "/cards/images/1x041sk6lk.jpg",
+      "last_update": "2025-01-18T17:40:17.152+00:00",
+      "orientation": null,
+      "rarity": 3,
+      "slug": "heated-vengeance-amb",
+      "thema_charm_foil": 228,
+      "thema_charm_nonfoil": 36,
+      "thema_ferocity_foil": 247,
+      "thema_ferocity_nonfoil": 39,
+      "thema_foil": 1060,
+      "thema_grace_foil": 203,
+      "thema_grace_nonfoil": 32,
+      "thema_mystique_foil": 190,
+      "thema_mystique_nonfoil": 30,
+      "thema_nonfoil": 167,
+      "thema_valor_foil": 192,
+      "thema_valor_nonfoil": 30,
+      "thema_foil_dynamic": false,
+      "thema_nonfoil_dynamic": false,
+      "uuid": "1x041sk6lk",
+      "collaborators": [],
+      "circulationTemplates": [
+        {
+          "created_at": "2025-01-18T17:40:17.152+00:00",
+          "edition_id": "1x041sk6lk",
+          "foil": true,
+          "kind": "FOIL",
+          "last_update": "2025-01-18T17:40:17.152+00:00",
+          "name": "AMB F R ",
+          "population": 500,
+          "population_operator": "≈",
+          "printing": true,
+          "uuid": "pztlc0urne",
+          "variants": []
+        },
+        {
+          "created_at": "2025-01-18T17:40:17.152+00:00",
+          "edition_id": "1x041sk6lk",
+          "foil": false,
+          "kind": "NONFOIL",
+          "last_update": "2025-01-18T17:40:17.152+00:00",
+          "name": "AMB NF R 1",
+          "population": 14000,
+          "population_operator": "≈",
+          "printing": true,
+          "uuid": "spfcgs67a4",
+          "variants": []
+        }
+      ],
+      "circulations": [],
+      "other_orientations": [],
+      "set": {
+        "created_at": "2024-10-11T12:00:00+00:00",
+        "id": "7pk8b8vm9v",
+        "language": "EN",
+        "last_update": "2025-01-18T17:40:17.152+00:00",
+        "name": "Mortal Ambition",
+        "prefix": "AMB",
+        "release_date": "2024-10-11T00:00:00"
+      },
+      "effect_html": null
+    }
+  ],
+  "effect": "As long as your champion has taken damage this turn, CARDNAME gets +3 [POWER].\n\n[Class Bonus] **On Attack:** You may have CARDNAME deal 3 damage to your champion.",
+  "effect_raw": "As long as your champion has taken damage this turn, Heated Vengeance gets +3 POWER.\n\n[Class Bonus] On Attack: You may have Heated Vengeance deal 3 damage to your champion.",
+  "element": "FIRE",
+  "elements": [
+    "FIRE"
+  ],
+  "flavor": null,
+  "last_update": "2025-01-21T14:39:46.426Z",
+  "legality": null,
+  "level": null,
+  "life": null,
+  "name": "Heated Vengeance",
+  "power": 2,
+  "referenced_by": [],
+  "references": [],
+  "result_editions": [
+    {
+      "card_id": "td460e8ig0",
+      "collector_number": "107",
+      "configuration": "default",
+      "created_at": "2024-10-11T12:00:00+00:00",
+      "effect": null,
+      "effect_raw": null,
+      "flavor": "\"I dare anyone to try and lay a hand on Diao Chan.\"",
+      "illustrator": "Pinakes",
+      "image": "/cards/images/1x041sk6lk.jpg",
+      "last_update": "2025-01-18T17:40:17.152+00:00",
+      "orientation": null,
+      "rarity": 3,
+      "slug": "heated-vengeance-amb",
+      "thema_charm_foil": 228,
+      "thema_charm_nonfoil": 36,
+      "thema_ferocity_foil": 247,
+      "thema_ferocity_nonfoil": 39,
+      "thema_foil": 1060,
+      "thema_grace_foil": 203,
+      "thema_grace_nonfoil": 32,
+      "thema_mystique_foil": 190,
+      "thema_mystique_nonfoil": 30,
+      "thema_nonfoil": 167,
+      "thema_valor_foil": 192,
+      "thema_valor_nonfoil": 30,
+      "thema_foil_dynamic": false,
+      "thema_nonfoil_dynamic": false,
+      "uuid": "1x041sk6lk",
+      "collaborators": [],
+      "circulationTemplates": [
+        {
+          "created_at": "2025-01-18T17:40:17.152+00:00",
+          "edition_id": "1x041sk6lk",
+          "foil": true,
+          "kind": "FOIL",
+          "last_update": "2025-01-18T17:40:17.152+00:00",
+          "name": "AMB F R ",
+          "population": 500,
+          "population_operator": "≈",
+          "printing": true,
+          "uuid": "pztlc0urne",
+          "variants": []
+        },
+        {
+          "created_at": "2025-01-18T17:40:17.152+00:00",
+          "edition_id": "1x041sk6lk",
+          "foil": false,
+          "kind": "NONFOIL",
+          "last_update": "2025-01-18T17:40:17.152+00:00",
+          "name": "AMB NF R 1",
+          "population": 14000,
+          "population_operator": "≈",
+          "printing": true,
+          "uuid": "spfcgs67a4",
+          "variants": []
+        }
+      ],
+      "circulations": [],
+      "other_orientations": [],
+      "set": {
+        "created_at": "2024-10-11T12:00:00+00:00",
+        "id": "7pk8b8vm9v",
+        "language": "EN",
+        "last_update": "2025-01-18T17:40:17.152+00:00",
+        "name": "Mortal Ambition",
+        "prefix": "AMB",
+        "release_date": "2024-10-11T00:00:00"
+      },
+      "effect_html": null
+    }
+  ],
+  "rule": [],
+  "slug": "heated-vengeance",
+  "speed": null,
+  "subtypes": [
+    "WARRIOR",
+    "POLEARM"
+  ],
+  "types": [
+    "ATTACK"
+  ],
+  "uuid": "td460e8ig0",
+  "effect_html": "<span class=\"effect__block\">As long as your champion has taken damage this turn, Heated Vengeance gets +3<span class=\"effect__icon effect__icon--sword\"></span>.</span><span class=\"effect__bubble\">Class Bonus</span>  <span class=\"effect__label\">On Attack:</span> You may have Heated Vengeance deal 3 damage to your champion."
+}

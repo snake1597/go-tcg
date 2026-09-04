@@ -3,48 +3,48 @@
     "CLERIC"
   ],
   "cost_memory": null,
-  "cost_reserve": 2,
+  "cost_reserve": 0,
   "cost": {
     "type": "reserve",
-    "value": "2"
+    "value": "0"
   },
   "created_at": "2025-07-18T16:20:49.391Z",
   "durability": null,
   "editions": [
     {
-      "card_id": "4vjkezn49t",
-      "collector_number": "140",
+      "card_id": "0mf1ug6yfi",
+      "collector_number": "106",
       "configuration": "default",
       "created_at": "2025-07-18T16:20:49.391+00:00",
       "effect": null,
       "effect_raw": null,
       "flavor": null,
-      "illustrator": "Dragonart",
-      "image": "/cards/images/zu0ulzluer.jpg",
-      "last_update": "2025-07-18T16:20:49.391+00:00",
+      "illustrator": "Parhelion Studio Co.",
+      "image": "/cards/images/vo9nkntl7q.jpg",
+      "last_update": "2026-09-01T18:59:30.749+00:00",
       "orientation": null,
       "rarity": 2,
-      "slug": "vengeful-paramour-dtr",
-      "thema_charm_foil": 184,
+      "slug": "wonderlands-reign-dtr",
+      "thema_charm_foil": 181,
       "thema_charm_nonfoil": 23,
-      "thema_ferocity_foil": 176,
-      "thema_ferocity_nonfoil": 22,
+      "thema_ferocity_foil": 144,
+      "thema_ferocity_nonfoil": 18,
       "thema_foil": 893,
       "thema_grace_foil": 176,
       "thema_grace_nonfoil": 22,
-      "thema_mystique_foil": 205,
-      "thema_mystique_nonfoil": 26,
+      "thema_mystique_foil": 192,
+      "thema_mystique_nonfoil": 24,
       "thema_nonfoil": 112,
-      "thema_valor_foil": 152,
-      "thema_valor_nonfoil": 19,
+      "thema_valor_foil": 200,
+      "thema_valor_nonfoil": 25,
       "thema_foil_dynamic": false,
       "thema_nonfoil_dynamic": false,
-      "uuid": "zu0ulzluer",
+      "uuid": "vo9nkntl7q",
       "collaborators": [],
       "circulationTemplates": [
         {
           "created_at": "2025-07-18T16:20:49.391+00:00",
-          "edition_id": "zu0ulzluer",
+          "edition_id": "vo9nkntl7q",
           "foil": false,
           "kind": "NONFOIL",
           "last_update": "2025-07-18T16:20:49.391+00:00",
@@ -57,7 +57,7 @@
         },
         {
           "created_at": "2025-07-18T16:20:49.391+00:00",
-          "edition_id": "zu0ulzluer",
+          "edition_id": "vo9nkntl7q",
           "foil": true,
           "kind": "FOIL",
           "last_update": "2025-07-18T16:20:49.391+00:00",
@@ -83,56 +83,56 @@
       "effect_html": null
     }
   ],
-  "effect": "**On Enter**: As a Spell, if Vengeful Paramour is **ephemeral**, deal 2 damage to target champion. \n\n**Ephemerate** — (4) *(You may activate this card from your graveyard by paying this cost. Ally cards played this way become **ephemeral** as they enter the field.)*",
-  "effect_raw": "On Enter: As a Spell, if Vengeful Paramour is ephemeral, deal 2 damage to target champion. \n\nEphemerate — (4) (You may activate this card from your graveyard by paying this cost. Ally cards played this way become ephemeral as they enter the field.)",
-  "element": "FIRE",
+  "effect": "***Cardistry*** — *(10)*: Draw a card. This ability costs (1) less to activate for each Suited object you control with different reserve costs. Activate this ability only once.",
+  "effect_raw": "Cardistry — (10): Draw a card. This ability costs (1) less to activate for each Suited object you control with different reserve costs. Activate this ability only once.",
+  "element": "NORM",
   "elements": [
-    "FIRE"
+    "NORM"
   ],
-  "flavor": null,
+  "flavor": "Come dine with the Looking Glass Queens, and me.",
   "last_update": "2025-07-24T16:15:11.473Z",
   "legality": null,
   "level": null,
-  "life": 1,
-  "name": "Vengeful Paramour",
-  "power": 2,
+  "life": null,
+  "name": "Wonderland's Reign",
+  "power": null,
   "referenced_by": [],
   "references": [],
   "result_editions": [
     {
-      "card_id": "4vjkezn49t",
-      "collector_number": "140",
+      "card_id": "0mf1ug6yfi",
+      "collector_number": "106",
       "configuration": "default",
       "created_at": "2025-07-18T16:20:49.391+00:00",
       "effect": null,
       "effect_raw": null,
       "flavor": null,
-      "illustrator": "Dragonart",
-      "image": "/cards/images/zu0ulzluer.jpg",
-      "last_update": "2025-07-18T16:20:49.391+00:00",
+      "illustrator": "Parhelion Studio Co.",
+      "image": "/cards/images/vo9nkntl7q.jpg",
+      "last_update": "2026-09-01T18:59:30.749+00:00",
       "orientation": null,
       "rarity": 2,
-      "slug": "vengeful-paramour-dtr",
-      "thema_charm_foil": 184,
+      "slug": "wonderlands-reign-dtr",
+      "thema_charm_foil": 181,
       "thema_charm_nonfoil": 23,
-      "thema_ferocity_foil": 176,
-      "thema_ferocity_nonfoil": 22,
+      "thema_ferocity_foil": 144,
+      "thema_ferocity_nonfoil": 18,
       "thema_foil": 893,
       "thema_grace_foil": 176,
       "thema_grace_nonfoil": 22,
-      "thema_mystique_foil": 205,
-      "thema_mystique_nonfoil": 26,
+      "thema_mystique_foil": 192,
+      "thema_mystique_nonfoil": 24,
       "thema_nonfoil": 112,
-      "thema_valor_foil": 152,
-      "thema_valor_nonfoil": 19,
+      "thema_valor_foil": 200,
+      "thema_valor_nonfoil": 25,
       "thema_foil_dynamic": false,
       "thema_nonfoil_dynamic": false,
-      "uuid": "zu0ulzluer",
+      "uuid": "vo9nkntl7q",
       "collaborators": [],
       "circulationTemplates": [
         {
           "created_at": "2025-07-18T16:20:49.391+00:00",
-          "edition_id": "zu0ulzluer",
+          "edition_id": "vo9nkntl7q",
           "foil": false,
           "kind": "NONFOIL",
           "last_update": "2025-07-18T16:20:49.391+00:00",
@@ -145,7 +145,7 @@
         },
         {
           "created_at": "2025-07-18T16:20:49.391+00:00",
-          "edition_id": "zu0ulzluer",
+          "edition_id": "vo9nkntl7q",
           "foil": true,
           "kind": "FOIL",
           "last_update": "2025-07-18T16:20:49.391+00:00",
@@ -174,19 +174,21 @@
   "rule": [
     {
       "title": "",
-      "date_added": "2025-07-18",
-      "description": "Activating a card by ephemerate follows the card's timing restriction."
+      "date_added": "2025-06-27",
+      "description": "The \"activate this ability only once\" applies to each instance of a Cardistry ability on a card. If you have multiple copies of a card with the same Cardistry ability in play, each one can activate its ability one time."
     }
   ],
-  "slug": "vengeful-paramour",
+  "slug": "wonderlands-reign",
   "speed": null,
   "subtypes": [
     "CLERIC",
-    "SPECTER"
+    "SUITED",
+    "SPELL"
   ],
   "types": [
-    "ALLY"
+    "UNIQUE",
+    "PHANTASIA"
   ],
-  "uuid": "4vjkezn49t",
-  "effect_html": "<span class=\"effect__block\"><span class=\"effect__label\">On Enter</span>: As a Spell, if Vengeful Paramour is <span class=\"effect__label\">ephemeral</span>, deal 2 damage to target champion. </span><span class=\"effect__label\">Ephemerate</span> — <span class=\"effect__bubble effect__bubble--yellow ml-2\">4</span><span class=\"effect__reminder\">(You may activate this card from your graveyard by paying this cost. Ally cards played this way become <span class=\"effect__label\">ephemeral</span> as they enter the field.)</span>"
+  "uuid": "0mf1ug6yfi",
+  "effect_html": "<span class=\"effect__label\"><span class=\"effect__reminder\">Cardistry</span></span> — <span class=\"effect__reminder\"><span class=\"effect__bubble effect__bubble--yellow ml-2\">10</span></span>: Draw a card. This ability costs <span class=\"effect__bubble effect__bubble--yellow ml-2\">1</span>less to activate for each Suited object you control with different reserve costs. Activate this ability only once."
 }

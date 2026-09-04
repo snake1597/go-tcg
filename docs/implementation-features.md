@@ -8,7 +8,7 @@
 
 - 狀態只使用 `待實作`、`進行中`、`被阻擋`、`完成`。
 - 功能只有在其驗收條件與相關測試都通過後才能標為完成。
-- 正式卡牌功能必須先列入 `docs/card-support-matrix.md`。目前矩陣已由固定 Main Deck、Material Deck 與 `card-data-v1` 建立，但在 Outside Game Pool、CardFace／Ability Slot ID 補齊前維持 `blocked`。
+- 正式卡牌功能必須先列入 [`card.md`](./card.md)；內容維持 `blocked`，直到相依機制與測試完成。
 - 功能實作依照垂直切片推進，不應先把本文件的每個章節各做一個不相連的框架。
 - 所有規則測試都要標註規則 commit `602c917f2f8fd4df7198429a72eb596bf7f647c6`、來源檔案與條目。
 
@@ -213,7 +213,8 @@
 
 ### ABILITY-02 卡牌 registry
 
-- 以 Card ID、CardFace ID 與 Ability Slot 註冊 typed Go handler。
+- 依 [ADR 0016](./adr/0016-use-hierarchical-content-ids.md) 的 Card ID、CardFace ID 與 Ability Slot ID 註冊 typed Go handler。
+- registry 驗證 parent Card／CardFace 存在、完整 ID 唯一、key 格式合法，且每個 rules-bearing behavior 恰好對應一個 slot。
 - 每個 handler 宣告其規則版本、所需機制、typed operations 與衍生內容依賴。
 - handler 只能呼叫 Game Module 提供的規則操作，不能直接修改 GameState。
 - registry 在開局前與 Support Set 雙向檢查，不允許遺漏或孤立的正式內容。
@@ -500,12 +501,12 @@ internal/cli/
 | 5. 固定牌組擴充 | 按 Support Set dependency graph 逐列完成 ABILITY／EFFECT 與跨卡互動 |
 | 6. 首版收尾 | BOT、CLI 可讀性、完整 replay 回歸、fuzz/property、100 場批次對戰及文件 gate |
 
-## 目前阻擋項目
+## 目前執行順序
 
-正式卡牌與完整首版目前不能排出最終工作量，直到補齊：
+1. 完成里程碑 1 尚缺的版本驗證、canonical serialization 與統一診斷結果。
+2. 將 [`card.md`](./card.md) 已固定的 CardFace／Ability Slot inventory 實作為 production registry。
+3. 以起始 Champion 與 Level 1 Champion 完成 Standard 開局、lineage 與 materialize。
+4. 以 [`card.md`](./card.md) 指定的第一張 action 完成 declaration transaction、Effects Stack、checkpoint 與 rollback。
+5. 依同一文件的 dependency graph 擴充 Cardistry、combat、continuous、replacement 與 triggered abilities。
 
-1. 明確的 Outside Game Pool，包含 `Rile the Abyss` 的 Card JSON 與數量。
-2. 每張卡及所有可達內容的 CardFace／Ability Slot ID。
-3. ~~卡面資料來源的鎖定版本／日期與可驗證 manifest。~~ 已完成：repository `./card/*.json` 與 `card-data-v1`。
-
-規則裁定目前不再構成 blocker：RUL-001 依 [ADR 0015](./adr/0015-retain-opportunity-until-the-holder-passes.md) 採用專案自訂裁定，RUL-002 與 RUL-004 已由官方來源解決。里程碑 1 的 test-only walking skeleton 可先開始，但不能誤列為正式卡牌支援。
+GameState、scheduler、RuleCheckpoint、EventBatch 與 StackItem 的共同語意在第一張正式 action 完成前維持單一路徑；PlayerView、replay、內容驗證與 CLI 只能透過已固定的 Game Module seam 並行。正式內容的實際阻擋狀態與規則裁定分別由 [`card.md`](./card.md) 及 [`rules-issues.md`](./rules-issues.md) 擁有，本清單不複製其狀態。

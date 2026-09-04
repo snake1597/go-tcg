@@ -71,8 +71,16 @@ _避免稱為_：遊戲物件
 **卡牌定義（Card Definition）**：
 由穩定 card ID 識別的不可變卡面資料與已註冊行為；它不是單局中的實體卡，也不保存 runtime 狀態。
 
+**卡牌定義 ID（Card ID）**：
+跨印刷版本識別同一 Card Definition 的穩定內容身分；它不識別特定印刷品、圖像或單局中的卡牌實例。
+_避免稱為_：印刷版本 ID、CardInstanceID
+
 **卡面（Card Face）**：
-CardDefinition 中由穩定 face ID 識別的一面；Transform 改變 Object 的有效卡面，但不改變 CardInstanceID 或 ObjectID。
+ CardDefinition 中由穩定 face ID 識別的一面；Transform 改變 Object 的有效卡面，但不改變 CardInstanceID 或 ObjectID。
+
+**卡面 ID（CardFace ID）**：
+在一個 Card Definition 中識別特定正面或背面的穩定內容身分；它不隨印刷版本、卡名翻譯或單局狀態改變。
+_避免稱為_：印刷版本 UUID、CardInstanceID
 
 **卡牌實例（Card Instance）**：
 單局中一張實體或數位卡牌的身分，具有 CardInstanceID 與 owner，並跨非場上 zone 保持身分；位於 Field 時由 GameObject 表示。
@@ -101,7 +109,8 @@ StackItem 或 effect 指向其規則來源的型別化 ID 關聯，可引用 Sou
 由 static ability 或其他規則來源產生、在特定期間參與衍生特徵計算的 runtime 實體，保存來源、時間戳、期間及必要的相依資訊；它不永久改寫卡牌或 Object 的原始資料。
 
 **能力欄位（Ability Slot）**：
-能力在特定卡面或規則來源中的穩定位置識別，用來區分同一來源上的多個能力及追蹤其作用範圍內的狀態。
+rules-bearing behavior 在特定 CardFace 中的穩定語意位置，用來區分同一來源上的多個能力及追蹤其作用範圍內的狀態；它不是段落序號或 runtime AbilityInstanceID。
+_避免稱為_：能力索引、AbilityInstanceID
 
 **最後已知資訊（Last-Known Information）**：
 卡牌或遊戲物件離開規則所檢查的區域前所具有的資訊；它只追溯最近一次區域變更之前的狀態。

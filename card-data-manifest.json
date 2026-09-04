@@ -1,56 +1,32 @@
 {
   "schema_version": 1,
-  "data_version": "card-data-v1",
+  "data_version": "card-data-v3",
   "source": "./card/*.json",
-  "dataset_sha256": "40558216461a31bb9c203f91cf7555c3dfc7b794f9e1a9203e286c2d0eb676bf",
+  "dataset_sha256": "0078d2cba3df40a63e629ffa48e9d63ff7b92e80f0a4539a6a016f095c06004e",
   "cards": [
     {
-      "path": "alice-distorted-queen.json",
-      "card_id": "GiQxfpKTUC",
-      "slug": "alice-distorted-queen",
-      "name": "Alice, Distorted Queen",
-      "last_update": "2025-12-05T08:15:58.313Z",
-      "file_sha256": "e87cdf3a05fa7e6bb6ed6a830d76b74d61d0c60e6523645b7c93fc60cd9b234a"
+      "path": "arthur-young-heir.json",
+      "card_id": "GjM8b5fxqj",
+      "slug": "arthur-young-heir",
+      "name": "Arthur, Young Heir",
+      "last_update": "2025-01-19T12:34:26.112Z",
+      "file_sha256": "bc8ff9c04a9913a09ff31fa58e4a601d0bda724ec4f153cff69eb7f6b29ac9d9"
     },
     {
-      "path": "backup-charger.json",
-      "card_id": "9gv4vm4kj3",
-      "slug": "backup-charger",
-      "name": "Backup Charger",
-      "last_update": "2025-01-19T00:38:18.708Z",
-      "file_sha256": "69c499753dd3c7052fd97ba7ae8cc48db11fb172cd886f98b3d1cecd9fc7e15b"
+      "path": "blazing-throw.json",
+      "card_id": "iohZMWh5v5",
+      "slug": "blazing-throw",
+      "name": "Blazing Throw",
+      "last_update": "2025-07-15T14:08:13.091Z",
+      "file_sha256": "e9c8e1d531b32c52c6a70d2aaa914b963903d7987057c4a6433a41a83bf78116"
     },
     {
-      "path": "bill-chimney-sweep.json",
-      "card_id": "s9ICPMYPNx",
-      "slug": "bill-chimney-sweep",
-      "name": "Bill, Chimney Sweep",
-      "last_update": "2025-12-05T08:15:58.313Z",
-      "file_sha256": "26ff5cf6ecc78f91873469830fa62b10fe6fd9c0ae02f222f0bdafa7023197df"
-    },
-    {
-      "path": "blighted-jewel.json",
-      "card_id": "hbpu4fo8oo",
-      "slug": "blighted-jewel",
-      "name": "Blighted Jewel",
-      "last_update": "2025-07-24T16:15:11.473Z",
-      "file_sha256": "5154b34d3821efdc5cc8dab87bd4b5475a70afba3efb3c4d25833b5bce05ff8a"
-    },
-    {
-      "path": "cinder-geyser.json",
-      "card_id": "stiyh3pmk3",
-      "slug": "cinder-geyser",
-      "name": "Cinder Geyser",
-      "last_update": "2025-03-07T16:36:57.052Z",
-      "file_sha256": "bd87ac0dffc4f40f41989c6dc74cbd63444c00e0811cdff89abe82dbb8a51adc"
-    },
-    {
-      "path": "creative-shock.json",
-      "card_id": "BqDw4Mei4C",
-      "slug": "creative-shock",
-      "name": "Creative Shock",
-      "last_update": "2025-01-19T12:46:42.568Z",
-      "file_sha256": "c0ee02f78aba26a3a85ec6e345f28c0ca0fc9ea3369f4f7983ba2fb580ebfcb8"
+      "path": "bulwark-sword.json",
+      "card_id": "8kmoi0a5uh",
+      "slug": "bulwark-sword",
+      "name": "Bulwark Sword",
+      "last_update": "2026-08-20T04:45:45.809Z",
+      "file_sha256": "0d8e18aebe19b93194ea1a81a99c15fd0c1d6fa33c7cc359f0bcb1b99bc76cba"
     },
     {
       "path": "duchess-six-of-hearts.json",
@@ -61,52 +37,36 @@
       "file_sha256": "6a0987ce0c8f4d15c6b7003da4fbc8f2d49f32b5c3b178d0e47bdbc86328b97f"
     },
     {
-      "path": "emberwrath-witch.json",
-      "card_id": "PptfA8gG6h",
-      "slug": "emberwrath-witch",
-      "name": "Emberwrath Witch",
-      "last_update": "2026-04-02T19:55:28.177Z",
-      "file_sha256": "0adc692ad98768337c5949f240431dff88935668d04e4634e14dc7c9c8493f53"
+      "path": "fiery-interference.json",
+      "card_id": "gt2zqtgs42",
+      "slug": "fiery-interference",
+      "name": "Fiery Interference",
+      "last_update": "2026-08-05T19:42:23.808Z",
+      "file_sha256": "a06cf6f52c5de6e82a0d4a148d62f86af1e280eb55c08b4d7a3cd0dd08dfc26e"
     },
     {
-      "path": "everflame-staff.json",
-      "card_id": "nrvth9vyz1",
-      "slug": "everflame-staff",
-      "name": "Everflame Staff",
-      "last_update": "2025-01-21T14:09:38.241Z",
-      "file_sha256": "7fce83f8b2e591a920586847c3f2ad4fda5dbab5cd2b6d77283f10f279ef237a"
+      "path": "five-of-spades.json",
+      "card_id": "i9hf5lhl5f",
+      "slug": "five-of-spades",
+      "name": "Five of Spades",
+      "last_update": "2025-07-24T16:15:11.473Z",
+      "file_sha256": "38dcefd25615a53354776156a0b9d9adda0f4d009447279166e5f6f4e6eb4efe"
     },
     {
-      "path": "fanatical-devotee.json",
-      "card_id": "1gxrpx8jyp",
-      "slug": "fanatical-devotee",
-      "name": "Fanatical Devotee",
-      "last_update": "2025-01-20T16:28:27.182Z",
-      "file_sha256": "a10c8553784fccc8898289616440fd6685ad458da7fc96b64f53908207f6c8d3"
+      "path": "four-of-hearts.json",
+      "card_id": "xgax8bbjqj",
+      "slug": "four-of-hearts",
+      "name": "Four of Hearts",
+      "last_update": "2025-07-24T16:15:11.473Z",
+      "file_sha256": "85227a9a6053927997fe4502821484b1f0f69b7d4357d4f37902da1643dacee6"
     },
     {
-      "path": "fanned-synchron.json",
-      "card_id": "3h6eqjsLWG",
-      "slug": "fanned-synchron",
-      "name": "Fanned Synchron",
-      "last_update": "2026-08-21T19:35:07.728Z",
-      "file_sha256": "3f3ff04d677071cb1879be4036253956e622e4c4b7aa4e807415c75371f27ff7"
-    },
-    {
-      "path": "fractal-of-sparks.json",
-      "card_id": "5pw07bh5wf",
-      "slug": "fractal-of-sparks",
-      "name": "Fractal of Sparks",
-      "last_update": "2025-01-21T00:30:54.210Z",
-      "file_sha256": "21446eaa67f7a55767a4cdf5a75d41cc8d92fb18a44f4bc3a9fd2a598a59b81b"
-    },
-    {
-      "path": "furnace-drone.json",
-      "card_id": "cbNF64gCsS",
-      "slug": "furnace-drone",
-      "name": "Furnace Drone",
-      "last_update": "2025-05-27T20:27:36.974Z",
-      "file_sha256": "53a18c8236300525a2f98dacf2c7eeda0eb380225ce53e1188748e5f5eedb08e"
+      "path": "four-of-spades.json",
+      "card_id": "8bolq2y5qp",
+      "slug": "four-of-spades",
+      "name": "Four of Spades",
+      "last_update": "2025-07-24T16:15:11.473Z",
+      "file_sha256": "2e0e2c4f0f84df811c95047c4da6eaae4eefe87c64af6232ccf57b7a6f11c0c2"
     },
     {
       "path": "grand-crusaders-ring.json",
@@ -117,28 +77,20 @@
       "file_sha256": "1e55cedc3dd65507b21d6326e22d8452b27e4d2db6b14c1005ce75c185bdaa2f"
     },
     {
+      "path": "heated-vengeance.json",
+      "card_id": "td460e8ig0",
+      "slug": "heated-vengeance",
+      "name": "Heated Vengeance",
+      "last_update": "2025-01-21T14:39:46.426Z",
+      "file_sha256": "9fe46c37402994173d1fd88bda61abdf00dabcd2c5850a25e0d6b2d8ca266120"
+    },
+    {
       "path": "impact-hammer.json",
       "card_id": "chsbalegbs",
       "slug": "impact-hammer",
       "name": "Impact Hammer",
       "last_update": "2026-08-20T04:45:45.809Z",
       "file_sha256": "afde04dbe83112890c4e83eac47066211a9637a69d4a87be7aa3dc3a70d5dd29"
-    },
-    {
-      "path": "incinerated-templar.json",
-      "card_id": "26ya6zaae8",
-      "slug": "incinerated-templar",
-      "name": "Incinerated Templar",
-      "last_update": "2025-07-24T16:15:11.473Z",
-      "file_sha256": "5509f09618152bc35de819ed9c0043bf6f0e6ae26c40fecc69aaf569c25d1749"
-    },
-    {
-      "path": "incinerator-felindroid.json",
-      "card_id": "Vl03t5rMSA",
-      "slug": "incinerator-felindroid",
-      "name": "Incinerator Felindroid",
-      "last_update": "2026-08-21T19:35:07.728Z",
-      "file_sha256": "0c27a7f8b21eeb9d4a45087d29e3218fa7185b82f9d1501b7b10fef0ec3eeff3"
     },
     {
       "path": "infernal-vessel.json",
@@ -149,52 +101,36 @@
       "file_sha256": "b5f5e430357960d556022d8b9e9299da30229d146658ec1b3d371c1a3082cf0c"
     },
     {
-      "path": "lingering-banshee.json",
-      "card_id": "v0gu8efq08",
-      "slug": "lingering-banshee",
-      "name": "Lingering Banshee",
+      "path": "noire-ace-of-spades.json",
+      "card_id": "wbjc9t8ycp",
+      "slug": "noire-ace-of-spades",
+      "name": "Noire, Ace of Spades",
       "last_update": "2025-07-24T16:15:11.473Z",
-      "file_sha256": "0834dbd83236cb3efda7dc3ff060ab4f90376f8a1ffbf50da43a6521dea42b09"
+      "file_sha256": "c77af3661539ccc176da2394dd1e159731d21e90f5a672c1c1738d46c08cd13f"
     },
     {
-      "path": "mantle-of-the-abyss.json",
-      "card_id": "1ubrwubSQN",
-      "slug": "mantle-of-the-abyss",
-      "name": "Mantle of the Abyss",
-      "last_update": "2026-04-20T04:59:52.548Z",
-      "file_sha256": "32e9be23f5e81c559684721282a7618c7281782dcf30563eab8f8d631aba4328"
+      "path": "peppered-chef.json",
+      "card_id": "lcy0lw1veb",
+      "slug": "peppered-chef",
+      "name": "Peppered Chef",
+      "last_update": "2025-07-24T16:15:11.473Z",
+      "file_sha256": "8f78f9e20cd12cd3df1f9257fd544b5105da2706015b70d4fc2299a421f1f87e"
     },
     {
-      "path": "nether-dodobird.json",
-      "card_id": "wtHBZAdTSv",
-      "slug": "nether-dodobird",
-      "name": "Nether Dodobird",
-      "last_update": "2025-12-05T08:15:58.313Z",
-      "file_sha256": "376071f85d4d6680ceda0a44e0533909bced3ff4c5ade1dbe3c7627c0d2f8852"
-    },
-    {
-      "path": "nullifying-mirror.json",
-      "card_id": "pol1nz0j1n",
-      "slug": "nullifying-mirror",
-      "name": "Nullifying Mirror",
-      "last_update": "2025-01-21T17:32:13.577Z",
-      "file_sha256": "e81f17e7d91d4b7ecaaca6739bfcedfcafd2dc7008bb87d2b9e35f7d7bc94e64"
-    },
-    {
-      "path": "reduce-to-ash.json",
-      "card_id": "sbalegbscx",
-      "slug": "reduce-to-ash",
-      "name": "Reduce to Ash",
-      "last_update": "2025-01-22T13:04:10.588Z",
-      "file_sha256": "17d49756ebdff65619ca0bf802cb4eb54eb7e4fe648c9156470edd7305191174"
-    },
-    {
-      "path": "restorative-flame.json",
-      "card_id": "ek7r2d7uz4",
-      "slug": "restorative-flame",
-      "name": "Restorative Flame",
+      "path": "red-hare-unrivaled-stallion.json",
+      "card_id": "5du8f077ua",
+      "slug": "red-hare-unrivaled-stallion",
+      "name": "Red Hare, Unrivaled Stallion",
       "last_update": "2025-03-07T16:36:57.052Z",
-      "file_sha256": "5cbf3c387bdd5ae21928b876653f6138fd0b13a917bdd70c843aa85d56f65f4f"
+      "file_sha256": "6d76e7246f3bc11473198ff09cea280ffc25d5b3bf0e021657447191213fa74a"
+    },
+    {
+      "path": "rouge-ace-of-hearts.json",
+      "card_id": "h68dr63eo5",
+      "slug": "rouge-ace-of-hearts",
+      "name": "Rouge, Ace of Hearts",
+      "last_update": "2025-07-24T16:15:11.473Z",
+      "file_sha256": "ba51c8763ed73389a82a08e5489c3167b5a9b7f623f8c06ab02dbd31722dcce9"
     },
     {
       "path": "safeguard-amulet.json",
@@ -203,14 +139,6 @@
       "name": "Safeguard Amulet",
       "last_update": "2025-01-19T18:36:15.084Z",
       "file_sha256": "957979fdf74ca928ca381e97e6ccd3a990dc74c0e83559477c762bf64d4ecb57"
-    },
-    {
-      "path": "searing-rebuke.json",
-      "card_id": "hdvpug4d5m",
-      "slug": "searing-rebuke",
-      "name": "Searing Rebuke",
-      "last_update": "2025-03-07T16:36:57.052Z",
-      "file_sha256": "f89354ef014dcc1a0032ac5932966787290ccfabc1cb14d32362f39d7b14cc7f"
     },
     {
       "path": "smoke-bombs.json",
@@ -226,23 +154,79 @@
       "slug": "spirit-of-fire",
       "name": "Spirit of Fire",
       "last_update": "2025-01-19T19:30:22.466Z",
-      "file_sha256": "4f7c17ad042e09b820807801c6d58901872aad9cb827c93d4ad01eb6b9052bdb"
+      "file_sha256": "80c1ef020bd8c9bc36c02b3088655d836bcdc496534328f8030c248b3d3a440e"
     },
     {
-      "path": "tariff-ring.json",
-      "card_id": "xnrw8qq1uw",
-      "slug": "tariff-ring",
-      "name": "Tariff Ring",
-      "last_update": "2025-01-21T20:13:31.280Z",
-      "file_sha256": "9bd7cf2f0632bb54d90f4c28d575e559e9e316e7139465778b560c11fe6e0c51"
-    },
-    {
-      "path": "vengeful-paramour.json",
-      "card_id": "4vjkezn49t",
-      "slug": "vengeful-paramour",
-      "name": "Vengeful Paramour",
+      "path": "straight-flare.json",
+      "card_id": "28bjn8g50v",
+      "slug": "straight-flare",
+      "name": "Straight Flare",
       "last_update": "2025-07-24T16:15:11.473Z",
-      "file_sha256": "48bce3d178f6ed5f96351a5e4f8ffb1791bb5f1d99e199763c7b4c78289474a3"
+      "file_sha256": "ee458aa6b15934781d4e30fbdd7edbe9cb0b99761b408f9f5216eca43a53a880"
+    },
+    {
+      "path": "the-duchesss-thornes.json",
+      "card_id": "bEXmm4rKOs",
+      "slug": "the-duchesss-thornes",
+      "name": "The Duchess's Thornes",
+      "last_update": "2026-04-20T04:59:52.548Z",
+      "file_sha256": "22dd0c385059fc8ddf322c9c12e6dd1367e53f156f9081927ff6b3a0d0eeccf8"
+    },
+    {
+      "path": "three-of-hearts.json",
+      "card_id": "1db8hz4prm",
+      "slug": "three-of-hearts",
+      "name": "Three of Hearts",
+      "last_update": "2026-02-20T08:06:33.789Z",
+      "file_sha256": "6b799ed615713ec8290f612bf768b32207d96e82075909eaeb46fc232cc322d5"
+    },
+    {
+      "path": "three-of-spades.json",
+      "card_id": "o09csnorqv",
+      "slug": "three-of-spades",
+      "name": "Three of Spades",
+      "last_update": "2025-07-24T16:15:11.473Z",
+      "file_sha256": "08f3db89a293819c2788b9d6e4799b1040602c9a8611614f34e36a0c66d15903"
+    },
+    {
+      "path": "tonoris-lone-mercenary.json",
+      "card_id": "zb14m4c8lj",
+      "slug": "tonoris-lone-mercenary",
+      "name": "Tonoris, Lone Mercenary",
+      "last_update": "2025-01-19T15:20:52.987Z",
+      "file_sha256": "a33fed53c4495e96c6f41de1a3d1d9d9cd150f1454abb73e67c5ff64a6ceca5a"
+    },
+    {
+      "path": "trump-set.json",
+      "card_id": "w7g91ru45w",
+      "slug": "trump-set",
+      "name": "Trump Set",
+      "last_update": "2026-02-25T22:00:56.235Z",
+      "file_sha256": "0c2761a8d2f9269ff8972cf1b6b067a5dc74afe7f3643c1b527130153d158cee"
+    },
+    {
+      "path": "two-of-hearts.json",
+      "card_id": "rufki4o41y",
+      "slug": "two-of-hearts",
+      "name": "Two of Hearts",
+      "last_update": "2025-07-24T16:15:11.473Z",
+      "file_sha256": "d204e14d90e4ac021609419ebbf82dbab051cf332d4fab6b30a5a6d88cb481e9"
+    },
+    {
+      "path": "two-of-spades.json",
+      "card_id": "e8ygl32jef",
+      "slug": "two-of-spades",
+      "name": "Two of Spades",
+      "last_update": "2025-07-24T16:15:11.473Z",
+      "file_sha256": "cee60c0000f8a0b3d54f614dc1a47da145f25ca08557ad26c52fbbe984692484"
+    },
+    {
+      "path": "verita-queen-of-hearts.json",
+      "card_id": "4qc47amgpp",
+      "slug": "verita-queen-of-hearts",
+      "name": "Verita, Queen of Hearts",
+      "last_update": "2025-07-24T16:15:11.473Z",
+      "file_sha256": "62a9c5d581bfc9af26de9ad873d663498b27e07a1fe2ab11011dcf3236a25bd2"
     },
     {
       "path": "viridian-protective-trinket.json",
@@ -253,12 +237,28 @@
       "file_sha256": "4c92e26fb405a2de816b8ab31863ab208f5362c4fbc694256f174a3eb50e381f"
     },
     {
-      "path": "volda-smolders-spite.json",
-      "card_id": "ecZsQQAYJJ",
-      "slug": "volda-smolders-spite",
-      "name": "Volda, Smolder's Spite",
-      "last_update": "2025-05-27T20:27:36.974Z",
-      "file_sha256": "9bfb7be34eb2e54da780944478addc71447006f5e299dd810d1a196f3cdda9f6"
+      "path": "water-resonance-bauble.json",
+      "card_id": "dSSRtNnPtw",
+      "slug": "water-resonance-bauble",
+      "name": "Water Resonance Bauble",
+      "last_update": "2025-01-21T20:24:09.906Z",
+      "file_sha256": "06689f6b17c43d712a3451a3e78762c9355d326cc1bf5da145cc7712ddfd5573"
+    },
+    {
+      "path": "wind-resonance-bauble.json",
+      "card_id": "bHGUNMFLg9",
+      "slug": "wind-resonance-bauble",
+      "name": "Wind Resonance Bauble",
+      "last_update": "2026-02-20T08:06:33.789Z",
+      "file_sha256": "e344ff2bb0fadbd55a90d0c3de5b04f8a88c690c024022a2515262c04165bd55"
+    },
+    {
+      "path": "wonderlands-reign.json",
+      "card_id": "0mf1ug6yfi",
+      "slug": "wonderlands-reign",
+      "name": "Wonderland's Reign",
+      "last_update": "2025-07-24T16:15:11.473Z",
+      "file_sha256": "b5ef02f9eb81d2043e64e75e5916265328415522f457701697b0de30ac435e52"
     }
   ]
 }

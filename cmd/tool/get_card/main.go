@@ -9,42 +9,45 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
+	"unicode"
 )
 
 // go run ./cmd/tool/get_card/main.go
 func main() {
-	slugList := []string{"spirit-of-fire",
-		"alice-distorted-queen",
-		"backup-charger",
+	slugList := []string{
+		"spirit-of-fire",
+		"tonoris-lone-mercenary",
+		"bulwark-sword",
 		"grand-crusaders-ring",
-		"nullifying-mirror",
 		"safeguard-amulet",
 		"smoke-bombs",
-		"tariff-ring",
 		"viridian-protective-trinket",
+		"water-resonance-bauble",
+		"wind-resonance-bauble",
 		"impact-hammer",
 		"infernal-vessel",
-		"mantle-of-the-abyss",
-		"blighted-jewel",
-		"lingering-banshee",
-		"bill-chimney-sweep",
-		"cinder-geyser",
-		"creative-shock",
+		"the-duchesss-thornes",
+		"five-of-spades",
+		"four-of-spades",
+		"noire-ace-of-spades",
+		"three-of-spades",
+		"trump-set",
+		"two-of-spades",
+		"wonderlands-reign",
+		"arthur-young-heir",
+		"blazing-throw",
 		"duchess-six-of-hearts",
-		"emberwrath-witch",
-		"fanatical-devotee",
-		"fractal-of-sparks",
-		"furnace-drone",
-		"incinerated-templar",
-		"incinerator-felindroid",
-		"nether-dodobird",
-		"searing-rebuke",
-		"vengeful-paramour",
-		"volda-smolders-spite",
-		"everflame-staff",
-		"fanned-synchron",
-		"reduce-to-ash",
-		"restorative-flame",
+		"fiery-interference",
+		"four-of-hearts",
+		"heated-vengeance",
+		"peppered-chef",
+		"red-hare-unrivaled-stallion",
+		"rouge-ace-of-hearts",
+		"straight-flare",
+		"three-of-hearts",
+		"two-of-hearts",
+		"verita-queen-of-hearts",
 	}
 
 	for _, slug := range slugList {
@@ -94,4 +97,24 @@ func writeJSONBody(filename string, body []byte) error {
 		return err
 	}
 	return os.WriteFile(filename, formatted.Bytes(), 0o644)
+}
+
+func cardNameToSlug(name string) string {
+	var slug strings.Builder
+	previousHyphen := false
+
+	for _, char := range strings.ToLower(name) {
+		if unicode.IsLetter(char) || unicode.IsDigit(char) {
+			slug.WriteRune(char)
+			previousHyphen = false
+			continue
+		}
+
+		if slug.Len() > 0 && !previousHyphen {
+			slug.WriteByte('-')
+			previousHyphen = true
+		}
+	}
+
+	return strings.TrimSuffix(slug.String(), "-")
 }

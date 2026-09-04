@@ -1,50 +1,51 @@
 {
   "classes": [
-    "WARRIOR"
+    "ASSASSIN",
+    "GUARDIAN"
   ],
   "cost_memory": null,
-  "cost_reserve": 3,
+  "cost_reserve": 4,
   "cost": {
     "type": "reserve",
-    "value": "3"
+    "value": "4"
   },
   "created_at": "2025-07-18T16:20:49.391Z",
   "durability": null,
   "editions": [
     {
-      "card_id": "v0gu8efq08",
-      "collector_number": "072",
+      "card_id": "xgax8bbjqj",
+      "collector_number": "120",
       "configuration": "default",
       "created_at": "2025-07-18T16:20:49.391+00:00",
       "effect": null,
       "effect_raw": null,
       "flavor": null,
       "illustrator": "Dragonart",
-      "image": "/cards/images/16ib21f6mb.jpg",
+      "image": "/cards/images/p0xhojoay9.jpg",
       "last_update": "2025-07-18T16:20:49.391+00:00",
       "orientation": null,
       "rarity": 3,
-      "slug": "lingering-banshee-dtr",
-      "thema_charm_foil": 317,
-      "thema_charm_nonfoil": 50,
-      "thema_ferocity_foil": 260,
-      "thema_ferocity_nonfoil": 41,
+      "slug": "four-of-hearts-dtr",
+      "thema_charm_foil": 196,
+      "thema_charm_nonfoil": 31,
+      "thema_ferocity_foil": 203,
+      "thema_ferocity_nonfoil": 32,
       "thema_foil": 1060,
-      "thema_grace_foil": 114,
-      "thema_grace_nonfoil": 18,
-      "thema_mystique_foil": 255,
-      "thema_mystique_nonfoil": 40,
+      "thema_grace_foil": 224,
+      "thema_grace_nonfoil": 35,
+      "thema_mystique_foil": 222,
+      "thema_mystique_nonfoil": 35,
       "thema_nonfoil": 167,
-      "thema_valor_foil": 114,
-      "thema_valor_nonfoil": 18,
+      "thema_valor_foil": 215,
+      "thema_valor_nonfoil": 34,
       "thema_foil_dynamic": false,
       "thema_nonfoil_dynamic": false,
-      "uuid": "16ib21f6mb",
+      "uuid": "p0xhojoay9",
       "collaborators": [],
       "circulationTemplates": [
         {
           "created_at": "2025-07-18T16:20:49.391+00:00",
-          "edition_id": "16ib21f6mb",
+          "edition_id": "p0xhojoay9",
           "foil": true,
           "kind": "FOIL",
           "last_update": "2025-07-18T16:20:49.391+00:00",
@@ -57,7 +58,7 @@
         },
         {
           "created_at": "2025-07-18T16:20:49.391+00:00",
-          "edition_id": "16ib21f6mb",
+          "edition_id": "p0xhojoay9",
           "foil": false,
           "kind": "NONFOIL",
           "last_update": "2025-07-18T16:20:49.391+00:00",
@@ -83,56 +84,56 @@
       "effect_html": null
     }
   ],
-  "effect": "**Ephemerate** — (6). As long as you control one or more **ephemeral** objects, this card costs (3) less to activate this way. *(You may activate this card from your graveyard by paying this cost. Ally cards played this way become **ephemeral** as they enter the field.)*",
-  "effect_raw": "Ephemerate — (6). As long as you control one or more ephemeral objects, this card costs (3) less to activate this way. (You may activate this card from your graveyard by paying this cost. Ally cards played this way become ephemeral as they enter the field.)",
-  "element": "NORM",
+  "effect": "***Cardistry*** — (4): Draw a card into your memory, then put a fire or norm element Suited ally card with reserve cost 3 or less from your memory onto the field. This ability costs (1) less to activate for each Suited object you control with different reserve costs. Activate this ability only once.",
+  "effect_raw": "Cardistry — (4): Draw a card into your memory, then put a fire or norm element Suited ally card with reserve cost 3 or less from your memory onto the field. This ability costs (1) less to activate for each Suited object you control with different reserve costs. Activate this ability only once.",
+  "element": "FIRE",
   "elements": [
-    "NORM"
+    "FIRE"
   ],
-  "flavor": "\"Forever and always...\"",
+  "flavor": null,
   "last_update": "2025-07-24T16:15:11.473Z",
   "legality": null,
   "level": null,
   "life": 3,
-  "name": "Lingering Banshee",
-  "power": 2,
+  "name": "Four of Hearts",
+  "power": 1,
   "referenced_by": [],
   "references": [],
   "result_editions": [
     {
-      "card_id": "v0gu8efq08",
-      "collector_number": "072",
+      "card_id": "xgax8bbjqj",
+      "collector_number": "120",
       "configuration": "default",
       "created_at": "2025-07-18T16:20:49.391+00:00",
       "effect": null,
       "effect_raw": null,
       "flavor": null,
       "illustrator": "Dragonart",
-      "image": "/cards/images/16ib21f6mb.jpg",
+      "image": "/cards/images/p0xhojoay9.jpg",
       "last_update": "2025-07-18T16:20:49.391+00:00",
       "orientation": null,
       "rarity": 3,
-      "slug": "lingering-banshee-dtr",
-      "thema_charm_foil": 317,
-      "thema_charm_nonfoil": 50,
-      "thema_ferocity_foil": 260,
-      "thema_ferocity_nonfoil": 41,
+      "slug": "four-of-hearts-dtr",
+      "thema_charm_foil": 196,
+      "thema_charm_nonfoil": 31,
+      "thema_ferocity_foil": 203,
+      "thema_ferocity_nonfoil": 32,
       "thema_foil": 1060,
-      "thema_grace_foil": 114,
-      "thema_grace_nonfoil": 18,
-      "thema_mystique_foil": 255,
-      "thema_mystique_nonfoil": 40,
+      "thema_grace_foil": 224,
+      "thema_grace_nonfoil": 35,
+      "thema_mystique_foil": 222,
+      "thema_mystique_nonfoil": 35,
       "thema_nonfoil": 167,
-      "thema_valor_foil": 114,
-      "thema_valor_nonfoil": 18,
+      "thema_valor_foil": 215,
+      "thema_valor_nonfoil": 34,
       "thema_foil_dynamic": false,
       "thema_nonfoil_dynamic": false,
-      "uuid": "16ib21f6mb",
+      "uuid": "p0xhojoay9",
       "collaborators": [],
       "circulationTemplates": [
         {
           "created_at": "2025-07-18T16:20:49.391+00:00",
-          "edition_id": "16ib21f6mb",
+          "edition_id": "p0xhojoay9",
           "foil": true,
           "kind": "FOIL",
           "last_update": "2025-07-18T16:20:49.391+00:00",
@@ -145,7 +146,7 @@
         },
         {
           "created_at": "2025-07-18T16:20:49.391+00:00",
-          "edition_id": "16ib21f6mb",
+          "edition_id": "p0xhojoay9",
           "foil": false,
           "kind": "NONFOIL",
           "last_update": "2025-07-18T16:20:49.391+00:00",
@@ -174,19 +175,21 @@
   "rule": [
     {
       "title": "",
-      "date_added": "2025-07-18",
-      "description": "Activating a card by ephemerate follows the card's timing restriction.\n"
+      "date_added": "2025-06-27",
+      "description": "The \"activate this ability only once\" applies to each instance of a Cardistry ability on a card. If you have multiple copies of a card with the same Cardistry ability in play, each one can activate its ability one time."
     }
   ],
-  "slug": "lingering-banshee",
+  "slug": "four-of-hearts",
   "speed": null,
   "subtypes": [
-    "WARRIOR",
-    "SPECTER"
+    "ASSASSIN",
+    "GUARDIAN",
+    "SUITED",
+    "HUMAN"
   ],
   "types": [
     "ALLY"
   ],
-  "uuid": "v0gu8efq08",
-  "effect_html": "<span class=\"effect__label\">Ephemerate</span> — <span class=\"effect__bubble effect__bubble--yellow ml-2\">6</span>. As long as you control one or more <span class=\"effect__label\">ephemeral</span> objects, this card costs <span class=\"effect__bubble effect__bubble--yellow ml-2\">3</span>less to activate this way. <span class=\"effect__reminder\">(You may activate this card from your graveyard by paying this cost. Ally cards played this way become <span class=\"effect__label\">ephemeral</span> as they enter the field.)</span>"
+  "uuid": "xgax8bbjqj",
+  "effect_html": "<span class=\"effect__label\"><span class=\"effect__reminder\">Cardistry</span></span> — <span class=\"effect__bubble effect__bubble--yellow ml-2\">4</span>: Draw a card into your memory, then put a fire or norm element Suited ally card with reserve cost 3 or less from your memory onto the field. This ability costs <span class=\"effect__bubble effect__bubble--yellow ml-2\">1</span>less to activate for each Suited object you control with different reserve costs. Activate this ability only once."
 }

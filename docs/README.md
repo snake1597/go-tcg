@@ -1,23 +1,34 @@
 # Grand Archive 開發文件索引
 
-目前狀態：核心架構與開發流程已定案，唯一固定 Standard Main Deck 與 Material Deck 已建立，卡面資料已鎖定為 `card-data-v1`，初版 Support Set 也已記錄於 [`card-support-matrix.md`](./card-support-matrix.md)。進入正式卡牌實作前，仍需補齊 Outside Game Pool 與 CardFace／Ability Slot ID。已登錄的規則 issue 目前皆已有正式處理結果。
+本頁只負責文件導航，不保存牌組版本、支援狀態、實作進度或規則裁定。需要資料時，先依下表讀取唯一負責該資訊的文件。
 
-## 建議閱讀順序
+## 優先查找表
 
-1. [`development-plan.md`](./development-plan.md)：首版範圍、核心模型、vertical slices 與 release gate。
-2. [`implementation-features.md`](./implementation-features.md)：依牌組、單局、卡牌能力、觸發、效果、戰鬥與介面拆解的功能實作清單。
-3. [`development-execution-strategy.md`](./development-execution-strategy.md)：實作順序、並行工作軌、spec／ticket gate、前置作業與待確認決策。
-4. [`../CONTEXT.md`](../CONTEXT.md)：全專案共用的領域詞彙。
-5. [`testing.md`](./testing.md)：rule-example-first TDD、測試 seam 與禁止模式。
-6. [`card-support-matrix.md`](./card-support-matrix.md)：目前固定 Standard 牌組的正式 Support Set 與阻擋狀態；[`card-support-matrix-template.md`](./card-support-matrix-template.md) 保留為日後建立新矩陣的格式。
-7. [`card-data-versioning.md`](./card-data-versioning.md)：`./card` 權威快照、manifest 格式與更新流程。
-8. [`rules-issues.md`](./rules-issues.md)：會阻擋相關 slice 的官方規則歧義。
-9. [`adr/`](./adr/)：已確認且難以逆轉的架構決策。
+| 想知道什麼 | 優先讀取 | 必要時接著讀 |
+| --- | --- | --- |
+| 固定牌組、卡面版本、CardFace、Ability Slot 或 Support Set | [`card.md`](./card.md) | 對應 `card/*.json`、[`../card-data-manifest.json`](../card-data-manifest.json) |
+| 某張卡依賴哪些機制或其他卡牌 | [`card.md`](./card.md#support-set-dependency-graph) | [`rules-issues.md`](./rules-issues.md)、對應 `rules/` 文件 |
+| 現在應該實作什麼 | [`implementation-features.md`](./implementation-features.md#目前執行順序) | [`card.md`](./card.md#support-set-dependency-graph) |
+| 功能是否完成或被什麼阻擋 | [`implementation-features.md`](./implementation-features.md) | [`card.md`](./card.md#版本與狀態)、[`rules-issues.md`](./rules-issues.md) |
+| 首版範圍、核心模型或完成門檻 | [`development-plan.md`](./development-plan.md) | 對應 ADR |
+| 規則歧義與採用的裁定 | [`rules-issues.md`](./rules-issues.md) | 官方 `rules/`、對應 ADR |
+| 測試策略與禁止模式 | [`testing.md`](./testing.md) | [`development-plan.md`](./development-plan.md#每個垂直切片的強制流程) |
+| 為什麼採用某項架構決策 | [`adr/`](./adr/) | [`development-plan.md`](./development-plan.md) |
+| 研究背景與外部模式 | [`research/`](./research/) | 研究文件引用的一手來源 |
 
-研究背景：
+## 文件責任與關聯
 
-- [`research/full-rules-review.md`](./research/full-rules-review.md)：完整閱讀 108 份鎖定規則文件後的風險清單與落地狀態。
-- [`research/card-game-engine-patterns.md`](./research/card-game-engine-patterns.md)：成熟遊戲引擎的一手來源模式研究。
+| 文件 | 唯一負責內容 | 可以引用 | 不應重複 |
+| --- | --- | --- | --- |
+| [`card.md`](./card.md) | 卡面資料流程、固定牌組、Content ID、Ability Slot、Support Set 與 dependency graph | `card/*.json`、data manifest、rules、ruling ID | 開發里程碑、架構原則、完整 ruling 內容 |
+| [`development-plan.md`](./development-plan.md) | 產品範圍、核心模型、架構原則、slice 與 release gate | `card.md`、ADR、rules issues | 具體牌表、目前資料版本、工作狀態 |
+| [`implementation-features.md`](./implementation-features.md) | 功能目錄、驗收條件、執行順序與工作狀態 | development plan、card dependency、ruling ID | 牌表、卡面能力全文、架構決策全文 |
+| [`rules-issues.md`](./rules-issues.md) | 規則歧義、裁定狀態、證據與處理流程 | 官方 rules、ADR | 牌組清單、實作進度 |
+| [`testing.md`](./testing.md) | 測試層級、情境格式、品質 gate 與禁止模式 | development plan、rules | 功能 backlog、卡牌 registry |
+| [`adr/`](./adr/) | 已批准且難以逆轉的單一決策及理由 | plan、rules、research | 當前版本、工作狀態 |
+| [`research/`](./research/) | 研究過程、風險與來源證據 | primary sources、ADR | 當前執行狀態 |
+
+關聯方向保持單向：`implementation-features.md` 讀取 `development-plan.md` 與 `card.md`；`card.md` 讀取卡面 manifest、rules 與 `rules-issues.md`；README 只導向這些文件。下游文件不得反向複製上游事實。
 
 ## ADR 索引
 
@@ -38,7 +49,4 @@
 | [0013](./adr/0013-preserve-event-batches-and-causality.md) | EventBatch 與因果關係 |
 | [0014](./adr/0014-centralize-derived-characteristics-and-replacements.md) | 中央 derived evaluator 與 replacement pipeline |
 | [0015](./adr/0015-retain-opportunity-until-the-holder-passes.md) | Opportunity 由行動者保留至讓過 |
-
-## 下一個可執行動作
-
-固定 Main Deck、Material Deck、`card-data-v1` 與初版內容閉包已建立。下一步整合並驗收里程碑 1 的 test-only walking skeleton，同時補齊 Outside Game Pool 與 CardFace／Ability Slot ID；矩陣達到 `ready` 前不開始正式卡牌 handler。
+| [0016](./adr/0016-use-hierarchical-content-ids.md) | CardFace 與 Ability Slot 的顯式階層式 ID |

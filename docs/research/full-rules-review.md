@@ -8,7 +8,7 @@
 
 | 問題 | 狀態 | 落地位置 |
 | --- | --- | --- |
-| 1. 支援內容閉包 | 已決定 | [ADR 0002](../adr/0002-reject-unsupported-card-mechanics-before-play.md)、[覆蓋矩陣範本](../card-support-matrix-template.md) |
+| 1. 支援內容閉包 | 已決定 | [ADR 0002](../adr/0002-reject-unsupported-card-mechanics-before-play.md)、[卡牌與 Support Set](../card.md) |
 | 2. Champion／ability identity | 已決定 | [ADR 0012](../adr/0012-separate-card-object-and-stack-identities.md)、[`CONTEXT.md`](../../CONTEXT.md) |
 | 3. Knowledge／visibility | 已決定 | [ADR 0006](../adr/0006-expose-player-scoped-views-to-controllers.md) |
 | 4. Scheduler／穩定停點 | 已決定 | [ADR 0010](../adr/0010-serialize-state-transitions-within-each-game.md) |
@@ -155,4 +155,4 @@ Game Zones 總覽宣稱共有 9 個 zone，但同一句實際列出 Main Deck、
 
 現有高階方向仍成立：權威確定性 Game Module、序列化輸入、玩家視角、Go typed effects、fail-fast 支援清單與 vertical-slice TDD 都沒有被完整規則推翻。
 
-原先需要重新確認的四組核心問題均已完成決策並落入 ADR、領域詞彙、開發計畫與測試策略，不需要繼續 grill。固定 Main Deck、Material Deck、`card-data-v1` 與初版 Support Set 已建立；剩餘內容工作是補齊 Outside Game Pool、CardFace／Ability Slot ID 及可執行 registry。實際被牌組觸及的規則 issue 已依 [`rules-issues.md`](../rules-issues.md) 處理；未來新增的未裁定處仍不得以未記錄的產品偏好替代官方語意。
+原先需要重新確認的四組核心問題均已完成決策並落入 ADR、領域詞彙、開發計畫與測試策略，不需要繼續 grill。固定牌組、卡面資料、Content ID 與 Support Set dependency graph 由 [`card.md`](../card.md) 管理；剩餘內容工作是完成可執行 registry 與對應測試。實際被牌組觸及的規則 issue 已依 [`rules-issues.md`](../rules-issues.md) 處理；未來新增的未裁定處仍不得以未記錄的產品偏好替代官方語意。
