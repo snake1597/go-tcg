@@ -12,6 +12,18 @@
 - 功能實作依照垂直切片推進，不應先把本文件的每個章節各做一個不相連的框架。
 - 所有規則測試都要標註規則 commit `602c917f2f8fd4df7198429a72eb596bf7f647c6`、來源檔案與條目。
 
+## 已完成基線
+
+以下能力已由早期 tracer bullet 驗證。後續拆票與實作應以此為起點，不重複建立相同的 walking skeleton 或卡面資料 manifest：
+
+| 基線 | 已完成能力 | 驗證 | 尚未代表完成的正式功能 |
+| --- | --- | --- | --- |
+| Walking skeleton（commit `e5ef1aa`） | 建立最小 Game Module seam；依玩家取得 `PlayerView`；以 revision、玩家、handle 與合法選項驗證 `PendingChoice` 回答；允許投降；成功提交後增加 revision | `TestWalkingSkeleton` 驗證非法輸入無副作用、合法選擇、投降及 replay 重播；`TestFixtureCLISmoke` 驗證 fixture CLI 可走完整 seam 並輸出可驗證 replay | 尚未建立正式 Standard 單局、完整 `GameState`、`KnowledgeState`／ViewHandle 壽命、合法行動列舉、`ResolutionFrame`、production CLI 或 bot |
+| Replay／state-hash 骨架（commit `e5ef1aa`） | 記錄成功的 choice／concede 輸入及每步 state hash，並可在新的相同 fixture 上重播驗證 | `Replay.Verify` 逐步比對輸入結果與 hash | 版本欄位仍為 fixture 值，PRNG 尚未接入；canonical serialization、正式單局建立、版本相容性與分歧診斷仍待完成 |
+| 卡面資料 manifest（commit `0ab4799`） | 從 repository `./card/*.json` 確定性建立並驗證 `card-data-manifest.json`；目前固定 `card-data-v3`、32 張卡與各檔案 digest | `internal/carddata` 測試涵蓋確定性、非法多份 JSON、重複 Card ID 及資料變更偵測 | 尚未完成固定 Deck Manifest 的 runtime 載入、Standard 合法性、Support Set gate、`CardDefinition`／`CardFace` 轉換或 production registry |
+
+本節記錄的是可重用的工程基線，不把對應功能域標為「完成」。只有下方完整驗收條件及正式規則測試全部通過後，才能更新功能狀態。`/to-tickets` 應只為上述「尚未代表完成」的差距與其後續垂直切片建立票券。
+
 ## 功能總覽
 
 | ID | 功能域 | 首版交付能力 | 前置條件 | 初始狀態 |
