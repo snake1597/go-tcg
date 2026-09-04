@@ -8,7 +8,7 @@
 
 - 狀態只使用 `待實作`、`進行中`、`被阻擋`、`完成`。
 - 功能只有在其驗收條件與相關測試都通過後才能標為完成。
-- 正式卡牌功能必須先列入 `docs/card-support-matrix.md`。目前矩陣已由固定 Main Deck 與 Material Deck 建立，但在 Outside Game Pool、CardFace／Ability Slot ID 與卡面資料版本補齊前維持 `blocked`。
+- 正式卡牌功能必須先列入 `docs/card-support-matrix.md`。目前矩陣已由固定 Main Deck、Material Deck 與 `card-data-v1` 建立，但在 Outside Game Pool、CardFace／Ability Slot ID 補齊前維持 `blocked`。
 - 功能實作依照垂直切片推進，不應先把本文件的每個章節各做一個不相連的框架。
 - 所有規則測試都要標註規則 commit `602c917f2f8fd4df7198429a72eb596bf7f647c6`、來源檔案與條目。
 
@@ -506,6 +506,6 @@ internal/cli/
 
 1. 明確的 Outside Game Pool，包含 `Rile the Abyss` 的 Card JSON 與數量。
 2. 每張卡及所有可達內容的 CardFace／Ability Slot ID。
-3. 卡面資料來源的鎖定版本／日期與可驗證 manifest。
+3. ~~卡面資料來源的鎖定版本／日期與可驗證 manifest。~~ 已完成：repository `./card/*.json` 與 `card-data-v1`。
 
 規則裁定目前不再構成 blocker：RUL-001 依 [ADR 0015](./adr/0015-retain-opportunity-until-the-holder-passes.md) 採用專案自訂裁定，RUL-002 與 RUL-004 已由官方來源解決。里程碑 1 的 test-only walking skeleton 可先開始，但不能誤列為正式卡牌支援。

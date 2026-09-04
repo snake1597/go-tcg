@@ -43,7 +43,6 @@ func main() {
 		"volda-smolders-spite",
 		"everflame-staff",
 		"fanned-synchron",
-		"incinerator-felindroid",
 		"reduce-to-ash",
 		"restorative-flame",
 	}
@@ -72,7 +71,7 @@ func main() {
 		}
 
 		fileName := fmt.Sprintf("./card/%s.json", card.Slug)
-		if err := appendJSONBody(fileName, body); err != nil {
+		if err := writeJSONBody(fileName, body); err != nil {
 			panic(err)
 		}
 
@@ -89,21 +88,10 @@ func main() {
 	}
 }
 
-func appendJSONBody(filename string, body []byte) error {
-	file, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
+func writeJSONBody(filename string, body []byte) error {
 	var formatted bytes.Buffer
 	if err := json.Indent(&formatted, body, "", "  "); err != nil {
 		return err
 	}
-
-	if _, err := file.Write(formatted.Bytes()); err != nil {
-		return err
-	}
-
-	return nil
+	return os.WriteFile(filename, formatted.Bytes(), 0o644)
 }
