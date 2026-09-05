@@ -92,24 +92,12 @@ func NewStandardGame(configuration StandardGameConfig) (*Game, error) {
 		}
 	}
 
-	players := []PlayerID{
+	game := NewGame(configuration.Seed)
+	game.players = []PlayerID{
 		configuration.Players[0],
 		configuration.Players[1],
 	}
-	return &Game{
-		players: players,
-		state: gameState{
-			Revision: 1,
-		},
-		replay: Replay{
-			EngineVersion:   "grand-archive-v1",
-			RulesVersion:    "602c917f2f8fd4df7198429a72eb596bf7f647c6",
-			CardDataVersion: FixedCardDataVersion,
-			DeckVersion:     FixedDeckVersion,
-			PRNGVersion:     "not-initialized",
-			Seed:            configuration.Seed,
-		},
-	}, nil
+	return game, nil
 }
 
 func validateDefinitionsAgainstRegistry(definitions map[CardID]CardDefinition, registry contentRegistry) error {
