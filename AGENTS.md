@@ -62,7 +62,6 @@ go-tcg/
 - 專有名詞（如 AppSDK）的命名方式以 Code Review 時的判斷為主，遇到特別奇怪的情況再提出討論
 
 ### 其他慣例
-- 每次實作、修改或新增檔案前，Agent 必須重新讀取完整 `AGENTS.md`；未完成讀取不得修改檔案。
 - YAML 測試資料不得使用 inline map；每筆資料的欄位需逐行展開，以維持可讀性與方便檢視差異。
 - struct literal、包含匿名函式或巢狀呼叫的函式呼叫不得 inline；即使只有一個欄位或參數，欄位、參數與匿名函式 body 均須逐行展開。
 
@@ -82,7 +81,7 @@ go-tcg/
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **go-tcg** (1383 symbols, 2814 relationships, 32 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **go-tcg** (1379 symbols, 2811 relationships, 31 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 
