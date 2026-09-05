@@ -65,6 +65,42 @@ func TestRegistryRejectsInvalidContent(t *testing.T) {
 			},
 			message: "has no handler",
 		},
+		{
+			name: "unknown mechanism reference",
+			mutate: func(spec *registrySpec) {
+				spec.abilities[0].Mechanisms = []MechanismID{
+					MechanismID("MEC-missing"),
+				}
+			},
+			message: "unknown Mechanism",
+		},
+		{
+			name: "unknown operation reference",
+			mutate: func(spec *registrySpec) {
+				spec.abilities[0].Operations = []OperationID{
+					OperationID("missing-operation"),
+				}
+			},
+			message: "unknown Operation",
+		},
+		{
+			name: "unknown dependency reference",
+			mutate: func(spec *registrySpec) {
+				spec.abilities[0].Dependencies = []ContentID{
+					ContentID("missing-content"),
+				}
+			},
+			message: "unknown Content dependency",
+		},
+		{
+			name: "unknown ruling reference",
+			mutate: func(spec *registrySpec) {
+				spec.abilities[0].Rulings = []RulingID{
+					RulingID("RUL-missing"),
+				}
+			},
+			message: "unknown Ruling",
+		},
 	}
 
 	for _, test := range tests {

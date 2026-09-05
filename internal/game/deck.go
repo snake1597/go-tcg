@@ -233,6 +233,12 @@ func validateFixedStandardDeck(deck DeckManifest, definitions map[CardID]CardDef
 	if err := validateDeckSection("outside game pool", deck.OutsideGamePool, 0, definitions); err != nil {
 		return err
 	}
+	canonicalDeck := fixedStandardDeck()
+	if !slices.Equal(deck.MainDeck, canonicalDeck.MainDeck) ||
+		!slices.Equal(deck.MaterialDeck, canonicalDeck.MaterialDeck) ||
+		!slices.Equal(deck.OutsideGamePool, canonicalDeck.OutsideGamePool) {
+		return errors.New("deck does not match the fixed manifest")
+	}
 
 	startingChampions := 0
 	for _, entry := range deck.MaterialDeck {

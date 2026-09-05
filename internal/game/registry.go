@@ -168,6 +168,9 @@ func buildRegistry(spec registrySpec) (contentRegistry, error) {
 	if err := addSupportRegistrations(&registry, spec); err != nil {
 		return contentRegistry{}, err
 	}
+	if err := validateRegistryReferences(registry); err != nil {
+		return contentRegistry{}, err
+	}
 	return registry, nil
 }
 
@@ -215,7 +218,10 @@ func validateBehaviorKeys(face faceRegistration) error {
 func validateBehaviorSlots(registry contentRegistry) error {
 	for _, face := range registry.faces {
 		for _, behavior := range face.Behaviors {
-			id := AbilitySlotID(strings.Replace(string(face.ID), "face:", "ability:", 1) + ":" + behavior)
+			id := abilitySlotID(
+				face.ID,
+				behavior,
+			)
 			if _, exists := registry.abilities[id]; !exists {
 				return fmt.Errorf("CardFace %q behavior %q has no Ability Slot", face.ID, behavior)
 			}
@@ -223,7 +229,12 @@ func validateBehaviorSlots(registry contentRegistry) error {
 	}
 	for _, ability := range registry.abilities {
 		face := registry.faces[ability.FaceID]
-		prefix := strings.Replace(string(face.ID), "face:", "ability:", 1) + ":"
+		prefix := string(
+			abilitySlotID(
+				face.ID,
+				"",
+			),
+		)
 		behavior := strings.TrimPrefix(string(ability.ID), prefix)
 		if !contains(face.Behaviors, behavior) {
 			return fmt.Errorf("Ability Slot %q has no rules-bearing behavior", ability.ID)
@@ -268,6 +279,83 @@ func addSupportRegistrations(registry *contentRegistry, spec registrySpec) error
 			return fmt.Errorf("duplicate Ruling ID %q", registration.ID)
 		}
 		registry.rulings[registration.ID] = registration
+	}
+	return nil
+}
+
+func validateRegistryReferences(registry contentRegistry) error {
+	for _, registration := range registry.cards {
+		if err := validateContentDependencies(registration.Dependencies, registry); err != nil {
+			return err
+		}
+	}
+	for _, registration := range registry.contents {
+		if err := validateContentDependencies(registration.Dependencies, registry); err != nil {
+			return err
+		}
+	}
+	for _, registration := range registry.abilities {
+		if err := validateAbilityReferences(registration, registry); err != nil {
+			return err
+		}
+	}
+	for _, registration := range registry.mechanisms {
+		for _, operationID := range registration.Operations {
+			if _, exists := registry.operations[operationID]; !exists {
+				return fmt.Errorf("Mechanism %q has unknown Operation %q", registration.ID, operationID)
+			}
+		}
+		for _, rulingID := range registration.Rulings {
+			if _, exists := registry.rulings[rulingID]; !exists {
+				return fmt.Errorf("Mechanism %q has unknown Ruling %q", registration.ID, rulingID)
+			}
+		}
+	}
+	return nil
+}
+
+func validateAbilityReferences(registration abilityRegistration, registry contentRegistry) error {
+	for _, mechanismID := range registration.Mechanisms {
+		if _, exists := registry.mechanisms[mechanismID]; !exists {
+			return fmt.Errorf("Ability Slot %q has unknown Mechanism %q", registration.ID, mechanismID)
+		}
+	}
+	for _, operationID := range registration.Operations {
+		if _, exists := registry.operations[operationID]; !exists {
+			return fmt.Errorf("Ability Slot %q has unknown Operation %q", registration.ID, operationID)
+		}
+	}
+	if err := validateContentDependencies(registration.Dependencies, registry); err != nil {
+		return fmt.Errorf("Ability Slot %q: %w", registration.ID, err)
+	}
+	for _, rulingID := range registration.Rulings {
+		if _, exists := registry.rulings[rulingID]; !exists {
+			return fmt.Errorf("Ability Slot %q has unknown Ruling %q", registration.ID, rulingID)
+		}
+	}
+	return nil
+}
+
+func validateContentDependencies(dependencies []ContentID, registry contentRegistry) error {
+	for _, dependencyID := range dependencies {
+		dependency := string(dependencyID)
+		if strings.HasPrefix(
+			dependency,
+			"card:",
+		) {
+			cardIDValue := strings.TrimPrefix(
+				dependency,
+				"card:",
+			)
+			cardID := CardID(cardIDValue)
+			if _, exists := registry.cards[cardID]; !exists {
+				return fmt.Errorf("unknown Content dependency %q", dependencyID)
+			}
+			continue
+		}
+		if _, exists := registry.contents[dependencyID]; !exists {
+			return fmt.Errorf("unknown Content dependency %q", dependencyID)
+		}
 	}
 	return nil
 }

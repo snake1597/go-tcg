@@ -67,6 +67,24 @@ func TestSupportSetRejectsOrphanProductionContent(t *testing.T) {
 		Status:    Supported,
 		Behaviors: []string{},
 	})
+	spec.mechanisms = []mechanismRegistration{
+		{
+			ID:     MechanismID("MEC-orphan"),
+			Status: Supported,
+		},
+	}
+	spec.operations = []supportRegistration[OperationID]{
+		{
+			ID:     OperationID("orphan-operation"),
+			Status: Supported,
+		},
+	}
+	spec.rulings = []rulingRegistration{
+		{
+			ID:     RulingID("RUL-orphan"),
+			Status: rulingResolved,
+		},
+	}
 	registry, err := buildRegistry(spec)
 	if err != nil {
 		t.Fatalf("buildRegistry() error = %v", err)
@@ -84,6 +102,18 @@ func TestSupportSetRejectsOrphanProductionContent(t *testing.T) {
 	assertDiagnostic(t, diagnostics, GateDiagnostic{
 		Kind: GateRegistry,
 		ID:   "card:orphan",
+	})
+	assertDiagnostic(t, diagnostics, GateDiagnostic{
+		Kind: GateRegistry,
+		ID:   "MEC-orphan",
+	})
+	assertDiagnostic(t, diagnostics, GateDiagnostic{
+		Kind: GateRegistry,
+		ID:   "orphan-operation",
+	})
+	assertDiagnostic(t, diagnostics, GateDiagnostic{
+		Kind: GateRegistry,
+		ID:   "RUL-orphan",
 	})
 }
 
@@ -127,6 +157,119 @@ func TestSupportSetReportsUnresolvedRuling(t *testing.T) {
 	})
 }
 
+func TestSupportSetReportsEveryMissingRequirement(t *testing.T) {
+	spec := validRegistrySpec()
+	spec.faces[0].Behaviors = []string{
+		"on-enter",
+		"missing-mechanism",
+		"missing-operation-ruling",
+	}
+	spec.abilities = append(spec.abilities,
+		abilityRegistration{
+			ID: AbilitySlotID(
+				"ability:card-a:front:missing-mechanism",
+			),
+			FaceID: CardFaceID("face:card-a:front"),
+			Status: Supported,
+			Handler: func() {
+			},
+			Mechanisms: []MechanismID{
+				MechanismID("MEC-missing"),
+			},
+		},
+		abilityRegistration{
+			ID: AbilitySlotID(
+				"ability:card-a:front:missing-operation-ruling",
+			),
+			FaceID: CardFaceID("face:card-a:front"),
+			Status: Supported,
+			Handler: func() {
+			},
+			Mechanisms: []MechanismID{
+				MechanismID("MEC-present"),
+			},
+		},
+	)
+	spec.mechanisms = []mechanismRegistration{
+		{
+			ID:     MechanismID("MEC-missing"),
+			Status: Supported,
+		},
+		{
+			ID:     MechanismID("MEC-present"),
+			Status: Supported,
+			Operations: []OperationID{
+				OperationID("test-operation"),
+			},
+			Rulings: []RulingID{
+				RulingID("RUL-test"),
+			},
+		},
+	}
+	spec.operations = []supportRegistration[OperationID]{
+		{
+			ID:     OperationID("test-operation"),
+			Status: Supported,
+		},
+	}
+	spec.rulings = []rulingRegistration{
+		{
+			ID:     RulingID("RUL-test"),
+			Status: rulingPending,
+		},
+	}
+	registry, err := buildRegistry(spec)
+	if err != nil {
+		t.Fatalf("buildRegistry() error = %v", err)
+	}
+	delete(
+		registry.abilities,
+		AbilitySlotID("ability:card-a:front:on-enter"),
+	)
+	delete(
+		registry.mechanisms,
+		MechanismID("MEC-missing"),
+	)
+	delete(
+		registry.operations,
+		OperationID("test-operation"),
+	)
+	delete(
+		registry.rulings,
+		RulingID("RUL-test"),
+	)
+
+	deck := DeckManifest{
+		Version:         FixedDeckVersion,
+		CardDataVersion: FixedCardDataVersion,
+		MainDeck: DeckSection{
+			deckEntry(
+				"card-a",
+				60,
+			),
+		},
+		MaterialDeck:    DeckSection{},
+		OutsideGamePool: DeckSection{},
+	}
+	_, diagnostics := evaluateSupportSet(deck, registry)
+	assertDiagnostic(t, diagnostics, GateDiagnostic{
+		Kind: GateAbility,
+		ID:   "ability:card-a:front:on-enter",
+	})
+	assertDiagnostic(t, diagnostics, GateDiagnostic{
+		Kind: GateMechanism,
+		ID:   "MEC-missing",
+	})
+	assertDiagnostic(t, diagnostics, GateDiagnostic{
+		Kind: GateOperation,
+		ID:   "test-operation",
+	})
+	assertDiagnostic(t, diagnostics, GateDiagnostic{
+		Kind: GateRuling,
+		ID:   "RUL-test",
+	})
+}
+
 func TestNewStandardGameReturnsCompleteGateFailure(t *testing.T) {
 	repositoryRoot := filepath.Join("..", "..")
 	configuration := StandardGameConfig{
@@ -155,6 +298,39 @@ func TestNewStandardGameReturnsCompleteGateFailure(t *testing.T) {
 		Kind: GateMechanism,
 		ID:   "MEC-001",
 	})
+}
+
+func TestDefinitionRegistryValidationRejectsUnknownCardFace(t *testing.T) {
+	repositoryRoot := filepath.Join(
+		"..",
+		"..",
+	)
+	definitions, err := loadCardDefinitions(
+		filepath.Join(
+			repositoryRoot,
+			"card",
+		),
+		filepath.Join(
+			repositoryRoot,
+			"card-data-manifest.json",
+		),
+	)
+	if err != nil {
+		t.Fatalf("loadCardDefinitions() error = %v", err)
+	}
+	registry, err := productionRegistry()
+	if err != nil {
+		t.Fatalf("productionRegistry() error = %v", err)
+	}
+	registry.faces[CardFaceID("face:GjM8b5fxqj:back")] = faceRegistration{
+		ID:        CardFaceID("face:GjM8b5fxqj:back"),
+		CardID:    CardID("GjM8b5fxqj"),
+		Status:    Unsupported,
+		Behaviors: []string{},
+	}
+	if err := validateDefinitionsAgainstRegistry(definitions, registry); err == nil {
+		t.Fatal("validateDefinitionsAgainstRegistry() accepted a CardFace absent from immutable card data")
+	}
 }
 
 func assertDiagnostic(t *testing.T, diagnostics []GateDiagnostic, want GateDiagnostic) {

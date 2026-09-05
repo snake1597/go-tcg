@@ -126,6 +126,20 @@ func validateDefinitionsAgainstRegistry(definitions map[CardID]CardDefinition, r
 			return fmt.Errorf("production registry card %q has no card definition", cardID)
 		}
 	}
+	for faceID, registration := range registry.faces {
+		definition, exists := definitions[registration.CardID]
+		if !exists {
+			return fmt.Errorf("production registry CardFace %q has no card definition", faceID)
+		}
+		if faceID != definition.Face().ID() {
+			return fmt.Errorf("production registry CardFace %q is absent from immutable card data", faceID)
+		}
+	}
+	for abilityID, registration := range registry.abilities {
+		if _, exists := definitions[registry.faces[registration.FaceID].CardID]; !exists {
+			return fmt.Errorf("production registry Ability Slot %q has no immutable CardFace", abilityID)
+		}
+	}
 	return nil
 }
 
@@ -244,10 +258,12 @@ func evaluateSupportSet(deck DeckManifest, registry contentRegistry) (supportClo
 		if registration.Status == Unsupported {
 			addDiagnostic(GateContent, string(id), "unsupported")
 		}
-		for abilityID, ability := range registry.abilities {
-			if ability.FaceID == id {
-				visitAbility(abilityID)
-			}
+		for _, behavior := range registration.Behaviors {
+			abilityID := abilitySlotID(
+				id,
+				behavior,
+			)
+			visitAbility(abilityID)
 		}
 	}
 	visitCard = func(id CardID) {
@@ -339,6 +355,21 @@ func addOrphanDiagnostics(closure supportClosure, registry contentRegistry, add 
 			add(GateRegistry, string(id), "orphaned formal content")
 		}
 	}
+	for id := range registry.mechanisms {
+		if !closure.mechanisms[id] {
+			add(GateRegistry, string(id), "orphaned formal content")
+		}
+	}
+	for id := range registry.operations {
+		if !closure.operations[id] {
+			add(GateRegistry, string(id), "orphaned formal content")
+		}
+	}
+	for id := range registry.rulings {
+		if !closure.rulings[id] {
+			add(GateRegistry, string(id), "orphaned formal content")
+		}
+	}
 }
 
 func compareGateDiagnostic(first, second GateDiagnostic) int {
@@ -349,4 +380,14 @@ func compareGateDiagnostic(first, second GateDiagnostic) int {
 		return 1
 	}
 	return strings.Compare(first.ID, second.ID)
+}
+
+func abilitySlotID(faceID CardFaceID, behavior string) AbilitySlotID {
+	abilityPrefix := strings.Replace(
+		string(faceID),
+		"face:",
+		"ability:",
+		1,
+	)
+	return AbilitySlotID(abilityPrefix + ":" + behavior)
 }

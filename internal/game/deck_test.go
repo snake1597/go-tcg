@@ -102,6 +102,33 @@ func TestFixedStandardDeckRejectsInvalidManifest(t *testing.T) {
 			},
 			message: "maximum is 4",
 		},
+		{
+			name: "substituted known main deck card",
+			mutate: func(deck *DeckManifest) {
+				deck.MainDeck[0].CardID = CardID("LMyKyVC2O9")
+				deck.MainDeck[0].FaceID = CardFaceID("face:LMyKyVC2O9:front")
+			},
+			message: "does not match the fixed manifest",
+		},
+		{
+			name: "removed material deck card",
+			mutate: func(deck *DeckManifest) {
+				deck.MaterialDeck = deck.MaterialDeck[:11]
+			},
+			message: "does not match the fixed manifest",
+		},
+		{
+			name: "added outside game pool card",
+			mutate: func(deck *DeckManifest) {
+				deck.OutsideGamePool = DeckSection{
+					deckEntry(
+						"GjM8b5fxqj",
+						1,
+					),
+				}
+			},
+			message: "does not match the fixed manifest",
+		},
 	}
 
 	for _, test := range tests {
