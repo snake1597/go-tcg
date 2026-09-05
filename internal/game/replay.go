@@ -4,6 +4,39 @@ import "fmt"
 
 const ReplayFormatVersion = 1
 
+type ReplayFailure string
+
+const (
+	ReplayInputRejected     ReplayFailure = "input_rejected"
+	ReplayStateHashMismatch ReplayFailure = "state_hash_mismatch"
+)
+
+type ReplayError struct {
+	InputIndex int
+	Failure    ReplayFailure
+	Reason     string
+	Cause      error
+}
+
+func (e *ReplayError) Error() string {
+	return fmt.Sprintf("replay input %d %s: %s", e.InputIndex, e.Failure.description(), e.Reason)
+}
+
+func (e *ReplayError) Unwrap() error {
+	return e.Cause
+}
+
+func (f ReplayFailure) description() string {
+	switch f {
+	case ReplayInputRejected:
+		return "rejected"
+	case ReplayStateHashMismatch:
+		return "state hash mismatch"
+	default:
+		return string(f)
+	}
+}
+
 type Versions struct {
 	Engine   string `json:"engine"`
 	Rules    string `json:"rules"`
@@ -37,10 +70,19 @@ func (r Replay) Verify() error {
 	game := NewGame(r.InitialSeed)
 	for index, step := range r.Steps {
 		if err := game.Submit(step.Player, step.Input); err != nil {
-			return fmt.Errorf("replay input %d rejected: %w", index, err)
+			return &ReplayError{
+				InputIndex: index,
+				Failure:    ReplayInputRejected,
+				Reason:     err.Error(),
+				Cause:      err,
+			}
 		}
 		if got := game.StateHash(); got != step.StateHash {
-			return fmt.Errorf("replay input %d state hash mismatch: got %s, want %s", index, got, step.StateHash)
+			return &ReplayError{
+				InputIndex: index,
+				Failure:    ReplayStateHashMismatch,
+				Reason:     fmt.Sprintf("got %s, want %s", got, step.StateHash),
+			}
 		}
 	}
 	return nil
