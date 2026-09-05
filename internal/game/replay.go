@@ -7,19 +7,24 @@ const ReplayFormatVersion = 1
 type ReplayFailure string
 
 const (
+	ReplayVersionMismatch   ReplayFailure = "version_mismatch"
 	ReplayInputRejected     ReplayFailure = "input_rejected"
 	ReplayStateHashMismatch ReplayFailure = "state_hash_mismatch"
 )
 
 type ReplayError struct {
-	InputIndex int
+	InputIndex int // -1 when verification fails before the first input.
 	Failure    ReplayFailure
 	Reason     string
 	Cause      error
 }
 
 func (e *ReplayError) Error() string {
-	return fmt.Sprintf("replay input %d %s: %s", e.InputIndex, e.Failure.description(), e.Reason)
+	description := e.Failure.description()
+	if e.Failure == ReplayVersionMismatch {
+		return fmt.Sprintf("replay header %s: %s", description, e.Reason)
+	}
+	return fmt.Sprintf("replay input %d %s: %s", e.InputIndex, description, e.Reason)
 }
 
 func (e *ReplayError) Unwrap() error {
@@ -28,6 +33,8 @@ func (e *ReplayError) Unwrap() error {
 
 func (f ReplayFailure) description() string {
 	switch f {
+	case ReplayVersionMismatch:
+		return "version mismatch"
 	case ReplayInputRejected:
 		return "rejected"
 	case ReplayStateHashMismatch:
@@ -61,7 +68,13 @@ type ReplayStep struct {
 // Verify replays the canonical input sequence against a fresh game instance.
 func (r Replay) Verify() error {
 	if r.FormatVersion != ReplayFormatVersion {
-		return fmt.Errorf("incompatible replay format version %d, want %d", r.FormatVersion, ReplayFormatVersion)
+		return newReplayVersionMismatch(
+			fmt.Sprintf(
+				"incompatible replay format version %d, want %d",
+				r.FormatVersion,
+				ReplayFormatVersion,
+			),
+		)
 	}
 	if err := verifyVersions(r.Versions); err != nil {
 		return err
@@ -91,19 +104,57 @@ func (r Replay) Verify() error {
 func verifyVersions(got Versions) error {
 	want := currentVersions()
 	if got.Engine != want.Engine {
-		return fmt.Errorf("incompatible engine version %q, want %q", got.Engine, want.Engine)
+		return newReplayVersionMismatch(
+			fmt.Sprintf(
+				"incompatible engine version %q, want %q",
+				got.Engine,
+				want.Engine,
+			),
+		)
 	}
 	if got.Rules != want.Rules {
-		return fmt.Errorf("incompatible rules version %q, want %q", got.Rules, want.Rules)
+		return newReplayVersionMismatch(
+			fmt.Sprintf(
+				"incompatible rules version %q, want %q",
+				got.Rules,
+				want.Rules,
+			),
+		)
 	}
 	if got.CardData != want.CardData {
-		return fmt.Errorf("incompatible card data version %q, want %q", got.CardData, want.CardData)
+		return newReplayVersionMismatch(
+			fmt.Sprintf(
+				"incompatible card data version %q, want %q",
+				got.CardData,
+				want.CardData,
+			),
+		)
 	}
 	if got.Deck != want.Deck {
-		return fmt.Errorf("incompatible deck version %q, want %q", got.Deck, want.Deck)
+		return newReplayVersionMismatch(
+			fmt.Sprintf(
+				"incompatible deck version %q, want %q",
+				got.Deck,
+				want.Deck,
+			),
+		)
 	}
 	if got.PRNG != want.PRNG {
-		return fmt.Errorf("incompatible PRNG version %q, want %q", got.PRNG, want.PRNG)
+		return newReplayVersionMismatch(
+			fmt.Sprintf(
+				"incompatible PRNG version %q, want %q",
+				got.PRNG,
+				want.PRNG,
+			),
+		)
 	}
 	return nil
+}
+
+func newReplayVersionMismatch(reason string) *ReplayError {
+	return &ReplayError{
+		InputIndex: -1,
+		Failure:    ReplayVersionMismatch,
+		Reason:     reason,
+	}
 }

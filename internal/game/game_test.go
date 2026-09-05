@@ -46,8 +46,10 @@ func TestSameSeedAndInputProduceSameStateHash(t *testing.T) {
 		t.Fatalf("second Submit() error = %v", err)
 	}
 
-	if first.StateHash() != second.StateHash() {
-		t.Fatalf("state hashes differ: %q != %q", first.StateHash(), second.StateHash())
+	firstHash := first.StateHash()
+	secondHash := second.StateHash()
+	if firstHash != secondHash {
+		t.Fatalf("state hashes differ: %q != %q", firstHash, secondHash)
 	}
 	firstView := first.PlayerView(PlayerTwo)
 	secondView := second.PlayerView(PlayerTwo)
@@ -56,8 +58,10 @@ func TestSameSeedAndInputProduceSameStateHash(t *testing.T) {
 	}
 	firstReplay := first.Replay()
 	secondReplay := second.Replay()
-	if len(firstReplay.Steps) != 1 || len(secondReplay.Steps) != 1 {
-		t.Fatalf("replay step counts = %d and %d, want 1", len(firstReplay.Steps), len(secondReplay.Steps))
+	firstStepCount := len(firstReplay.Steps)
+	secondStepCount := len(secondReplay.Steps)
+	if firstStepCount != 1 || secondStepCount != 1 {
+		t.Fatalf("replay step counts = %d and %d, want 1", firstStepCount, secondStepCount)
 	}
 	if firstReplay.Steps[0].StateHash != secondReplay.Steps[0].StateHash {
 		t.Fatalf("replay hashes differ: %q != %q", firstReplay.Steps[0].StateHash, secondReplay.Steps[0].StateHash)
@@ -71,7 +75,8 @@ func TestStateHashUsesCanonicalVersionedState(t *testing.T) {
 	if got := game.StateHash(); got != want {
 		t.Fatalf("StateHash() = %q, want canonical digest %q", got, want)
 	}
-	if other := NewGame(43).StateHash(); other == want {
+	otherGame := NewGame(43)
+	if other := otherGame.StateHash(); other == want {
 		t.Fatalf("StateHash() ignored the seed: seed 43 also produced %q", other)
 	}
 }
@@ -119,17 +124,23 @@ func TestRejectedInputDoesNotChangeGame(t *testing.T) {
 				game := NewGame(42)
 				beforeView := game.PlayerView(PlayerOne)
 				beforeHash := game.StateHash()
-				beforeReplay, err := json.Marshal(game.Replay())
+				replayBeforeInput := game.Replay()
+				beforeReplay, err := json.Marshal(replayBeforeInput)
 				if err != nil {
 					t.Fatalf("marshal replay before input: %v", err)
 				}
 
 				err = game.Submit(testCase.player, testCase.input)
-				if err == nil || !strings.Contains(err.Error(), testCase.wantReason) {
+				if err == nil {
+					t.Fatalf("Submit() error = nil, want reason %q", testCase.wantReason)
+				}
+				errorMessage := err.Error()
+				if !strings.Contains(errorMessage, testCase.wantReason) {
 					t.Fatalf("Submit() error = %v, want reason %q", err, testCase.wantReason)
 				}
 
-				afterReplay, err := json.Marshal(game.Replay())
+				replayAfterInput := game.Replay()
+				afterReplay, err := json.Marshal(replayAfterInput)
 				if err != nil {
 					t.Fatalf("marshal replay after input: %v", err)
 				}
@@ -157,7 +168,8 @@ func TestReplayVerifiesFromRecordedVersionsAndSeed(t *testing.T) {
 		t.Fatalf("Submit() error = %v", err)
 	}
 
-	if err := game.Replay().Verify(); err != nil {
+	replay := game.Replay()
+	if err := replay.Verify(); err != nil {
 		t.Fatalf("Replay().Verify() error = %v", err)
 	}
 }
@@ -204,7 +216,8 @@ func TestReplayRejectsEachIncompatibleVersion(t *testing.T) {
 		t.Run(
 			testCase.name,
 			func(t *testing.T) {
-				replay := NewGame(42).Replay()
+				game := NewGame(42)
+				replay := game.Replay()
 				switch testCase.field {
 				case "format":
 					replay.FormatVersion++
@@ -221,7 +234,18 @@ func TestReplayRejectsEachIncompatibleVersion(t *testing.T) {
 				}
 
 				err := replay.Verify()
-				if err == nil || !strings.Contains(err.Error(), testCase.wantReason) {
+				var diagnostic *ReplayError
+				if !errors.As(err, &diagnostic) {
+					t.Fatalf("Verify() error = %v, want *ReplayError", err)
+				}
+				if diagnostic.InputIndex != -1 {
+					t.Fatalf("ReplayError.InputIndex = %d, want -1", diagnostic.InputIndex)
+				}
+				if diagnostic.Failure != ReplayVersionMismatch {
+					t.Fatalf("ReplayError.Failure = %q, want %q", diagnostic.Failure, ReplayVersionMismatch)
+				}
+				errorMessage := diagnostic.Error()
+				if !strings.Contains(errorMessage, testCase.wantReason) {
 					t.Fatalf("Verify() error = %v, want reason %q", err, testCase.wantReason)
 				}
 			},
@@ -252,7 +276,8 @@ func TestReplayReportsFirstStateHashDivergence(t *testing.T) {
 	if diagnostic.Failure != ReplayStateHashMismatch {
 		t.Fatalf("ReplayError.Failure = %q, want %q", diagnostic.Failure, ReplayStateHashMismatch)
 	}
-	if !strings.Contains(diagnostic.Error(), "state hash mismatch") {
-		t.Fatalf("ReplayError.Error() = %q, want readable hash mismatch reason", diagnostic.Error())
+	errorMessage := diagnostic.Error()
+	if !strings.Contains(errorMessage, "state hash mismatch") {
+		t.Fatalf("ReplayError.Error() = %q, want readable hash mismatch reason", errorMessage)
 	}
 }
