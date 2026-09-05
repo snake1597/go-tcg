@@ -1,0 +1,2 @@
+allow if command.has_prefix("go test")
+allow if command.has_prefix("gofmt")
