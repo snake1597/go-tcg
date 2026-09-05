@@ -9,11 +9,53 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"time"
 
 	carddata "go-tcg/internal/card_data"
 	"go-tcg/internal/constants"
-	"go-tcg/internal/entity"
 )
+
+type Card struct {
+	Classes      []string     `json:"classes"`
+	Cost         *Cost        `json:"cost"`
+	CreatedAt    time.Time    `json:"created_at"`
+	Durability   *int64       `json:"durability"`
+	Effect       *string      `json:"effect"`
+	EffectRaw    *string      `json:"effect_raw"`
+	Elements     []string     `json:"elements"`
+	Flavor       *string      `json:"flavor"`
+	LastUpdate   time.Time    `json:"last_update"`
+	Level        *int64       `json:"level"`
+	Life         *int64       `json:"life"`
+	Name         string       `json:"name"`
+	Power        *int64       `json:"power"`
+	ReferencedBy []*Reference `json:"referenced_by"`
+	References   []*Reference `json:"references"`
+	Rule         []*Rule      `json:"rule"`
+	Slug         string       `json:"slug"`
+	Speed        *bool        `json:"speed"`
+	Subtypes     []string     `json:"subtypes"`
+	Types        []string     `json:"types"`
+	UUID         string       `json:"uuid"`
+}
+
+type Cost struct {
+	Type  string `json:"type"`
+	Value string `json:"value"`
+}
+
+type Rule struct {
+	DateAdded   string `json:"date_added"`
+	Description string `json:"description"`
+	Title       string `json:"title"`
+}
+
+type Reference struct {
+	Kind      string `json:"kind"`
+	Name      string `json:"name"`
+	Slug      string `json:"slug"`
+	Direction string `json:"direction"`
+}
 
 type CardID string
 
@@ -25,12 +67,12 @@ type CardDefinition struct {
 	id          CardID
 	dataVersion string
 	face        CardFace
-	card        entity.Card
+	card        Card
 }
 
 type CardFace struct {
 	id   CardFaceID
-	card entity.Card
+	card Card
 }
 
 func (definition CardDefinition) ID() CardID {
@@ -53,7 +95,7 @@ func (face CardFace) ID() CardFaceID {
 	return face.id
 }
 
-func (definition CardDefinition) faceData() entity.Card {
+func (definition CardDefinition) faceData() Card {
 	return definition.card
 }
 
@@ -184,22 +226,22 @@ func loadCardDefinitions(cardDirectory, manifestPath string) (map[CardID]CardDef
 	return definitions, nil
 }
 
-func readCard(path string) (entity.Card, error) {
+func readCard(path string) (Card, error) {
 	contents, err := os.ReadFile(path)
 	if err != nil {
-		return entity.Card{}, fmt.Errorf("read card %s: %w", path, err)
+		return Card{}, fmt.Errorf("read card %s: %w", path, err)
 	}
 	decoder := json.NewDecoder(bytes.NewReader(contents))
-	var card entity.Card
+	var card Card
 	if err := decoder.Decode(&card); err != nil {
-		return entity.Card{}, fmt.Errorf("decode card %s: %w", path, err)
+		return Card{}, fmt.Errorf("decode card %s: %w", path, err)
 	}
 	var extra json.RawMessage
 	if err := decoder.Decode(&extra); !errors.Is(err, io.EOF) {
 		if err == nil {
-			return entity.Card{}, fmt.Errorf("card %s contains more than one JSON value", path)
+			return Card{}, fmt.Errorf("card %s contains more than one JSON value", path)
 		}
-		return entity.Card{}, fmt.Errorf("decode card %s trailing data: %w", path, err)
+		return Card{}, fmt.Errorf("decode card %s trailing data: %w", path, err)
 	}
 	return card, nil
 }

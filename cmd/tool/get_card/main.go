@@ -4,7 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"go-tcg/internal/entity"
+	"go-tcg/internal/game"
+
 	"io"
 	"log"
 	"net/http"
@@ -66,7 +67,7 @@ func main() {
 			panic(err)
 		}
 
-		card := &entity.Card{}
+		card := &game.Card{}
 		err = json.Unmarshal(body, card)
 		if err != nil {
 			log.Printf("json.Unmarshal error: %v, slug: %s", err, slug)
