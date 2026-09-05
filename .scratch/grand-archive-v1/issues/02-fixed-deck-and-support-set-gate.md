@@ -4,7 +4,7 @@
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** completed
 
 - [ ] Main Deck、Material Deck 與 Outside Game Pool 的數量、內容 ID、資料版本及鏡像一致性皆會驗證。
 - [ ] Registry 拒絕非法階層式 ID、未知 parent、重複 slot、遺漏行為或孤立正式內容。
