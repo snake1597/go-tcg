@@ -12,14 +12,22 @@ import (
 )
 
 type Input struct {
-	Revision uint64              `json:"revision"`
-	Kind     constants.InputKind `json:"kind"`
+	Revision uint64     `json:"revision"`
+	Action   ViewHandle `json:"action"`
+}
+
+type ViewHandle string
+
+type LegalAction struct {
+	Handle ViewHandle           `json:"handle"`
+	Kind   constants.ActionKind `json:"kind"`
 }
 
 type PlayerView struct {
-	Revision uint64             `json:"revision"`
-	Finished bool               `json:"finished"`
-	Winner   constants.PlayerID `json:"winner,omitempty"`
+	Revision     uint64             `json:"revision"`
+	Finished     bool               `json:"finished"`
+	Winner       constants.PlayerID `json:"winner,omitempty"`
+	LegalActions []LegalAction      `json:"legal_actions"`
 }
 
 type Game struct {
@@ -30,10 +38,15 @@ type Game struct {
 }
 
 type gameState struct {
-	Revision uint64
-	Finished bool
-	Winner   constants.PlayerID
-	PRNG     prngState
+	Revision  uint64
+	Finished  bool
+	Winner    constants.PlayerID
+	PRNG      prngState
+	Knowledge knowledgeState
+}
+
+type knowledgeState struct {
+	Actions map[constants.PlayerID]map[ViewHandle]constants.ActionKind
 }
 
 type prngState struct {
@@ -49,11 +62,12 @@ type canonicalState struct {
 	Finished      bool                 `json:"finished"`
 	Winner        constants.PlayerID   `json:"winner"`
 	PRNG          prngState            `json:"prng"`
+	Knowledge     knowledgeState       `json:"knowledge"`
 }
 
 func NewGame(seed uint64) *Game {
 	versions := currentVersions()
-	return &Game{
+	game := &Game{
 		versions: versions,
 		players: []constants.PlayerID{
 			constants.PlayerOne,
@@ -71,6 +85,8 @@ func NewGame(seed uint64) *Game {
 			InitialSeed:   seed,
 		},
 	}
+	game.refreshKnowledgeState()
+	return game
 }
 
 func currentVersions() Versions {
@@ -84,22 +100,27 @@ func currentVersions() Versions {
 }
 
 func (g *Game) Submit(player constants.PlayerID, input Input) error {
+	if !g.hasPlayer(player) {
+		return fmt.Errorf("%w %q", tcgErrors.ErrUnknownPlayer, player)
+	}
 	if g.state.Finished {
 		return tcgErrors.ErrGameFinished
 	}
 	if input.Revision != g.state.Revision {
 		return fmt.Errorf("%w: got %d, current %d", tcgErrors.ErrStaleRevision, input.Revision, g.state.Revision)
 	}
-	if !g.hasPlayer(player) {
-		return fmt.Errorf("%w %q", tcgErrors.ErrUnknownPlayer, player)
+	kind, exists := g.state.Knowledge.Actions[player][input.Action]
+	if !exists {
+		return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, input.Action)
 	}
-	if input.Kind != constants.InputConcede {
-		return fmt.Errorf("%w %q", tcgErrors.ErrUnknownInputKind, input.Kind)
+	if kind != constants.ActionConcede {
+		return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, input.Action)
 	}
 
 	g.state.Finished = true
 	g.state.Winner = g.otherPlayer(player)
 	g.state.Revision++
+	g.refreshKnowledgeState()
 	g.replay.Steps = append(
 		g.replay.Steps,
 		ReplayStep{
@@ -111,12 +132,18 @@ func (g *Game) Submit(player constants.PlayerID, input Input) error {
 	return nil
 }
 
-func (g *Game) PlayerView(player constants.PlayerID) PlayerView {
+func (g *Game) PlayerView(player constants.PlayerID) (PlayerView, error) {
+	if !g.hasPlayer(player) {
+		return PlayerView{}, fmt.Errorf("%w %q", tcgErrors.ErrUnknownPlayer, player)
+	}
 	return PlayerView{
 		Revision: g.state.Revision,
 		Finished: g.state.Finished,
 		Winner:   g.state.Winner,
-	}
+		LegalActions: g.legalActions(
+			player,
+		),
+	}, nil
 }
 
 func (g *Game) StateHash() string {
@@ -128,6 +155,7 @@ func (g *Game) StateHash() string {
 		Finished:      g.state.Finished,
 		Winner:        g.state.Winner,
 		PRNG:          g.state.PRNG,
+		Knowledge:     g.state.Knowledge,
 	}
 	state, err := json.Marshal(canonical)
 	if err != nil {
@@ -135,6 +163,56 @@ func (g *Game) StateHash() string {
 	}
 	sum := sha256.Sum256(state)
 	return hex.EncodeToString(sum[:])
+}
+
+func (g *Game) refreshKnowledgeState() {
+	knowledge := knowledgeState{
+		Actions: make(map[constants.PlayerID]map[ViewHandle]constants.ActionKind, len(g.players)),
+	}
+	for _, player := range g.players {
+		actions := make(map[ViewHandle]constants.ActionKind)
+		if !g.state.Finished {
+			handle := g.actionHandle(
+				player,
+				constants.ActionConcede,
+			)
+			actions[handle] = constants.ActionConcede
+		}
+		knowledge.Actions[player] = actions
+	}
+	g.state.Knowledge = knowledge
+}
+
+func (g *Game) legalActions(player constants.PlayerID) []LegalAction {
+	actions := g.state.Knowledge.Actions[player]
+	if len(actions) == 0 {
+		return []LegalAction{}
+	}
+	legalActions := make([]LegalAction, 0, len(actions))
+	for handle, kind := range actions {
+		legalActions = append(
+			legalActions,
+			LegalAction{
+				Handle: handle,
+				Kind:   kind,
+			},
+		)
+	}
+	return legalActions
+}
+
+func (g *Game) actionHandle(player constants.PlayerID, kind constants.ActionKind) ViewHandle {
+	value := fmt.Sprintf(
+		"view-handle-v1:%d:%d:%s:%s",
+		g.state.PRNG.Seed,
+		g.state.Revision,
+		player,
+		kind,
+	)
+	valueBytes := []byte(value)
+	sum := sha256.Sum256(valueBytes)
+	encoded := hex.EncodeToString(sum[:])
+	return ViewHandle(encoded)
 }
 
 func (g *Game) Replay() Replay {

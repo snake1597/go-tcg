@@ -7,10 +7,10 @@ const (
 	PlayerTwo PlayerID = "player-2"
 )
 
-type InputKind string
+type ActionKind string
 
 const (
-	InputConcede InputKind = "concede"
+	ActionConcede ActionKind = "concede"
 )
 
 const (
