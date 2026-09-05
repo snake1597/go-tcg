@@ -4,9 +4,9 @@
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** completed
 
-- [ ] Replay 記錄並驗證引擎、規則、卡面資料、牌組及 PRNG 版本與初始 seed。
-- [ ] 相同版本、seed 與輸入序列逐步產生相同 canonical state hash。
-- [ ] 不相容版本或 hash 分歧會指出第一個失敗輸入與可判讀原因，不會靜默接受。
-- [ ] 非法或過期輸入不改變 state、revision、replay 或 PRNG cursor。
+- [x] Replay 記錄並驗證引擎、規則、卡面資料、牌組及 PRNG 版本與初始 seed。
+- [x] 相同版本、seed 與輸入序列逐步產生相同 canonical state hash。
+- [x] 不相容版本或 hash 分歧會指出第一個失敗輸入與可判讀原因，不會靜默接受。
+- [x] 非法或過期輸入不改變 state、revision、replay 或 PRNG cursor。

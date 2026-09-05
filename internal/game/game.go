@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"go-tcg/internal/constants"
 	tcgErrors "go-tcg/internal/tcg_errors"
+
+	"github.com/samber/lo"
 )
 
 type Input struct {
@@ -145,7 +147,7 @@ func (g *Game) Replay() Replay {
 }
 
 func (g *Game) hasPlayer(player constants.PlayerID) bool {
-	return contains(g.players, player)
+	return lo.Contains(g.players, player)
 }
 
 func (g *Game) otherPlayer(player constants.PlayerID) constants.PlayerID {
@@ -155,13 +157,4 @@ func (g *Game) otherPlayer(player constants.PlayerID) constants.PlayerID {
 		}
 	}
 	return ""
-}
-
-func contains[T comparable](items []T, want T) bool {
-	for _, item := range items {
-		if item == want {
-			return true
-		}
-	}
-	return false
 }

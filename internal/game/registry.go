@@ -5,6 +5,8 @@ import (
 	"go-tcg/internal/constants"
 	"regexp"
 	"strings"
+
+	"github.com/samber/lo"
 )
 
 type ContentID string
@@ -222,7 +224,8 @@ func validateBehaviorSlots(registry contentRegistry) error {
 			),
 		)
 		behavior := strings.TrimPrefix(string(ability.ID), prefix)
-		if !contains(face.Behaviors, behavior) {
+
+		if !lo.Contains(face.Behaviors, behavior) {
 			return fmt.Errorf("Ability Slot %q has no rules-bearing behavior", ability.ID)
 		}
 	}

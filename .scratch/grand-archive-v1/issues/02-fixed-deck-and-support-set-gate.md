@@ -6,7 +6,7 @@
 
 **Status:** completed
 
-- [ ] Main Deck、Material Deck 與 Outside Game Pool 的數量、內容 ID、資料版本及鏡像一致性皆會驗證。
-- [ ] Registry 拒絕非法階層式 ID、未知 parent、重複 slot、遺漏行為或孤立正式內容。
-- [ ] Support Set closure 包含所有可達內容，正式內容只有 supported 或 unsupported 兩種狀態。
-- [ ] Gate 失敗會完整列出缺少的內容、Ability Slot、機制、operation 或未裁定 issue。
+- [x] Main Deck、Material Deck 與 Outside Game Pool 的數量、內容 ID、資料版本及鏡像一致性皆會驗證。
+- [x] Registry 拒絕非法階層式 ID、未知 parent、重複 slot、遺漏行為或孤立正式內容。
+- [x] Support Set closure 包含所有可達內容，正式內容只有 supported 或 unsupported 兩種狀態。
+- [x] Gate 失敗會完整列出缺少的內容、Ability Slot、機制、operation 或未裁定 issue。

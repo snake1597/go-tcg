@@ -8,8 +8,8 @@
 | --- | --- | --- |
 | 固定牌組、卡面版本、CardFace、Ability Slot 或 Support Set | [`card.md`](./card.md) | 對應 `card/*.json`、[`../card-data-manifest.json`](../card-data-manifest.json) |
 | 某張卡依賴哪些機制或其他卡牌 | [`card.md`](./card.md#support-set-dependency-graph) | [`rules-issues.md`](./rules-issues.md)、對應 `rules/` 文件 |
-| 現在應該實作什麼 | [`implementation-features.md`](./implementation-features.md#目前執行順序) | [`card.md`](./card.md#support-set-dependency-graph) |
-| 功能是否完成或被什麼阻擋 | [`implementation-features.md`](./implementation-features.md) | [`card.md`](./card.md#版本與狀態)、[`rules-issues.md`](./rules-issues.md) |
+| 現在應該實作什麼 | [Grand Archive v1 工作追蹤](../.scratch/grand-archive-v1/issues/README.md#目前可執行) | [`card.md`](./card.md#support-set-dependency-graph) |
+| 功能是否完成或被什麼阻擋 | [Grand Archive v1 工作追蹤](../.scratch/grand-archive-v1/issues/README.md) | [`implementation-features.md`](./implementation-features.md)、[`rules-issues.md`](./rules-issues.md) |
 | 首版範圍、核心模型或完成門檻 | [`development-plan.md`](./development-plan.md) | 對應 ADR |
 | 規則歧義與採用的裁定 | [`rules-issues.md`](./rules-issues.md) | 官方 `rules/`、對應 ADR |
 | 測試策略與禁止模式 | [`testing.md`](./testing.md) | [`development-plan.md`](./development-plan.md#每個垂直切片的強制流程) |
@@ -22,13 +22,14 @@
 | --- | --- | --- | --- |
 | [`card.md`](./card.md) | 卡面資料流程、固定牌組、Content ID、Ability Slot、Support Set 與 dependency graph | `card/*.json`、data manifest、rules、ruling ID | 開發里程碑、架構原則、完整 ruling 內容 |
 | [`development-plan.md`](./development-plan.md) | 產品範圍、核心模型、架構原則、slice 與 release gate | `card.md`、ADR、rules issues | 具體牌表、目前資料版本、工作狀態 |
-| [`implementation-features.md`](./implementation-features.md) | 功能目錄、驗收條件、執行順序與工作狀態 | development plan、card dependency、ruling ID | 牌表、卡面能力全文、架構決策全文 |
+| [`implementation-features.md`](./implementation-features.md) | 功能目錄與完整驗收範圍 | development plan、card dependency、ruling ID | 執行順序、工作狀態、牌表、卡面能力全文、架構決策全文 |
+| [Grand Archive v1 工作追蹤](../.scratch/grand-archive-v1/issues/README.md) | 里程碑、issue 執行順序、相依、狀態與逐項驗收結果 | implementation features、card dependency、rules issues | 完整功能規格、牌表、規則裁定內容 |
 | [`rules-issues.md`](./rules-issues.md) | 規則歧義、裁定狀態、證據與處理流程 | 官方 rules、ADR | 牌組清單、實作進度 |
 | [`testing.md`](./testing.md) | 測試層級、情境格式、品質 gate 與禁止模式 | development plan、rules | 功能 backlog、卡牌 registry |
 | [`adr/`](./adr/) | 已批准且難以逆轉的單一決策及理由 | plan、rules、research | 當前版本、工作狀態 |
 | [`research/`](./research/) | 研究過程、風險與來源證據 | primary sources、ADR | 當前執行狀態 |
 
-關聯方向保持單向：`implementation-features.md` 讀取 `development-plan.md` 與 `card.md`；`card.md` 讀取卡面 manifest、rules 與 `rules-issues.md`；README 只導向這些文件。下游文件不得反向複製上游事實。
+關聯方向保持單向：工作追蹤讀取 `implementation-features.md`、`card.md` 與 `rules-issues.md`；`implementation-features.md` 讀取 `development-plan.md` 與 `card.md`；`card.md` 讀取卡面 manifest、rules 與 `rules-issues.md`；README 只導向這些文件。下游文件不得反向複製上游事實。
 
 ## ADR 索引
 

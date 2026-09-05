@@ -6,9 +6,8 @@
 
 ## 使用方式
 
-- 狀態只使用 `待實作`、`進行中`、`被阻擋`、`完成`。
-- 功能只有在其驗收條件與相關測試都通過後才能標為完成。
-- 正式卡牌功能必須先列入 [`card.md`](./card.md)；內容維持 `blocked`，直到相依機制與測試完成。
+- 工作狀態與逐項完成結果只在 [Grand Archive v1 工作追蹤](../.scratch/grand-archive-v1/issues/README.md) 維護。
+- 正式卡牌功能必須先列入 [`card.md`](./card.md)，並由對應 issue 追蹤相依機制與測試。
 - 功能實作依照垂直切片推進，不應先把本文件的每個章節各做一個不相連的框架。
 - 所有規則測試都要標註規則 commit `602c917f2f8fd4df7198429a72eb596bf7f647c6`、來源檔案與條目。
 
@@ -22,29 +21,29 @@
 | Replay／state-hash 骨架（commit `e5ef1aa`） | 記錄成功的 choice／concede 輸入及每步 state hash，並可在新的相同 fixture 上重播驗證 | `Replay.Verify` 逐步比對輸入結果與 hash | 版本欄位仍為 fixture 值，PRNG 尚未接入；canonical serialization、正式單局建立、版本相容性與分歧診斷仍待完成 |
 | 卡面資料 manifest（commit `0ab4799`） | 從 repository `./card/*.json` 確定性建立並驗證 `card-data-manifest.json`；目前固定 `card-data-v3`、32 張卡與各檔案 digest | `internal/carddata` 測試涵蓋確定性、非法多份 JSON、重複 Card ID 及資料變更偵測 | 尚未完成固定 Deck Manifest 的 runtime 載入、Standard 合法性、Support Set gate、`CardDefinition`／`CardFace` 轉換或 production registry |
 
-本節記錄的是可重用的工程基線，不把對應功能域標為「完成」。只有下方完整驗收條件及正式規則測試全部通過後，才能更新功能狀態。`/to-tickets` 應只為上述「尚未代表完成」的差距與其後續垂直切片建立票券。
+本節記錄的是可重用的工程基線，不代表對應功能域已完成。`/to-tickets` 應只為上述「尚未代表完成」的差距與其後續垂直切片建立票券。
 
 ## 功能總覽
 
-| ID | 功能域 | 首版交付能力 | 前置條件 | 初始狀態 |
-| --- | --- | --- | --- | --- |
-| DECK | 牌組與支援集合 | 載入、驗證唯一固定牌組及完整內容閉包 | 固定牌組與卡面版本 | 被阻擋 |
-| GAME | 單局與回合 | 建立並推進雙人 Standard 單局直到結束 | CORE、DECK | 待實作 |
-| CORE | 身分、區域與狀態 | 保存權威且可確定重現的單局狀態 | 無 | 待實作 |
-| ACTION | 玩家行動與選擇 | 產生合法行動並原子提交逐步宣告 | CORE、VIEW | 待實作 |
-| STACK | Effects Stack | 管理來源卡、StackItem、FILO 與結算 | CORE、ACTION | 待實作 |
-| ABILITY | 能力與卡牌行為 | 以 typed Go 註冊並執行卡牌能力 | DECK、CORE、STACK | 被阻擋 |
-| TRIGGER | 觸發效果 | 偵測、聚合、排序並建立觸發能力 | EVENT、STACK | 待實作 |
-| EFFECT | 效果求值 | 執行 typed operations、持續與替代效果 | ABILITY、EVENT | 被阻擋 |
-| RULE | 排程與狀態檢查 | 自動推進到穩定停點並求得 fixed point | CORE、EVENT | 待實作 |
-| COMBAT | 戰鬥 | 完成攻擊、回應、傷害與死亡流程 | GAME、STACK、TRIGGER | 待實作 |
-| VIEW | 玩家資訊與合法選項 | 防止隱藏資訊與內部身分洩漏 | CORE | 待實作 |
-| EVENT | 事件與因果 | 保存批次、同時性、順序及原因鏈 | CORE | 待實作 |
-| RNG | 確定性亂數 | 可指定 seed 且可回滾、可重播 | CORE | 待實作 |
-| REPLAY | 重播與 state hash | 逐步重現輸入並驗證相同狀態 | GAME、RNG、EVENT | 待實作 |
-| BOT | 啟發式 bot | 只憑自身 PlayerView 完成對局 | GAME、VIEW | 待實作 |
-| CLI | 命令列介面 | 顯示資訊、收集選擇、輸出 replay | GAME、VIEW、REPLAY | 待實作 |
-| GOVERN | 規則治理與支援 gate | 未支援或未裁定內容在開局前被拒絕 | DECK、ABILITY | 待實作 |
+| ID | 功能域 | 首版交付能力 | 前置條件 |
+| --- | --- | --- | --- |
+| DECK | 牌組與支援集合 | 載入、驗證唯一固定牌組及完整內容閉包 | 固定牌組與卡面版本 |
+| GAME | 單局與回合 | 建立並推進雙人 Standard 單局直到結束 | CORE、DECK |
+| CORE | 身分、區域與狀態 | 保存權威且可確定重現的單局狀態 | 無 |
+| ACTION | 玩家行動與選擇 | 產生合法行動並原子提交逐步宣告 | CORE、VIEW |
+| STACK | Effects Stack | 管理來源卡、StackItem、FILO 與結算 | CORE、ACTION |
+| ABILITY | 能力與卡牌行為 | 以 typed Go 註冊並執行卡牌能力 | DECK、CORE、STACK |
+| TRIGGER | 觸發效果 | 偵測、聚合、排序並建立觸發能力 | EVENT、STACK |
+| EFFECT | 效果求值 | 執行 typed operations、持續與替代效果 | ABILITY、EVENT |
+| RULE | 排程與狀態檢查 | 自動推進到穩定停點並求得 fixed point | CORE、EVENT |
+| COMBAT | 戰鬥 | 完成攻擊、回應、傷害與死亡流程 | GAME、STACK、TRIGGER |
+| VIEW | 玩家資訊與合法選項 | 防止隱藏資訊與內部身分洩漏 | CORE |
+| EVENT | 事件與因果 | 保存批次、同時性、順序及原因鏈 | CORE |
+| RNG | 確定性亂數 | 可指定 seed 且可回滾、可重播 | CORE |
+| REPLAY | 重播與 state hash | 逐步重現輸入並驗證相同狀態 | GAME、RNG、EVENT |
+| BOT | 啟發式 bot | 只憑自身 PlayerView 完成對局 | GAME、VIEW |
+| CLI | 命令列介面 | 顯示資訊、收集選擇、輸出 replay | GAME、VIEW、REPLAY |
+| GOVERN | 規則治理與支援 gate | 未支援或未裁定內容在開局前被拒絕 | DECK、ABILITY |
 
 ## DECK：牌組、卡面資料與支援集合
 
@@ -501,24 +500,8 @@ internal/cli/
 
 目前 [`internal/entity/card.go`](../internal/entity/card.go) 應視為外部卡面資料結構；它不足以同時代表 `CardDefinition`、`CardInstance`、`GameObject` 或 `StackItem`，不可直接作為單局狀態模型。
 
-## 里程碑對應
+## 工作追蹤
 
-| 里程碑 | 應完成的主要功能 |
-| --- | --- |
-| 0. 規格入口 | 固定 Main／Material Deck 與初版矩陣已完成；補齊 DECK-01～04、ABILITY-02、GOVERN-01～02 的其餘資料與 gate |
-| 1. 最小端到端骨架 | CORE-01／04、ACTION-01／03 的最小 fixture、VIEW-01～03、RNG、REPLAY、CLI 啟動與投降 |
-| 2. Standard 生命週期 | GAME-01～05、RULE、EVENT、Level 0 Champion On Enter 與 deckout |
-| 3. 第一張可操作卡 | ACTION-02、STACK、ABILITY、TRIGGER，以及該卡所需的最小 EFFECT operation |
-| 4. 戰鬥縱切 | COMBAT-01～03、戰鬥事件、On Hit／On Kill、死亡與 Champion 敗北 |
-| 5. 固定牌組擴充 | 按 Support Set dependency graph 逐列完成 ABILITY／EFFECT 與跨卡互動 |
-| 6. 首版收尾 | BOT、CLI 可讀性、完整 replay 回歸、fuzz/property、100 場批次對戰及文件 gate |
-
-## 目前執行順序
-
-1. 完成里程碑 1 尚缺的版本驗證、canonical serialization 與統一診斷結果。
-2. 將 [`card.md`](./card.md) 已固定的 CardFace／Ability Slot inventory 實作為 production registry。
-3. 以起始 Champion 與 Level 1 Champion 完成 Standard 開局、lineage 與 materialize。
-4. 以 [`card.md`](./card.md) 指定的第一張 action 完成 declaration transaction、Effects Stack、checkpoint 與 rollback。
-5. 依同一文件的 dependency graph 擴充 Cardistry、combat、continuous、replacement 與 triggered abilities。
+里程碑、執行順序、issue 相依、狀態與逐項驗收結果統一由 [Grand Archive v1 工作追蹤](../.scratch/grand-archive-v1/issues/README.md) 維護，本功能清單不重複保存這些易變資訊。
 
 GameState、scheduler、RuleCheckpoint、EventBatch 與 StackItem 的共同語意在第一張正式 action 完成前維持單一路徑；PlayerView、replay、內容驗證與 CLI 只能透過已固定的 Game Module seam 並行。正式內容的實際阻擋狀態與規則裁定分別由 [`card.md`](./card.md) 及 [`rules-issues.md`](./rules-issues.md) 擁有，本清單不複製其狀態。
