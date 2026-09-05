@@ -62,7 +62,13 @@ type gameState struct {
 	PRNG       prngState
 	Knowledge  knowledgeState
 	Entities   map[entityID]knowledgeEntity
+	Cards      map[cardInstanceID]cardInstance
+	Zones      map[constants.PlayerID]playerZones
+	Champions  map[constants.PlayerID]championObject
+	Scheduler  schedulerFrame
+	Events     []eventBatch
 	NextHandle uint64
+	NextEvent  uint64
 }
 
 type prngState struct {
@@ -71,16 +77,22 @@ type prngState struct {
 }
 
 type canonicalState struct {
-	SchemaVersion int                          `json:"schema_version"`
-	Versions      Versions                     `json:"versions"`
-	Players       []constants.PlayerID         `json:"players"`
-	Revision      uint64                       `json:"revision"`
-	Finished      bool                         `json:"finished"`
-	Winner        constants.PlayerID           `json:"winner"`
-	PRNG          prngState                    `json:"prng"`
-	Knowledge     knowledgeState               `json:"knowledge"`
-	Entities      map[entityID]knowledgeEntity `json:"entities"`
-	NextHandle    uint64                       `json:"next_handle"`
+	SchemaVersion int                                   `json:"schema_version"`
+	Versions      Versions                              `json:"versions"`
+	Players       []constants.PlayerID                  `json:"players"`
+	Revision      uint64                                `json:"revision"`
+	Finished      bool                                  `json:"finished"`
+	Winner        constants.PlayerID                    `json:"winner"`
+	PRNG          prngState                             `json:"prng"`
+	Knowledge     knowledgeState                        `json:"knowledge"`
+	Entities      map[entityID]knowledgeEntity          `json:"entities"`
+	Cards         map[cardInstanceID]cardInstance       `json:"cards"`
+	Zones         map[constants.PlayerID]playerZones    `json:"zones"`
+	Champions     map[constants.PlayerID]championObject `json:"champions"`
+	Scheduler     schedulerFrame                        `json:"scheduler"`
+	Events        []eventBatch                          `json:"events"`
+	NextHandle    uint64                                `json:"next_handle"`
+	NextEvent     uint64                                `json:"next_event"`
 }
 
 func NewGame(seed uint64) *Game {
@@ -92,8 +104,12 @@ func NewGame(seed uint64) *Game {
 			constants.PlayerTwo,
 		},
 		state: gameState{
-			Revision: 1,
-			Entities: make(map[entityID]knowledgeEntity),
+			Revision:  1,
+			Entities:  make(map[entityID]knowledgeEntity),
+			Cards:     make(map[cardInstanceID]cardInstance),
+			Zones:     make(map[constants.PlayerID]playerZones),
+			Champions: make(map[constants.PlayerID]championObject),
+			Events:    []eventBatch{},
 			PRNG: prngState{
 				Seed: seed,
 			},
@@ -208,7 +224,13 @@ func (g *Game) StateHash() string {
 		PRNG:          g.state.PRNG,
 		Knowledge:     g.state.Knowledge,
 		Entities:      g.state.Entities,
+		Cards:         g.state.Cards,
+		Zones:         g.state.Zones,
+		Champions:     g.state.Champions,
+		Scheduler:     g.state.Scheduler,
+		Events:        g.state.Events,
 		NextHandle:    g.state.NextHandle,
+		NextEvent:     g.state.NextEvent,
 	}
 	state, err := json.Marshal(canonical)
 	if err != nil {

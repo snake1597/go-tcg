@@ -203,7 +203,7 @@ func TestSameSeedAndInputProduceSameStateHash(t *testing.T) {
 
 func TestStateHashUsesCanonicalVersionedState(t *testing.T) {
 	game := NewGame(42)
-	const want = "15631dad35d6f70f49f26e5f39412f805fad42f9bdc3fa085adb44ba9ebae3af"
+	const want = "5c61f00cd8ba402096b79e429598f195b51d46ee03217baf71c11d7b689529e1"
 
 	if got := game.StateHash(); got != want {
 		t.Fatalf("StateHash() = %q, want canonical digest %q", got, want)
