@@ -1,163 +1,258 @@
 package game
 
 import (
-	"bufio"
 	"encoding/json"
-	"os"
-	"os/exec"
+	"errors"
 	"strings"
 	"testing"
 )
 
-func newTestFixture() *Game {
-	return newGame([]PlayerID{"player-1", "player-2"}, PendingChoice{
-		ID:      "fixture-opening-choice",
-		Player:  "player-1",
-		Options: []string{"left", "right"},
-	})
-}
+func TestNewGamePinsReplayVersionsAndSeed(t *testing.T) {
+	const seed uint64 = 42
 
-func TestWalkingSkeleton(t *testing.T) {
-	game := newTestFixture()
-	view := game.PlayerView("player-1")
-	if view.Revision != 1 || view.PendingChoice == nil {
-		t.Fatalf("initial PlayerView = %#v, want pending choice at revision 1", view)
-	}
-
-	before := game.StateHash()
-	if err := game.SubmitChoice("player-1", SubmitChoice{Revision: 0, Handle: view.PendingChoice.Handle, Option: "left"}); err == nil {
-		t.Fatal("stale revision was accepted")
-	}
-	if game.StateHash() != before {
-		t.Fatal("stale revision changed state")
-	}
-	if err := game.SubmitChoice("player-2", SubmitChoice{Revision: view.Revision, Handle: view.PendingChoice.Handle, Option: "left"}); err == nil {
-		t.Fatal("cross-player handle was accepted")
-	}
-	if game.StateHash() != before {
-		t.Fatal("cross-player handle changed state")
-	}
-	if err := game.SubmitChoice("player-1", SubmitChoice{Revision: view.Revision, Handle: view.PendingChoice.Handle, Option: "invalid"}); err == nil {
-		t.Fatal("illegal option was accepted")
-	}
-	if game.StateHash() != before {
-		t.Fatal("illegal option changed state")
-	}
-
-	if err := game.SubmitChoice("player-1", SubmitChoice{Revision: view.Revision, Handle: view.PendingChoice.Handle, Option: "left"}); err != nil {
-		t.Fatalf("submit choice: %v", err)
-	}
-	if err := game.Concede("player-2"); err != nil {
-		t.Fatalf("concede: %v", err)
-	}
-	if !game.PlayerView("player-1").Finished {
-		t.Fatal("game did not finish after concession")
-	}
-
+	game := NewGame(seed)
 	replay := game.Replay()
-	if err := replay.Verify(newTestFixture()); err != nil {
-		t.Fatalf("replay verification: %v", err)
+
+	wantVersions := Versions{
+		Engine:   "grand-archive-v1",
+		Rules:    "602c917f2f8fd4df7198429a72eb596bf7f647c6",
+		CardData: "card-data-v3",
+		Deck:     "standard-fire-v2",
+		PRNG:     "splitmix64-v1",
+	}
+	if replay.FormatVersion != 1 {
+		t.Fatalf("Replay().FormatVersion = %d, want 1", replay.FormatVersion)
+	}
+	if replay.Versions != wantVersions {
+		t.Fatalf("Replay().Versions = %#v, want %#v", replay.Versions, wantVersions)
+	}
+	if replay.InitialSeed != seed {
+		t.Fatalf("Replay().InitialSeed = %d, want %d", replay.InitialSeed, seed)
 	}
 }
 
-func TestFixtureCLISmoke(t *testing.T) {
-	cmd := exec.Command(os.Args[0], "-test.run=TestFixtureCLIHelper", "--")
-	cmd.Env = append(os.Environ(), "GO_TCG_FIXTURE_CLI=1")
-	stdin, err := cmd.StdinPipe()
-	if err != nil {
-		t.Fatal(err)
-	}
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := cmd.Start(); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := stdin.Write([]byte("{\"player\":\"player-1\",\"action\":\"choice\",\"revision\":1,\"handle\":\"choice-player-1-r1\",\"option\":\"left\"}\n{\"player\":\"player-2\",\"action\":\"concede\"}\n")); err != nil {
-		t.Fatal(err)
-	}
-	if err := stdin.Close(); err != nil {
-		t.Fatal(err)
+func TestSameSeedAndInputProduceSameStateHash(t *testing.T) {
+	first := NewGame(42)
+	second := NewGame(42)
+	input := Input{
+		Revision: 1,
+		Kind:     InputConcede,
 	}
 
-	var lines []cliResponse
-	scanner := bufio.NewScanner(stdout)
-	for scanner.Scan() {
-		var line cliResponse
-		if err := json.Unmarshal(scanner.Bytes(), &line); err != nil {
-			t.Fatal(err)
-		}
-		lines = append(lines, line)
+	if err := first.Submit(PlayerOne, input); err != nil {
+		t.Fatalf("first Submit() error = %v", err)
 	}
-	if err := scanner.Err(); err != nil {
-		t.Fatal(err)
+	if err := second.Submit(PlayerOne, input); err != nil {
+		t.Fatalf("second Submit() error = %v", err)
 	}
-	if err := cmd.Wait(); err != nil {
-		t.Fatal(err)
+
+	if first.StateHash() != second.StateHash() {
+		t.Fatalf("state hashes differ: %q != %q", first.StateHash(), second.StateHash())
 	}
-	if len(lines) != 3 || lines[0].View == nil || !lines[2].ReplayValid || lines[2].Replay == nil {
-		t.Fatalf("CLI responses = %#v, want final verified replay", lines)
+	firstView := first.PlayerView(PlayerTwo)
+	secondView := second.PlayerView(PlayerTwo)
+	if firstView != secondView || !firstView.Finished || firstView.Winner != PlayerTwo {
+		t.Fatalf("final views = %#v and %#v, want player two to win", firstView, secondView)
 	}
-	if err := lines[2].Replay.Verify(newTestFixture()); err != nil {
-		t.Fatalf("CLI emitted unverifiable replay: %v", err)
+	firstReplay := first.Replay()
+	secondReplay := second.Replay()
+	if len(firstReplay.Steps) != 1 || len(secondReplay.Steps) != 1 {
+		t.Fatalf("replay step counts = %d and %d, want 1", len(firstReplay.Steps), len(secondReplay.Steps))
+	}
+	if firstReplay.Steps[0].StateHash != secondReplay.Steps[0].StateHash {
+		t.Fatalf("replay hashes differ: %q != %q", firstReplay.Steps[0].StateHash, secondReplay.Steps[0].StateHash)
 	}
 }
 
-type cliRequest struct {
-	Player   PlayerID `json:"player"`
-	Action   string   `json:"action"`
-	Revision uint64   `json:"revision"`
-	Handle   string   `json:"handle"`
-	Option   string   `json:"option"`
+func TestStateHashUsesCanonicalVersionedState(t *testing.T) {
+	game := NewGame(42)
+	const want = "4da77f261fec6a6d37587fc54f012b9e73aeb88d84fb39281d7b40653b4956da"
+
+	if got := game.StateHash(); got != want {
+		t.Fatalf("StateHash() = %q, want canonical digest %q", got, want)
+	}
+	if other := NewGame(43).StateHash(); other == want {
+		t.Fatalf("StateHash() ignored the seed: seed 43 also produced %q", other)
+	}
 }
 
-type cliResponse struct {
-	Error       string      `json:"error,omitempty"`
-	ReplayValid bool        `json:"replay_valid,omitempty"`
-	Replay      *Replay     `json:"replay,omitempty"`
-	View        *PlayerView `json:"view,omitempty"`
+func TestRejectedInputDoesNotChangeGame(t *testing.T) {
+	testCases := []struct {
+		name       string
+		player     PlayerID
+		input      Input
+		wantReason string
+	}{
+		{
+			name:   "stale revision",
+			player: PlayerOne,
+			input: Input{
+				Revision: 0,
+				Kind:     InputConcede,
+			},
+			wantReason: "stale revision",
+		},
+		{
+			name:   "unknown player",
+			player: "intruder",
+			input: Input{
+				Revision: 1,
+				Kind:     InputConcede,
+			},
+			wantReason: "unknown player",
+		},
+		{
+			name:   "unknown input kind",
+			player: PlayerOne,
+			input: Input{
+				Revision: 1,
+				Kind:     "unsupported",
+			},
+			wantReason: "unknown input kind",
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(
+			testCase.name,
+			func(t *testing.T) {
+				game := NewGame(42)
+				beforeView := game.PlayerView(PlayerOne)
+				beforeHash := game.StateHash()
+				beforeReplay, err := json.Marshal(game.Replay())
+				if err != nil {
+					t.Fatalf("marshal replay before input: %v", err)
+				}
+
+				err = game.Submit(testCase.player, testCase.input)
+				if err == nil || !strings.Contains(err.Error(), testCase.wantReason) {
+					t.Fatalf("Submit() error = %v, want reason %q", err, testCase.wantReason)
+				}
+
+				afterReplay, err := json.Marshal(game.Replay())
+				if err != nil {
+					t.Fatalf("marshal replay after input: %v", err)
+				}
+				if game.PlayerView(PlayerOne) != beforeView {
+					t.Fatalf("PlayerView() changed after rejected input")
+				}
+				if game.StateHash() != beforeHash {
+					t.Fatalf("StateHash() changed after rejected input")
+				}
+				if string(afterReplay) != string(beforeReplay) {
+					t.Fatalf("Replay() changed after rejected input: before %s, after %s", beforeReplay, afterReplay)
+				}
+			},
+		)
+	}
 }
 
-func TestFixtureCLIHelper(t *testing.T) {
-	if os.Getenv("GO_TCG_FIXTURE_CLI") != "1" {
-		return
+func TestReplayVerifiesFromRecordedVersionsAndSeed(t *testing.T) {
+	game := NewGame(42)
+	input := Input{
+		Revision: 1,
+		Kind:     InputConcede,
 	}
-	game := newTestFixture()
-	scanner := bufio.NewScanner(os.Stdin)
-	encoder := json.NewEncoder(os.Stdout)
-	_ = encoder.Encode(cliResponse{View: ptr(game.PlayerView("player-1"))})
-	for scanner.Scan() {
-		var request cliRequest
-		if err := json.Unmarshal(scanner.Bytes(), &request); err != nil {
-			_ = encoder.Encode(cliResponse{Error: err.Error()})
-			continue
-		}
-		var err error
-		switch request.Action {
-		case "choice":
-			err = game.SubmitChoice(request.Player, SubmitChoice{Revision: request.Revision, Handle: request.Handle, Option: request.Option})
-		case "concede":
-			err = game.Concede(request.Player)
-		default:
-			err = errInvalidInput
-		}
-		if err != nil {
-			_ = encoder.Encode(cliResponse{Error: err.Error()})
-			continue
-		}
-		response := cliResponse{}
-		if game.PlayerView("player-1").Finished {
-			replay := game.Replay()
-			response.Replay = &replay
-			response.ReplayValid = replay.Verify(newTestFixture()) == nil
-		}
-		_ = encoder.Encode(response)
+	if err := game.Submit(PlayerTwo, input); err != nil {
+		t.Fatalf("Submit() error = %v", err)
 	}
-	if err := scanner.Err(); err != nil && !strings.Contains(err.Error(), "closed") {
-		t.Fatal(err)
+
+	if err := game.Replay().Verify(); err != nil {
+		t.Fatalf("Replay().Verify() error = %v", err)
 	}
-	os.Exit(0)
 }
 
-func ptr[T any](value T) *T { return &value }
+func TestReplayRejectsEachIncompatibleVersion(t *testing.T) {
+	testCases := []struct {
+		name       string
+		field      string
+		wantReason string
+	}{
+		{
+			name:       "format",
+			field:      "format",
+			wantReason: "replay format version",
+		},
+		{
+			name:       "engine",
+			field:      "engine",
+			wantReason: "engine version",
+		},
+		{
+			name:       "rules",
+			field:      "rules",
+			wantReason: "rules version",
+		},
+		{
+			name:       "card data",
+			field:      "card_data",
+			wantReason: "card data version",
+		},
+		{
+			name:       "deck",
+			field:      "deck",
+			wantReason: "deck version",
+		},
+		{
+			name:       "PRNG",
+			field:      "prng",
+			wantReason: "PRNG version",
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(
+			testCase.name,
+			func(t *testing.T) {
+				replay := NewGame(42).Replay()
+				switch testCase.field {
+				case "format":
+					replay.FormatVersion++
+				case "engine":
+					replay.Versions.Engine = "old"
+				case "rules":
+					replay.Versions.Rules = "old"
+				case "card_data":
+					replay.Versions.CardData = "old"
+				case "deck":
+					replay.Versions.Deck = "old"
+				case "prng":
+					replay.Versions.PRNG = "old"
+				}
+
+				err := replay.Verify()
+				if err == nil || !strings.Contains(err.Error(), testCase.wantReason) {
+					t.Fatalf("Verify() error = %v, want reason %q", err, testCase.wantReason)
+				}
+			},
+		)
+	}
+}
+
+func TestReplayReportsFirstStateHashDivergence(t *testing.T) {
+	game := NewGame(42)
+	input := Input{
+		Revision: 1,
+		Kind:     InputConcede,
+	}
+	if err := game.Submit(PlayerOne, input); err != nil {
+		t.Fatalf("Submit() error = %v", err)
+	}
+	replay := game.Replay()
+	replay.Steps[0].StateHash = strings.Repeat("0", 64)
+
+	err := replay.Verify()
+	var diagnostic *ReplayError
+	if !errors.As(err, &diagnostic) {
+		t.Fatalf("Verify() error = %v, want *ReplayError", err)
+	}
+	if diagnostic.InputIndex != 0 {
+		t.Fatalf("ReplayError.InputIndex = %d, want 0", diagnostic.InputIndex)
+	}
+	if diagnostic.Failure != ReplayStateHashMismatch {
+		t.Fatalf("ReplayError.Failure = %q, want %q", diagnostic.Failure, ReplayStateHashMismatch)
+	}
+	if !strings.Contains(diagnostic.Error(), "state hash mismatch") {
+		t.Fatalf("ReplayError.Error() = %q, want readable hash mismatch reason", diagnostic.Error())
+	}
+}

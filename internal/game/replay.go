@@ -2,46 +2,66 @@ package game
 
 import "fmt"
 
-type Replay struct {
-	EngineVersion   string        `json:"engine_version"`
-	RulesVersion    string        `json:"rules_version"`
-	CardDataVersion string        `json:"card_data_version"`
-	DeckVersion     string        `json:"deck_version"`
-	PRNGVersion     string        `json:"prng_version"`
-	Seed            uint64        `json:"seed"`
-	Inputs          []ReplayInput `json:"inputs"`
-	Hashes          []string      `json:"hashes"`
+const ReplayFormatVersion = 1
+
+type Versions struct {
+	Engine   string `json:"engine"`
+	Rules    string `json:"rules"`
+	CardData string `json:"card_data"`
+	Deck     string `json:"deck"`
+	PRNG     string `json:"prng"`
 }
 
-type ReplayInput struct {
-	Player   PlayerID `json:"player"`
-	Kind     string   `json:"kind"`
-	Revision uint64   `json:"revision,omitempty"`
-	Handle   string   `json:"handle,omitempty"`
-	Option   string   `json:"option,omitempty"`
+type Replay struct {
+	FormatVersion int          `json:"format_version"`
+	Versions      Versions     `json:"versions"`
+	InitialSeed   uint64       `json:"initial_seed"`
+	Steps         []ReplayStep `json:"steps"`
+}
+
+type ReplayStep struct {
+	Player    PlayerID `json:"player"`
+	Input     Input    `json:"input"`
+	StateHash string   `json:"state_hash"`
 }
 
 // Verify replays the canonical input sequence against a fresh game instance.
-func (r Replay) Verify(game *Game) error {
-	if len(r.Inputs) != len(r.Hashes) {
-		return fmt.Errorf("replay has %d inputs but %d hashes", len(r.Inputs), len(r.Hashes))
+func (r Replay) Verify() error {
+	if r.FormatVersion != ReplayFormatVersion {
+		return fmt.Errorf("incompatible replay format version %d, want %d", r.FormatVersion, ReplayFormatVersion)
 	}
-	for index, input := range r.Inputs {
-		var err error
-		switch input.Kind {
-		case "choice":
-			err = game.SubmitChoice(input.Player, SubmitChoice{Revision: input.Revision, Handle: input.Handle, Option: input.Option})
-		case "concede":
-			err = game.Concede(input.Player)
-		default:
-			return fmt.Errorf("replay input %d has unknown kind %q", index, input.Kind)
+	if err := verifyVersions(r.Versions); err != nil {
+		return err
+	}
+
+	game := NewGame(r.InitialSeed)
+	for index, step := range r.Steps {
+		if err := game.Submit(step.Player, step.Input); err != nil {
+			return fmt.Errorf("replay input %d rejected: %w", index, err)
 		}
-		if err != nil {
-			return fmt.Errorf("replay input %d: %w", index, err)
+		if got := game.StateHash(); got != step.StateHash {
+			return fmt.Errorf("replay input %d state hash mismatch: got %s, want %s", index, got, step.StateHash)
 		}
-		if got := game.StateHash(); got != r.Hashes[index] {
-			return fmt.Errorf("replay state %d hash = %s, want %s", index, got, r.Hashes[index])
-		}
+	}
+	return nil
+}
+
+func verifyVersions(got Versions) error {
+	want := currentVersions()
+	if got.Engine != want.Engine {
+		return fmt.Errorf("incompatible engine version %q, want %q", got.Engine, want.Engine)
+	}
+	if got.Rules != want.Rules {
+		return fmt.Errorf("incompatible rules version %q, want %q", got.Rules, want.Rules)
+	}
+	if got.CardData != want.CardData {
+		return fmt.Errorf("incompatible card data version %q, want %q", got.CardData, want.CardData)
+	}
+	if got.Deck != want.Deck {
+		return fmt.Errorf("incompatible deck version %q, want %q", got.Deck, want.Deck)
+	}
+	if got.PRNG != want.PRNG {
+		return fmt.Errorf("incompatible PRNG version %q, want %q", got.PRNG, want.PRNG)
 	}
 	return nil
 }

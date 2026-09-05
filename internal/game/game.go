@@ -9,101 +9,143 @@ import (
 	"fmt"
 )
 
-var errInvalidInput = errors.New("invalid game input")
+var (
+	ErrGameFinished     = errors.New("game is finished")
+	ErrStaleRevision    = errors.New("stale revision")
+	ErrUnknownPlayer    = errors.New("unknown player")
+	ErrUnknownInputKind = errors.New("unknown input kind")
+)
 
 type PlayerID string
 
-type PendingChoice struct {
-	ID      string
-	Player  PlayerID
-	Options []string
-}
+const (
+	PlayerOne PlayerID = "player-1"
+	PlayerTwo PlayerID = "player-2"
+)
 
-type ChoiceView struct {
-	Handle  string   `json:"handle"`
-	Options []string `json:"options"`
+type InputKind string
+
+const InputConcede InputKind = "concede"
+
+type Input struct {
+	Revision uint64    `json:"revision"`
+	Kind     InputKind `json:"kind"`
 }
 
 type PlayerView struct {
-	Revision      uint64      `json:"revision"`
-	PendingChoice *ChoiceView `json:"pending_choice,omitempty"`
-	Finished      bool        `json:"finished"`
-	Winner        PlayerID    `json:"winner,omitempty"`
-}
-
-type SubmitChoice struct {
-	Revision uint64
-	Handle   string
-	Option   string
+	Revision uint64   `json:"revision"`
+	Finished bool     `json:"finished"`
+	Winner   PlayerID `json:"winner,omitempty"`
 }
 
 type Game struct {
-	players []PlayerID
-	state   gameState
-	replay  Replay
+	versions Versions
+	players  []PlayerID
+	state    gameState
+	replay   Replay
 }
 
 type gameState struct {
-	Revision  uint64
-	Pending   *PendingChoice
-	Selection string
-	Finished  bool
-	Winner    PlayerID
+	Revision uint64
+	Finished bool
+	Winner   PlayerID
+	PRNG     prngState
 }
 
-func newGame(players []PlayerID, pending PendingChoice) *Game {
-	game := &Game{
-		players: players,
-		state:   gameState{Revision: 1, Pending: &pending},
+type prngState struct {
+	Seed   uint64 `json:"seed"`
+	Cursor uint64 `json:"cursor"`
+}
+
+type canonicalState struct {
+	SchemaVersion int        `json:"schema_version"`
+	Versions      Versions   `json:"versions"`
+	Players       []PlayerID `json:"players"`
+	Revision      uint64     `json:"revision"`
+	Finished      bool       `json:"finished"`
+	Winner        PlayerID   `json:"winner"`
+	PRNG          prngState  `json:"prng"`
+}
+
+func NewGame(seed uint64) *Game {
+	versions := currentVersions()
+	return &Game{
+		versions: versions,
+		players: []PlayerID{
+			PlayerOne,
+			PlayerTwo,
+		},
+		state: gameState{
+			Revision: 1,
+			PRNG: prngState{
+				Seed: seed,
+			},
+		},
 		replay: Replay{
-			EngineVersion:   "walking-skeleton-v1",
-			RulesVersion:    "test-fixture",
-			CardDataVersion: "test-fixture",
-			DeckVersion:     "test-fixture",
-			PRNGVersion:     "none",
-			Seed:            0,
+			FormatVersion: ReplayFormatVersion,
+			Versions:      versions,
+			InitialSeed:   seed,
 		},
 	}
-	return game
 }
 
-func (g *Game) PlayerView(player PlayerID) PlayerView {
-	view := PlayerView{Revision: g.state.Revision, Finished: g.state.Finished, Winner: g.state.Winner}
-	if g.state.Pending != nil && g.state.Pending.Player == player {
-		view.PendingChoice = &ChoiceView{
-			Handle:  g.handleFor(player),
-			Options: append([]string(nil), g.state.Pending.Options...),
-		}
+func currentVersions() Versions {
+	return Versions{
+		Engine:   "grand-archive-v1",
+		Rules:    "602c917f2f8fd4df7198429a72eb596bf7f647c6",
+		CardData: "card-data-v3",
+		Deck:     "standard-fire-v2",
+		PRNG:     "splitmix64-v1",
 	}
-	return view
 }
 
-func (g *Game) SubmitChoice(player PlayerID, input SubmitChoice) error {
-	if g.state.Finished || g.state.Pending == nil || input.Revision != g.state.Revision || player != g.state.Pending.Player || input.Handle != g.handleFor(player) || !contains(g.state.Pending.Options, input.Option) {
-		return errInvalidInput
+func (g *Game) Submit(player PlayerID, input Input) error {
+	if g.state.Finished {
+		return ErrGameFinished
 	}
-	g.state.Selection = input.Option
-	g.state.Pending = nil
-	g.state.Revision++
-	g.replay.Inputs = append(g.replay.Inputs, ReplayInput{Player: player, Kind: "choice", Revision: input.Revision, Handle: input.Handle, Option: input.Option})
-	g.replay.Hashes = append(g.replay.Hashes, g.StateHash())
-	return nil
-}
+	if input.Revision != g.state.Revision {
+		return fmt.Errorf("%w: got %d, current %d", ErrStaleRevision, input.Revision, g.state.Revision)
+	}
+	if !g.hasPlayer(player) {
+		return fmt.Errorf("%w %q", ErrUnknownPlayer, player)
+	}
+	if input.Kind != InputConcede {
+		return fmt.Errorf("%w %q", ErrUnknownInputKind, input.Kind)
+	}
 
-func (g *Game) Concede(player PlayerID) error {
-	if g.state.Finished || !g.hasPlayer(player) {
-		return errInvalidInput
-	}
 	g.state.Finished = true
 	g.state.Winner = g.otherPlayer(player)
 	g.state.Revision++
-	g.replay.Inputs = append(g.replay.Inputs, ReplayInput{Player: player, Kind: "concede"})
-	g.replay.Hashes = append(g.replay.Hashes, g.StateHash())
+	g.replay.Steps = append(
+		g.replay.Steps,
+		ReplayStep{
+			Player: player,
+			Input:  input,
+		},
+	)
+	g.replay.Steps[len(g.replay.Steps)-1].StateHash = g.StateHash()
 	return nil
 }
 
+func (g *Game) PlayerView(player PlayerID) PlayerView {
+	return PlayerView{
+		Revision: g.state.Revision,
+		Finished: g.state.Finished,
+		Winner:   g.state.Winner,
+	}
+}
+
 func (g *Game) StateHash() string {
-	state, err := json.Marshal(g.state)
+	canonical := canonicalState{
+		SchemaVersion: 1,
+		Versions:      g.versions,
+		Players:       g.players,
+		Revision:      g.state.Revision,
+		Finished:      g.state.Finished,
+		Winner:        g.state.Winner,
+		PRNG:          g.state.PRNG,
+	}
+	state, err := json.Marshal(canonical)
 	if err != nil {
 		panic(err)
 	}
@@ -112,11 +154,12 @@ func (g *Game) StateHash() string {
 }
 
 func (g *Game) Replay() Replay {
-	return g.replay
-}
-
-func (g *Game) handleFor(player PlayerID) string {
-	return fmt.Sprintf("choice-%s-r%d", player, g.state.Revision)
+	replay := g.replay
+	replay.Steps = append(
+		[]ReplayStep(nil),
+		g.replay.Steps...,
+	)
+	return replay
 }
 
 func (g *Game) hasPlayer(player PlayerID) bool {
