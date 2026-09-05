@@ -2,15 +2,9 @@ package game
 
 import (
 	"fmt"
+	"go-tcg/internal/constants"
 	"regexp"
 	"strings"
-)
-
-type SupportStatus string
-
-const (
-	Supported   SupportStatus = "supported"
-	Unsupported SupportStatus = "unsupported"
 )
 
 type ContentID string
@@ -25,21 +19,21 @@ type AbilityHandler func()
 
 type cardRegistration struct {
 	ID           CardID
-	Status       SupportStatus
+	Status       constants.SupportStatus
 	Dependencies []ContentID
 }
 
 type faceRegistration struct {
 	ID        CardFaceID
 	CardID    CardID
-	Status    SupportStatus
+	Status    constants.SupportStatus
 	Behaviors []string
 }
 
 type abilityRegistration struct {
 	ID           AbilitySlotID
 	FaceID       CardFaceID
-	Status       SupportStatus
+	Status       constants.SupportStatus
 	Handler      AbilityHandler
 	Mechanisms   []MechanismID
 	Operations   []OperationID
@@ -49,33 +43,25 @@ type abilityRegistration struct {
 
 type contentRegistration struct {
 	ID           ContentID
-	Status       SupportStatus
+	Status       constants.SupportStatus
 	Dependencies []ContentID
 }
 
 type supportRegistration[T ~string] struct {
 	ID     T
-	Status SupportStatus
+	Status constants.SupportStatus
 }
 
 type mechanismRegistration struct {
 	ID         MechanismID
-	Status     SupportStatus
+	Status     constants.SupportStatus
 	Operations []OperationID
 	Rulings    []RulingID
 }
 
-type rulingStatus string
-
-const (
-	rulingResolved rulingStatus = "resolved"
-	rulingApproved rulingStatus = "approved-project-ruling"
-	rulingPending  rulingStatus = "pending"
-)
-
 type rulingRegistration struct {
 	ID     RulingID
-	Status rulingStatus
+	Status constants.RulingStatus
 }
 
 type registrySpec struct {
@@ -153,7 +139,7 @@ func buildRegistry(spec registrySpec) (contentRegistry, error) {
 		if err := validateSupportStatus(registration.Status); err != nil {
 			return contentRegistry{}, fmt.Errorf("ability %q: %w", registration.ID, err)
 		}
-		if registration.Status == Supported && registration.Handler == nil {
+		if registration.Status == constants.Supported && registration.Handler == nil {
 			return contentRegistry{}, fmt.Errorf("supported Ability Slot %q has no handler", registration.ID)
 		}
 		if _, exists := registry.abilities[registration.ID]; exists {
@@ -174,8 +160,8 @@ func buildRegistry(spec registrySpec) (contentRegistry, error) {
 	return registry, nil
 }
 
-func validateSupportStatus(status SupportStatus) error {
-	if status != Supported && status != Unsupported {
+func validateSupportStatus(status constants.SupportStatus) error {
+	if status != constants.Supported && status != constants.Unsupported {
 		return fmt.Errorf("invalid support status %q", status)
 	}
 	return nil
@@ -272,7 +258,7 @@ func addSupportRegistrations(registry *contentRegistry, spec registrySpec) error
 		registry.operations[registration.ID] = registration
 	}
 	for _, registration := range spec.rulings {
-		if registration.Status != rulingResolved && registration.Status != rulingApproved && registration.Status != rulingPending {
+		if registration.Status != constants.RulingResolved && registration.Status != constants.RulingApproved && registration.Status != constants.RulingPending {
 			return fmt.Errorf("ruling %q has invalid status %q", registration.ID, registration.Status)
 		}
 		if _, exists := registry.rulings[registration.ID]; exists {

@@ -3,6 +3,7 @@ package game
 import (
 	"encoding/json"
 	"errors"
+	"go-tcg/internal/constants"
 	"strings"
 	"testing"
 )
@@ -36,13 +37,13 @@ func TestSameSeedAndInputProduceSameStateHash(t *testing.T) {
 	second := NewGame(42)
 	input := Input{
 		Revision: 1,
-		Kind:     InputConcede,
+		Kind:     constants.InputConcede,
 	}
 
-	if err := first.Submit(PlayerOne, input); err != nil {
+	if err := first.Submit(constants.PlayerOne, input); err != nil {
 		t.Fatalf("first Submit() error = %v", err)
 	}
-	if err := second.Submit(PlayerOne, input); err != nil {
+	if err := second.Submit(constants.PlayerOne, input); err != nil {
 		t.Fatalf("second Submit() error = %v", err)
 	}
 
@@ -51,9 +52,9 @@ func TestSameSeedAndInputProduceSameStateHash(t *testing.T) {
 	if firstHash != secondHash {
 		t.Fatalf("state hashes differ: %q != %q", firstHash, secondHash)
 	}
-	firstView := first.PlayerView(PlayerTwo)
-	secondView := second.PlayerView(PlayerTwo)
-	if firstView != secondView || !firstView.Finished || firstView.Winner != PlayerTwo {
+	firstView := first.PlayerView(constants.PlayerTwo)
+	secondView := second.PlayerView(constants.PlayerTwo)
+	if firstView != secondView || !firstView.Finished || firstView.Winner != constants.PlayerTwo {
 		t.Fatalf("final views = %#v and %#v, want player two to win", firstView, secondView)
 	}
 	firstReplay := first.Replay()
@@ -84,16 +85,16 @@ func TestStateHashUsesCanonicalVersionedState(t *testing.T) {
 func TestRejectedInputDoesNotChangeGame(t *testing.T) {
 	testCases := []struct {
 		name       string
-		player     PlayerID
+		player     constants.PlayerID
 		input      Input
 		wantReason string
 	}{
 		{
 			name:   "stale revision",
-			player: PlayerOne,
+			player: constants.PlayerOne,
 			input: Input{
 				Revision: 0,
-				Kind:     InputConcede,
+				Kind:     constants.InputConcede,
 			},
 			wantReason: "stale revision",
 		},
@@ -102,13 +103,13 @@ func TestRejectedInputDoesNotChangeGame(t *testing.T) {
 			player: "intruder",
 			input: Input{
 				Revision: 1,
-				Kind:     InputConcede,
+				Kind:     constants.InputConcede,
 			},
 			wantReason: "unknown player",
 		},
 		{
 			name:   "unknown input kind",
-			player: PlayerOne,
+			player: constants.PlayerOne,
 			input: Input{
 				Revision: 1,
 				Kind:     "unsupported",
@@ -122,7 +123,7 @@ func TestRejectedInputDoesNotChangeGame(t *testing.T) {
 			testCase.name,
 			func(t *testing.T) {
 				game := NewGame(42)
-				beforeView := game.PlayerView(PlayerOne)
+				beforeView := game.PlayerView(constants.PlayerOne)
 				beforeHash := game.StateHash()
 				replayBeforeInput := game.Replay()
 				beforeReplay, err := json.Marshal(replayBeforeInput)
@@ -144,7 +145,7 @@ func TestRejectedInputDoesNotChangeGame(t *testing.T) {
 				if err != nil {
 					t.Fatalf("marshal replay after input: %v", err)
 				}
-				if game.PlayerView(PlayerOne) != beforeView {
+				if game.PlayerView(constants.PlayerOne) != beforeView {
 					t.Fatalf("PlayerView() changed after rejected input")
 				}
 				if game.StateHash() != beforeHash {
@@ -162,9 +163,9 @@ func TestReplayVerifiesFromRecordedVersionsAndSeed(t *testing.T) {
 	game := NewGame(42)
 	input := Input{
 		Revision: 1,
-		Kind:     InputConcede,
+		Kind:     constants.InputConcede,
 	}
-	if err := game.Submit(PlayerTwo, input); err != nil {
+	if err := game.Submit(constants.PlayerTwo, input); err != nil {
 		t.Fatalf("Submit() error = %v", err)
 	}
 
@@ -241,8 +242,8 @@ func TestReplayRejectsEachIncompatibleVersion(t *testing.T) {
 				if diagnostic.InputIndex != -1 {
 					t.Fatalf("ReplayError.InputIndex = %d, want -1", diagnostic.InputIndex)
 				}
-				if diagnostic.Failure != ReplayVersionMismatch {
-					t.Fatalf("ReplayError.Failure = %q, want %q", diagnostic.Failure, ReplayVersionMismatch)
+				if diagnostic.Failure != constants.ReplayVersionMismatch {
+					t.Fatalf("ReplayError.Failure = %q, want %q", diagnostic.Failure, constants.ReplayVersionMismatch)
 				}
 				errorMessage := diagnostic.Error()
 				if !strings.Contains(errorMessage, testCase.wantReason) {
@@ -257,9 +258,9 @@ func TestReplayReportsFirstStateHashDivergence(t *testing.T) {
 	game := NewGame(42)
 	input := Input{
 		Revision: 1,
-		Kind:     InputConcede,
+		Kind:     constants.InputConcede,
 	}
-	if err := game.Submit(PlayerOne, input); err != nil {
+	if err := game.Submit(constants.PlayerOne, input); err != nil {
 		t.Fatalf("Submit() error = %v", err)
 	}
 	replay := game.Replay()
@@ -273,8 +274,8 @@ func TestReplayReportsFirstStateHashDivergence(t *testing.T) {
 	if diagnostic.InputIndex != 0 {
 		t.Fatalf("ReplayError.InputIndex = %d, want 0", diagnostic.InputIndex)
 	}
-	if diagnostic.Failure != ReplayStateHashMismatch {
-		t.Fatalf("ReplayError.Failure = %q, want %q", diagnostic.Failure, ReplayStateHashMismatch)
+	if diagnostic.Failure != constants.ReplayStateHashMismatch {
+		t.Fatalf("ReplayError.Failure = %q, want %q", diagnostic.Failure, constants.ReplayStateHashMismatch)
 	}
 	errorMessage := diagnostic.Error()
 	if !strings.Contains(errorMessage, "state hash mismatch") {

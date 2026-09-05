@@ -3,24 +3,14 @@ package game
 import (
 	"errors"
 	"fmt"
+	"go-tcg/internal/constants"
 	"path/filepath"
 	"sort"
 	"strings"
 )
 
-type GateKind string
-
-const (
-	GateAbility   GateKind = "ability-slot"
-	GateContent   GateKind = "content"
-	GateMechanism GateKind = "mechanism"
-	GateOperation GateKind = "operation"
-	GateRegistry  GateKind = "registry"
-	GateRuling    GateKind = "ruling"
-)
-
 type GateDiagnostic struct {
-	Kind   GateKind
+	Kind   constants.GateKind
 	ID     string
 	Reason string
 }
@@ -41,7 +31,7 @@ func (gateError *GateError) Error() string {
 }
 
 type StandardGameConfig struct {
-	Players        [2]PlayerID
+	Players        [2]constants.PlayerID
 	RepositoryRoot string
 	Seed           uint64
 }
@@ -93,7 +83,7 @@ func NewStandardGame(configuration StandardGameConfig) (*Game, error) {
 	}
 
 	game := NewGame(configuration.Seed)
-	game.players = []PlayerID{
+	game.players = []constants.PlayerID{
 		configuration.Players[0],
 		configuration.Players[1],
 	}
@@ -142,7 +132,7 @@ func evaluateSupportSet(deck DeckManifest, registry contentRegistry) (supportClo
 		rulings:    make(map[RulingID]bool),
 	}
 	diagnosticSet := make(map[string]GateDiagnostic)
-	addDiagnostic := func(kind GateKind, id, reason string) {
+	addDiagnostic := func(kind constants.GateKind, id, reason string) {
 		key := string(kind) + "\x00" + id
 		diagnosticSet[key] = GateDiagnostic{
 			Kind:   kind,
@@ -166,11 +156,11 @@ func evaluateSupportSet(deck DeckManifest, registry contentRegistry) (supportClo
 		closure.rulings[id] = true
 		registration, exists := registry.rulings[id]
 		if !exists {
-			addDiagnostic(GateRuling, string(id), "missing from registry")
+			addDiagnostic(constants.GateRuling, string(id), "missing from registry")
 			return
 		}
-		if registration.Status == rulingPending {
-			addDiagnostic(GateRuling, string(id), "unresolved")
+		if registration.Status == constants.RulingPending {
+			addDiagnostic(constants.GateRuling, string(id), "unresolved")
 		}
 	}
 	visitOperation = func(id OperationID) {
@@ -180,11 +170,11 @@ func evaluateSupportSet(deck DeckManifest, registry contentRegistry) (supportClo
 		closure.operations[id] = true
 		registration, exists := registry.operations[id]
 		if !exists {
-			addDiagnostic(GateOperation, string(id), "missing from registry")
+			addDiagnostic(constants.GateOperation, string(id), "missing from registry")
 			return
 		}
-		if registration.Status == Unsupported {
-			addDiagnostic(GateOperation, string(id), "unsupported")
+		if registration.Status == constants.Unsupported {
+			addDiagnostic(constants.GateOperation, string(id), "unsupported")
 		}
 	}
 	visitMechanism = func(id MechanismID) {
@@ -194,11 +184,11 @@ func evaluateSupportSet(deck DeckManifest, registry contentRegistry) (supportClo
 		closure.mechanisms[id] = true
 		registration, exists := registry.mechanisms[id]
 		if !exists {
-			addDiagnostic(GateMechanism, string(id), "missing from registry")
+			addDiagnostic(constants.GateMechanism, string(id), "missing from registry")
 			return
 		}
-		if registration.Status == Unsupported {
-			addDiagnostic(GateMechanism, string(id), "unsupported")
+		if registration.Status == constants.Unsupported {
+			addDiagnostic(constants.GateMechanism, string(id), "unsupported")
 		}
 		for _, operationID := range registration.Operations {
 			visitOperation(operationID)
@@ -214,11 +204,11 @@ func evaluateSupportSet(deck DeckManifest, registry contentRegistry) (supportClo
 		closure.abilities[id] = true
 		registration, exists := registry.abilities[id]
 		if !exists {
-			addDiagnostic(GateAbility, string(id), "missing from registry")
+			addDiagnostic(constants.GateAbility, string(id), "missing from registry")
 			return
 		}
-		if registration.Status == Unsupported {
-			addDiagnostic(GateAbility, string(id), "unsupported")
+		if registration.Status == constants.Unsupported {
+			addDiagnostic(constants.GateAbility, string(id), "unsupported")
 		}
 		for _, mechanismID := range registration.Mechanisms {
 			visitMechanism(mechanismID)
@@ -240,11 +230,11 @@ func evaluateSupportSet(deck DeckManifest, registry contentRegistry) (supportClo
 		closure.faces[id] = true
 		registration, exists := registry.faces[id]
 		if !exists {
-			addDiagnostic(GateContent, string(id), "missing from registry")
+			addDiagnostic(constants.GateContent, string(id), "missing from registry")
 			return
 		}
-		if registration.Status == Unsupported {
-			addDiagnostic(GateContent, string(id), "unsupported")
+		if registration.Status == constants.Unsupported {
+			addDiagnostic(constants.GateContent, string(id), "unsupported")
 		}
 		for _, behavior := range registration.Behaviors {
 			abilityID := abilitySlotID(
@@ -262,11 +252,11 @@ func evaluateSupportSet(deck DeckManifest, registry contentRegistry) (supportClo
 		registration, exists := registry.cards[id]
 		contentID := "card:" + string(id)
 		if !exists {
-			addDiagnostic(GateContent, contentID, "missing from registry")
+			addDiagnostic(constants.GateContent, contentID, "missing from registry")
 			return
 		}
-		if registration.Status == Unsupported {
-			addDiagnostic(GateContent, contentID, "unsupported")
+		if registration.Status == constants.Unsupported {
+			addDiagnostic(constants.GateContent, contentID, "unsupported")
 		}
 		for faceID, face := range registry.faces {
 			if face.CardID == id {
@@ -288,11 +278,11 @@ func evaluateSupportSet(deck DeckManifest, registry contentRegistry) (supportClo
 		closure.contents[id] = true
 		registration, exists := registry.contents[id]
 		if !exists {
-			addDiagnostic(GateContent, string(id), "missing from registry")
+			addDiagnostic(constants.GateContent, string(id), "missing from registry")
 			return
 		}
-		if registration.Status == Unsupported {
-			addDiagnostic(GateContent, string(id), "unsupported")
+		if registration.Status == constants.Unsupported {
+			addDiagnostic(constants.GateContent, string(id), "unsupported")
 		}
 		for _, dependencyID := range registration.Dependencies {
 			visitContent(dependencyID)
@@ -322,40 +312,40 @@ func evaluateSupportSet(deck DeckManifest, registry contentRegistry) (supportClo
 	return closure, diagnostics
 }
 
-func addOrphanDiagnostics(closure supportClosure, registry contentRegistry, add func(GateKind, string, string)) {
+func addOrphanDiagnostics(closure supportClosure, registry contentRegistry, add func(constants.GateKind, string, string)) {
 	for id := range registry.cards {
 		if !closure.cards[id] {
-			add(GateRegistry, "card:"+string(id), "orphaned formal content")
+			add(constants.GateRegistry, "card:"+string(id), "orphaned formal content")
 		}
 	}
 	for id := range registry.faces {
 		if !closure.faces[id] {
-			add(GateRegistry, string(id), "orphaned formal content")
+			add(constants.GateRegistry, string(id), "orphaned formal content")
 		}
 	}
 	for id := range registry.abilities {
 		if !closure.abilities[id] {
-			add(GateRegistry, string(id), "orphaned formal content")
+			add(constants.GateRegistry, string(id), "orphaned formal content")
 		}
 	}
 	for id := range registry.contents {
 		if !closure.contents[id] {
-			add(GateRegistry, string(id), "orphaned formal content")
+			add(constants.GateRegistry, string(id), "orphaned formal content")
 		}
 	}
 	for id := range registry.mechanisms {
 		if !closure.mechanisms[id] {
-			add(GateRegistry, string(id), "orphaned formal content")
+			add(constants.GateRegistry, string(id), "orphaned formal content")
 		}
 	}
 	for id := range registry.operations {
 		if !closure.operations[id] {
-			add(GateRegistry, string(id), "orphaned formal content")
+			add(constants.GateRegistry, string(id), "orphaned formal content")
 		}
 	}
 	for id := range registry.rulings {
 		if !closure.rulings[id] {
-			add(GateRegistry, string(id), "orphaned formal content")
+			add(constants.GateRegistry, string(id), "orphaned formal content")
 		}
 	}
 }

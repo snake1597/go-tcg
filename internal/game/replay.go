@@ -1,27 +1,20 @@
 package game
 
-import "fmt"
-
-const ReplayFormatVersion = 1
-
-type ReplayFailure string
-
-const (
-	ReplayVersionMismatch   ReplayFailure = "version_mismatch"
-	ReplayInputRejected     ReplayFailure = "input_rejected"
-	ReplayStateHashMismatch ReplayFailure = "state_hash_mismatch"
+import (
+	"fmt"
+	"go-tcg/internal/constants"
 )
 
 type ReplayError struct {
 	InputIndex int // -1 when verification fails before the first input.
-	Failure    ReplayFailure
+	Failure    constants.ReplayFailure
 	Reason     string
 	Cause      error
 }
 
 func (e *ReplayError) Error() string {
-	description := e.Failure.description()
-	if e.Failure == ReplayVersionMismatch {
+	description := describeReplayFailure(e.Failure)
+	if e.Failure == constants.ReplayVersionMismatch {
 		return fmt.Sprintf("replay header %s: %s", description, e.Reason)
 	}
 	return fmt.Sprintf("replay input %d %s: %s", e.InputIndex, description, e.Reason)
@@ -31,13 +24,13 @@ func (e *ReplayError) Unwrap() error {
 	return e.Cause
 }
 
-func (f ReplayFailure) description() string {
+func describeReplayFailure(f constants.ReplayFailure) string {
 	switch f {
-	case ReplayVersionMismatch:
+	case constants.ReplayVersionMismatch:
 		return "version mismatch"
-	case ReplayInputRejected:
+	case constants.ReplayInputRejected:
 		return "rejected"
-	case ReplayStateHashMismatch:
+	case constants.ReplayStateHashMismatch:
 		return "state hash mismatch"
 	default:
 		return string(f)
@@ -60,19 +53,19 @@ type Replay struct {
 }
 
 type ReplayStep struct {
-	Player    PlayerID `json:"player"`
-	Input     Input    `json:"input"`
-	StateHash string   `json:"state_hash"`
+	Player    constants.PlayerID `json:"player"`
+	Input     Input              `json:"input"`
+	StateHash string             `json:"state_hash"`
 }
 
 // Verify replays the canonical input sequence against a fresh game instance.
 func (r Replay) Verify() error {
-	if r.FormatVersion != ReplayFormatVersion {
+	if r.FormatVersion != constants.ReplayFormatVersion {
 		return newReplayVersionMismatch(
 			fmt.Sprintf(
 				"incompatible replay format version %d, want %d",
 				r.FormatVersion,
-				ReplayFormatVersion,
+				constants.ReplayFormatVersion,
 			),
 		)
 	}
@@ -85,7 +78,7 @@ func (r Replay) Verify() error {
 		if err := game.Submit(step.Player, step.Input); err != nil {
 			return &ReplayError{
 				InputIndex: index,
-				Failure:    ReplayInputRejected,
+				Failure:    constants.ReplayInputRejected,
 				Reason:     err.Error(),
 				Cause:      err,
 			}
@@ -93,7 +86,7 @@ func (r Replay) Verify() error {
 		if got := game.StateHash(); got != step.StateHash {
 			return &ReplayError{
 				InputIndex: index,
-				Failure:    ReplayStateHashMismatch,
+				Failure:    constants.ReplayStateHashMismatch,
 				Reason:     fmt.Sprintf("got %s, want %s", got, step.StateHash),
 			}
 		}
@@ -154,7 +147,7 @@ func verifyVersions(got Versions) error {
 func newReplayVersionMismatch(reason string) *ReplayError {
 	return &ReplayError{
 		InputIndex: -1,
-		Failure:    ReplayVersionMismatch,
+		Failure:    constants.ReplayVersionMismatch,
 		Reason:     reason,
 	}
 }

@@ -15,11 +15,8 @@ import (
 	"sort"
 	"strings"
 	"time"
-)
 
-const (
-	SchemaVersion = 1
-	SourcePattern = "./card/*.json"
+	"go-tcg/internal/constants"
 )
 
 type Manifest struct {
@@ -68,9 +65,9 @@ func BuildManifest(cardDir, dataVersion string) (Manifest, error) {
 	}
 
 	manifest := Manifest{
-		SchemaVersion: SchemaVersion,
+		SchemaVersion: constants.CardDataSchemaVersion,
 		DataVersion:   dataVersion,
-		Source:        SourcePattern,
+		Source:        constants.CardDataSourcePattern,
 		Cards:         make([]CardEntry, 0, len(names)),
 	}
 	cardIDs := make(map[string]string, len(names))
@@ -122,10 +119,10 @@ func BuildManifest(cardDir, dataVersion string) (Manifest, error) {
 }
 
 func VerifyManifest(cardDir string, expected Manifest) error {
-	if expected.SchemaVersion != SchemaVersion {
+	if expected.SchemaVersion != constants.CardDataSchemaVersion {
 		return fmt.Errorf("unsupported manifest schema version %d", expected.SchemaVersion)
 	}
-	if expected.Source != SourcePattern {
+	if expected.Source != constants.CardDataSourcePattern {
 		return fmt.Errorf("unsupported card data source %q", expected.Source)
 	}
 

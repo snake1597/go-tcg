@@ -10,13 +10,9 @@ import (
 	"path/filepath"
 	"slices"
 
-	"go-tcg/internal/carddata"
+	carddata "go-tcg/internal/card_data"
+	"go-tcg/internal/constants"
 	"go-tcg/internal/entity"
-)
-
-const (
-	FixedDeckVersion     = "standard-fire-v2"
-	FixedCardDataVersion = "card-data-v3"
 )
 
 type CardID string
@@ -99,8 +95,8 @@ type DeckManifest struct {
 
 func fixedStandardDeck() DeckManifest {
 	return DeckManifest{
-		Version:         FixedDeckVersion,
-		CardDataVersion: FixedCardDataVersion,
+		Version:         constants.FixedDeckVersion,
+		CardDataVersion: constants.FixedCardDataVersion,
 		MainDeck: DeckSection{
 			deckEntry("i9hf5lhl5f", 3),
 			deckEntry("8bolq2y5qp", 4),
@@ -155,8 +151,8 @@ func loadCardDefinitions(cardDirectory, manifestPath string) (map[CardID]CardDef
 	if err != nil {
 		return nil, err
 	}
-	if manifest.DataVersion != FixedCardDataVersion {
-		return nil, fmt.Errorf("card data version %q does not match fixed version %q", manifest.DataVersion, FixedCardDataVersion)
+	if manifest.DataVersion != constants.FixedCardDataVersion {
+		return nil, fmt.Errorf("card data version %q does not match fixed version %q", manifest.DataVersion, constants.FixedCardDataVersion)
 	}
 	if err := carddata.VerifyManifest(cardDirectory, manifest); err != nil {
 		return nil, err
@@ -209,11 +205,11 @@ func readCard(path string) (entity.Card, error) {
 }
 
 func validateFixedStandardDeck(deck DeckManifest, definitions map[CardID]CardDefinition) error {
-	if deck.Version != FixedDeckVersion {
-		return fmt.Errorf("deck version %q does not match %q", deck.Version, FixedDeckVersion)
+	if deck.Version != constants.FixedDeckVersion {
+		return fmt.Errorf("deck version %q does not match %q", deck.Version, constants.FixedDeckVersion)
 	}
-	if deck.CardDataVersion != FixedCardDataVersion {
-		return fmt.Errorf("deck card data version %q does not match %q", deck.CardDataVersion, FixedCardDataVersion)
+	if deck.CardDataVersion != constants.FixedCardDataVersion {
+		return fmt.Errorf("deck card data version %q does not match %q", deck.CardDataVersion, constants.FixedCardDataVersion)
 	}
 	if deck.MainDeck.Count() != 60 {
 		return fmt.Errorf("main deck has %d cards, want 60", deck.MainDeck.Count())
@@ -281,7 +277,7 @@ func validateDeckSection(name string, section DeckSection, maximumCopies int, de
 		if !exists {
 			return fmt.Errorf("%s contains unknown card %q", name, entry.CardID)
 		}
-		if definition.DataVersion() != FixedCardDataVersion {
+		if definition.DataVersion() != constants.FixedCardDataVersion {
 			return fmt.Errorf("%s card %q has data version %q", name, entry.CardID, definition.DataVersion())
 		}
 		if entry.FaceID != definition.Face().ID() {

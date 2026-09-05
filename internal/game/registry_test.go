@@ -3,6 +3,8 @@ package game
 import (
 	"strings"
 	"testing"
+
+	"go-tcg/internal/constants"
 )
 
 func TestRegistryAcceptsTypedHierarchicalContent(t *testing.T) {
@@ -53,14 +55,14 @@ func TestRegistryRejectsInvalidContent(t *testing.T) {
 		{
 			name: "unsupported status only",
 			mutate: func(spec *registrySpec) {
-				spec.abilities[0].Status = SupportStatus("partial")
+				spec.abilities[0].Status = constants.SupportStatus("partial")
 			},
 			message: "invalid support status",
 		},
 		{
 			name: "supported slot without handler",
 			mutate: func(spec *registrySpec) {
-				spec.abilities[0].Status = Supported
+				spec.abilities[0].Status = constants.Supported
 				spec.abilities[0].Handler = nil
 			},
 			message: "has no handler",
@@ -120,14 +122,14 @@ func validRegistrySpec() registrySpec {
 		cards: []cardRegistration{
 			{
 				ID:     CardID("card-a"),
-				Status: Supported,
+				Status: constants.Supported,
 			},
 		},
 		faces: []faceRegistration{
 			{
 				ID:        CardFaceID("face:card-a:front"),
 				CardID:    CardID("card-a"),
-				Status:    Supported,
+				Status:    constants.Supported,
 				Behaviors: []string{"on-enter"},
 			},
 		},
@@ -135,7 +137,7 @@ func validRegistrySpec() registrySpec {
 			{
 				ID:     AbilitySlotID("ability:card-a:front:on-enter"),
 				FaceID: CardFaceID("face:card-a:front"),
-				Status: Supported,
+				Status: constants.Supported,
 				Handler: func() {
 				},
 			},

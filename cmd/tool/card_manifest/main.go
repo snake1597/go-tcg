@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	"go-tcg/internal/carddata"
+	carddata "go-tcg/internal/card_data"
 	"log"
 )
 

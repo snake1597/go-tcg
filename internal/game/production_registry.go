@@ -1,5 +1,7 @@
 package game
 
+import "go-tcg/internal/constants"
+
 type faceInventory struct {
 	CardID     string
 	Abilities  []string
@@ -11,7 +13,7 @@ func productionRegistry() (contentRegistry, error) {
 		contents: []contentRegistration{
 			{
 				ID:     ContentID("runtime:copied-action"),
-				Status: Unsupported,
+				Status: constants.Unsupported,
 				Dependencies: []ContentID{
 					ContentID("card:iohZMWh5v5"),
 					ContentID("card:gt2zqtgs42"),
@@ -23,15 +25,15 @@ func productionRegistry() (contentRegistry, error) {
 		rulings: []rulingRegistration{
 			{
 				ID:     RulingID("RUL-001"),
-				Status: rulingApproved,
+				Status: constants.RulingApproved,
 			},
 			{
 				ID:     RulingID("RUL-002"),
-				Status: rulingResolved,
+				Status: constants.RulingResolved,
 			},
 			{
 				ID:     RulingID("RUL-003"),
-				Status: rulingResolved,
+				Status: constants.RulingResolved,
 			},
 		},
 	}
@@ -51,7 +53,7 @@ func productionRegistry() (contentRegistry, error) {
 			seenCards[entry.CardID] = struct{}{}
 			spec.cards = append(spec.cards, cardRegistration{
 				ID:     entry.CardID,
-				Status: Unsupported,
+				Status: constants.Unsupported,
 			})
 		}
 	}
@@ -61,14 +63,14 @@ func productionRegistry() (contentRegistry, error) {
 		spec.faces = append(spec.faces, faceRegistration{
 			ID:        faceID,
 			CardID:    CardID(inventory.CardID),
-			Status:    Unsupported,
+			Status:    constants.Unsupported,
 			Behaviors: append([]string(nil), inventory.Abilities...),
 		})
 		for _, key := range inventory.Abilities {
 			registration := abilityRegistration{
 				ID:         AbilitySlotID("ability:" + inventory.CardID + ":front:" + key),
 				FaceID:     faceID,
-				Status:     Unsupported,
+				Status:     constants.Unsupported,
 				Mechanisms: append([]MechanismID(nil), inventory.Mechanisms...),
 			}
 			if registration.ID == AbilitySlotID("ability:qzv380ujf5:front:cardistry-copy-action") {
@@ -89,7 +91,7 @@ func productionRegistry() (contentRegistry, error) {
 			seenOperations[operationID] = struct{}{}
 			spec.operations = append(spec.operations, supportRegistration[OperationID]{
 				ID:     operationID,
-				Status: Unsupported,
+				Status: constants.Unsupported,
 			})
 		}
 	}
@@ -172,7 +174,7 @@ func mechanism(id string, operations []string, rulings ...string) mechanismRegis
 	}
 	return mechanismRegistration{
 		ID:         MechanismID(id),
-		Status:     Unsupported,
+		Status:     constants.Unsupported,
 		Operations: operationIDs,
 		Rulings:    rulingIDs,
 	}

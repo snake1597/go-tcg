@@ -1,46 +1,28 @@
-// Package game contains the authoritative, deterministic game-module seam.
 package game
 
 import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
+	"go-tcg/internal/constants"
+	tcgErrors "go-tcg/internal/tcg_errors"
 )
-
-var (
-	ErrGameFinished     = errors.New("game is finished")
-	ErrStaleRevision    = errors.New("stale revision")
-	ErrUnknownPlayer    = errors.New("unknown player")
-	ErrUnknownInputKind = errors.New("unknown input kind")
-)
-
-type PlayerID string
-
-const (
-	PlayerOne PlayerID = "player-1"
-	PlayerTwo PlayerID = "player-2"
-)
-
-type InputKind string
-
-const InputConcede InputKind = "concede"
 
 type Input struct {
-	Revision uint64    `json:"revision"`
-	Kind     InputKind `json:"kind"`
+	Revision uint64              `json:"revision"`
+	Kind     constants.InputKind `json:"kind"`
 }
 
 type PlayerView struct {
-	Revision uint64   `json:"revision"`
-	Finished bool     `json:"finished"`
-	Winner   PlayerID `json:"winner,omitempty"`
+	Revision uint64             `json:"revision"`
+	Finished bool               `json:"finished"`
+	Winner   constants.PlayerID `json:"winner,omitempty"`
 }
 
 type Game struct {
 	versions Versions
-	players  []PlayerID
+	players  []constants.PlayerID
 	state    gameState
 	replay   Replay
 }
@@ -48,7 +30,7 @@ type Game struct {
 type gameState struct {
 	Revision uint64
 	Finished bool
-	Winner   PlayerID
+	Winner   constants.PlayerID
 	PRNG     prngState
 }
 
@@ -58,22 +40,22 @@ type prngState struct {
 }
 
 type canonicalState struct {
-	SchemaVersion int        `json:"schema_version"`
-	Versions      Versions   `json:"versions"`
-	Players       []PlayerID `json:"players"`
-	Revision      uint64     `json:"revision"`
-	Finished      bool       `json:"finished"`
-	Winner        PlayerID   `json:"winner"`
-	PRNG          prngState  `json:"prng"`
+	SchemaVersion int                  `json:"schema_version"`
+	Versions      Versions             `json:"versions"`
+	Players       []constants.PlayerID `json:"players"`
+	Revision      uint64               `json:"revision"`
+	Finished      bool                 `json:"finished"`
+	Winner        constants.PlayerID   `json:"winner"`
+	PRNG          prngState            `json:"prng"`
 }
 
 func NewGame(seed uint64) *Game {
 	versions := currentVersions()
 	return &Game{
 		versions: versions,
-		players: []PlayerID{
-			PlayerOne,
-			PlayerTwo,
+		players: []constants.PlayerID{
+			constants.PlayerOne,
+			constants.PlayerTwo,
 		},
 		state: gameState{
 			Revision: 1,
@@ -82,7 +64,7 @@ func NewGame(seed uint64) *Game {
 			},
 		},
 		replay: Replay{
-			FormatVersion: ReplayFormatVersion,
+			FormatVersion: constants.ReplayFormatVersion,
 			Versions:      versions,
 			InitialSeed:   seed,
 		},
@@ -99,18 +81,18 @@ func currentVersions() Versions {
 	}
 }
 
-func (g *Game) Submit(player PlayerID, input Input) error {
+func (g *Game) Submit(player constants.PlayerID, input Input) error {
 	if g.state.Finished {
-		return ErrGameFinished
+		return tcgErrors.ErrGameFinished
 	}
 	if input.Revision != g.state.Revision {
-		return fmt.Errorf("%w: got %d, current %d", ErrStaleRevision, input.Revision, g.state.Revision)
+		return fmt.Errorf("%w: got %d, current %d", tcgErrors.ErrStaleRevision, input.Revision, g.state.Revision)
 	}
 	if !g.hasPlayer(player) {
-		return fmt.Errorf("%w %q", ErrUnknownPlayer, player)
+		return fmt.Errorf("%w %q", tcgErrors.ErrUnknownPlayer, player)
 	}
-	if input.Kind != InputConcede {
-		return fmt.Errorf("%w %q", ErrUnknownInputKind, input.Kind)
+	if input.Kind != constants.InputConcede {
+		return fmt.Errorf("%w %q", tcgErrors.ErrUnknownInputKind, input.Kind)
 	}
 
 	g.state.Finished = true
@@ -127,7 +109,7 @@ func (g *Game) Submit(player PlayerID, input Input) error {
 	return nil
 }
 
-func (g *Game) PlayerView(player PlayerID) PlayerView {
+func (g *Game) PlayerView(player constants.PlayerID) PlayerView {
 	return PlayerView{
 		Revision: g.state.Revision,
 		Finished: g.state.Finished,
@@ -162,11 +144,11 @@ func (g *Game) Replay() Replay {
 	return replay
 }
 
-func (g *Game) hasPlayer(player PlayerID) bool {
+func (g *Game) hasPlayer(player constants.PlayerID) bool {
 	return contains(g.players, player)
 }
 
-func (g *Game) otherPlayer(player PlayerID) PlayerID {
+func (g *Game) otherPlayer(player constants.PlayerID) constants.PlayerID {
 	for _, candidate := range g.players {
 		if candidate != player {
 			return candidate
