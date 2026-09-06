@@ -39,13 +39,16 @@ type PendingChoice struct {
 }
 
 type PlayerView struct {
-	Revision      uint64             `json:"revision"`
-	Finished      bool               `json:"finished"`
-	Winner        constants.PlayerID `json:"winner,omitempty"`
-	Cards         []VisibleCard      `json:"cards"`
-	VisibleEvents []VisibleEvent     `json:"visible_events"`
-	LegalActions  []LegalAction      `json:"legal_actions"`
-	PendingChoice *PendingChoice     `json:"pending_choice,omitempty"`
+	Revision          uint64             `json:"revision"`
+	Finished          bool               `json:"finished"`
+	Winner            constants.PlayerID `json:"winner,omitempty"`
+	TurnPlayer        constants.PlayerID `json:"turn_player,omitempty"`
+	Phase             Phase              `json:"phase,omitempty"`
+	OpportunityHolder constants.PlayerID `json:"opportunity_holder,omitempty"`
+	Cards             []VisibleCard      `json:"cards"`
+	VisibleEvents     []VisibleEvent     `json:"visible_events"`
+	LegalActions      []LegalAction      `json:"legal_actions"`
+	PendingChoice     *PendingChoice     `json:"pending_choice,omitempty"`
 }
 
 type Game struct {
@@ -165,12 +168,24 @@ func (g *Game) Submit(player constants.PlayerID, input Input) error {
 	if !exists {
 		return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, input.Action)
 	}
-	if kind != constants.ActionConcede {
+	switch kind {
+	case constants.ActionConcede:
+		g.state.Finished = true
+		g.state.Winner = g.otherPlayer(player)
+		g.state.Scheduler = schedulerFrame{
+			Kind: schedulerFinished,
+		}
+	case constants.ActionPass:
+		if err := g.passOpportunity(player); err != nil {
+			return err
+		}
+	case constants.ActionSkipMaterialize:
+		if err := g.skipMaterialize(player); err != nil {
+			return err
+		}
+	default:
 		return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, input.Action)
 	}
-
-	g.state.Finished = true
-	g.state.Winner = g.otherPlayer(player)
 	g.advanceKnowledgeRevision()
 	g.recordReplayStep(
 		player,
@@ -195,9 +210,12 @@ func (g *Game) PlayerView(player constants.PlayerID) (PlayerView, error) {
 		return PlayerView{}, fmt.Errorf("%w %q", tcgErrors.ErrUnknownPlayer, player)
 	}
 	return PlayerView{
-		Revision: g.state.Revision,
-		Finished: g.state.Finished,
-		Winner:   g.state.Winner,
+		Revision:          g.state.Revision,
+		Finished:          g.state.Finished,
+		Winner:            g.state.Winner,
+		TurnPlayer:        g.state.Scheduler.TurnPlayer,
+		Phase:             g.state.Scheduler.Phase,
+		OpportunityHolder: g.state.Scheduler.OpportunityHolder,
 		Cards: g.visibleCards(
 			player,
 		),
