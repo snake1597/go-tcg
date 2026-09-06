@@ -47,27 +47,12 @@ type supportClosure struct {
 }
 
 func NewStandardGame(configuration StandardGameConfig) (*Game, error) {
-	if configuration.Players[0] == "" || configuration.Players[1] == "" || configuration.Players[0] == configuration.Players[1] {
-		return nil, errors.New("standard game requires two distinct players")
-	}
-	definitions, err := loadCardDefinitions(
-		filepath.Join(configuration.RepositoryRoot, "card"),
-		filepath.Join(configuration.RepositoryRoot, "card-data-manifest.json"),
-	)
+	decks, err := loadValidatedStandardDecks(configuration)
 	if err != nil {
-		return nil, fmt.Errorf("load fixed card data: %w", err)
-	}
-	firstDeck := fixedStandardDeck()
-	secondDeck := fixedStandardDeck()
-	if err := validateFixedStandardDeck(firstDeck, definitions); err != nil {
-		return nil, fmt.Errorf("validate first player deck: %w", err)
-	}
-	if err := validateFixedStandardDeck(secondDeck, definitions); err != nil {
-		return nil, fmt.Errorf("validate second player deck: %w", err)
-	}
-	if err := validateMirroredDecks(firstDeck, secondDeck); err != nil {
 		return nil, err
 	}
+	definitions := decks.Definitions
+	firstDeck := decks.First
 	registry, err := productionRegistry()
 	if err != nil {
 		return nil, fmt.Errorf("build production registry: %w", err)
@@ -88,6 +73,41 @@ func NewStandardGame(configuration StandardGameConfig) (*Game, error) {
 		configuration.Players[1],
 	}
 	return game, nil
+}
+
+type validatedStandardDecks struct {
+	Definitions map[CardID]CardDefinition
+	First       DeckManifest
+	Second      DeckManifest
+}
+
+func loadValidatedStandardDecks(configuration StandardGameConfig) (validatedStandardDecks, error) {
+	if configuration.Players[0] == "" || configuration.Players[1] == "" || configuration.Players[0] == configuration.Players[1] {
+		return validatedStandardDecks{}, errors.New("standard game requires two distinct players")
+	}
+	definitions, err := loadCardDefinitions(
+		filepath.Join(configuration.RepositoryRoot, "card"),
+		filepath.Join(configuration.RepositoryRoot, "card-data-manifest.json"),
+	)
+	if err != nil {
+		return validatedStandardDecks{}, fmt.Errorf("load fixed card data: %w", err)
+	}
+	firstDeck := fixedStandardDeck()
+	secondDeck := fixedStandardDeck()
+	if err := validateFixedStandardDeck(firstDeck, definitions); err != nil {
+		return validatedStandardDecks{}, fmt.Errorf("validate first player deck: %w", err)
+	}
+	if err := validateFixedStandardDeck(secondDeck, definitions); err != nil {
+		return validatedStandardDecks{}, fmt.Errorf("validate second player deck: %w", err)
+	}
+	if err := validateMirroredDecks(firstDeck, secondDeck); err != nil {
+		return validatedStandardDecks{}, err
+	}
+	return validatedStandardDecks{
+		Definitions: definitions,
+		First:       firstDeck,
+		Second:      secondDeck,
+	}, nil
 }
 
 func validateDefinitionsAgainstRegistry(definitions map[CardID]CardDefinition, registry contentRegistry) error {
