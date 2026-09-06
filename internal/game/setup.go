@@ -3,6 +3,7 @@ package game
 import (
 	"fmt"
 	"go-tcg/internal/constants"
+	"strconv"
 )
 
 const spiritOfFireOnEnterCause = "ability:LMyKyVC2O9:front:on-enter-draw-seven"
@@ -16,19 +17,29 @@ type cardInstance struct {
 	Owner      constants.PlayerID `json:"owner"`
 	Definition CardID             `json:"definition"`
 	Face       CardFaceID         `json:"face"`
+	Level      int64              `json:"level"`
+	Types      []string           `json:"types"`
+	MemoryCost int                `json:"memory_cost"`
 }
 
 type playerZones struct {
 	MainDeck        []cardInstanceID `json:"main_deck"`
 	Hand            []cardInstanceID `json:"hand"`
 	MaterialDeck    []cardInstanceID `json:"material_deck"`
+	Memory          []cardInstanceID `json:"memory"`
+	Banishment      []cardInstanceID `json:"banishment"`
 	OutsideGamePool []cardInstanceID `json:"outside_game_pool"`
 }
 
 type championObject struct {
-	ID    objectID           `json:"id"`
-	Card  cardInstanceID     `json:"card"`
-	Owner constants.PlayerID `json:"owner"`
+	ID             objectID           `json:"id"`
+	Card           cardInstanceID     `json:"card"`
+	Owner          constants.PlayerID `json:"owner"`
+	InnerLineage   []cardInstanceID   `json:"inner_lineage"`
+	Rested         bool               `json:"rested"`
+	Counters       map[string]int     `json:"counters"`
+	CombatRole     string             `json:"combat_role"`
+	TauntUntilTurn uint64             `json:"taunt_until_turn"`
 }
 
 type schedulerKind string
@@ -120,6 +131,7 @@ func newStandardSetup(
 		game.runStandardScheduler()
 	}
 	game.advanceKnowledgeRevision()
+	game.captureReplayInitialState()
 	return game, nil
 }
 
@@ -169,6 +181,9 @@ func (g *Game) addPlayerDeck(player constants.PlayerID, deck DeckManifest, defin
 }
 
 func (g *Game) newCardInstance(player constants.PlayerID, entry DeckEntry, definitions map[CardID]CardDefinition) cardInstanceID {
+	definition := definitions[entry.CardID]
+	face := definition.Face()
+	cardData := definition.faceData()
 	cardCount := len(g.state.Cards) + 1
 	identifierText := fmt.Sprintf(
 		"card:%s:%d",
@@ -181,11 +196,25 @@ func (g *Game) newCardInstance(player constants.PlayerID, entry DeckEntry, defin
 		Owner:      player,
 		Definition: entry.CardID,
 		Face:       entry.FaceID,
+		Level:      face.Level(),
+		Types:      append([]string(nil), cardData.Types...),
+		MemoryCost: memoryCost(cardData),
 	}
 	g.state.Entities[entityID(identifier)] = knowledgeEntity{
 		Name: definitions[entry.CardID].Name(),
 	}
 	return identifier
+}
+
+func memoryCost(card Card) int {
+	if card.Cost == nil || card.Cost.Type != "memory" {
+		return 0
+	}
+	cost, err := strconv.Atoi(card.Cost.Value)
+	if err != nil {
+		return 0
+	}
+	return cost
 }
 
 func (g *Game) shuffleMainDeck(player constants.PlayerID) {

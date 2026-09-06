@@ -20,8 +20,15 @@ type Input struct {
 type ViewHandle string
 
 type LegalAction struct {
-	Handle ViewHandle           `json:"handle"`
-	Kind   constants.ActionKind `json:"kind"`
+	Handle   ViewHandle           `json:"handle"`
+	Kind     constants.ActionKind `json:"kind"`
+	CardName string               `json:"card_name,omitempty"`
+}
+
+type VisibleChampion struct {
+	Owner    constants.PlayerID `json:"owner"`
+	CardName string             `json:"card_name"`
+	Taunt    bool               `json:"taunt"`
 }
 
 type VisibleCard struct {
@@ -45,6 +52,7 @@ type PlayerView struct {
 	TurnPlayer        constants.PlayerID `json:"turn_player,omitempty"`
 	Phase             Phase              `json:"phase,omitempty"`
 	OpportunityHolder constants.PlayerID `json:"opportunity_holder,omitempty"`
+	Champions         []VisibleChampion  `json:"champions,omitempty"`
 	Cards             []VisibleCard      `json:"cards"`
 	VisibleEvents     []VisibleEvent     `json:"visible_events"`
 	LegalActions      []LegalAction      `json:"legal_actions"`
@@ -59,19 +67,21 @@ type Game struct {
 }
 
 type gameState struct {
-	Revision   uint64
-	Finished   bool
-	Winner     constants.PlayerID
-	PRNG       prngState
-	Knowledge  knowledgeState
-	Entities   map[entityID]knowledgeEntity
-	Cards      map[cardInstanceID]cardInstance
-	Zones      map[constants.PlayerID]playerZones
-	Champions  map[constants.PlayerID]championObject
-	Scheduler  schedulerFrame
-	Events     []eventBatch
-	NextHandle uint64
-	NextEvent  uint64
+	Revision      uint64
+	Finished      bool
+	Winner        constants.PlayerID
+	PRNG          prngState
+	Knowledge     knowledgeState
+	Entities      map[entityID]knowledgeEntity
+	Cards         map[cardInstanceID]cardInstance
+	Zones         map[constants.PlayerID]playerZones
+	Champions     map[constants.PlayerID]championObject
+	EffectSources []cardInstanceID
+	EffectsStack  []effectStackItem
+	Scheduler     schedulerFrame
+	Events        []eventBatch
+	NextHandle    uint64
+	NextEvent     uint64
 }
 
 type prngState struct {
@@ -92,6 +102,8 @@ type canonicalState struct {
 	Cards         map[cardInstanceID]cardInstance       `json:"cards"`
 	Zones         map[constants.PlayerID]playerZones    `json:"zones"`
 	Champions     map[constants.PlayerID]championObject `json:"champions"`
+	EffectSources []cardInstanceID                      `json:"effect_sources,omitempty"`
+	EffectsStack  []effectStackItem                     `json:"effects_stack,omitempty"`
 	Scheduler     schedulerFrame                        `json:"scheduler"`
 	Events        []eventBatch                          `json:"events"`
 	NextHandle    uint64                                `json:"next_handle"`
@@ -124,6 +136,7 @@ func NewGame(seed uint64) *Game {
 		},
 	}
 	game.initializeKnowledgeState()
+	game.captureReplayInitialState()
 	return game
 }
 
@@ -166,7 +179,22 @@ func (g *Game) Submit(player constants.PlayerID, input Input) error {
 	}
 	kind, exists := g.state.Knowledge.Actions[player][input.Action]
 	if !exists {
-		return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, input.Action)
+		card, materializeExists := g.state.Knowledge.Materializations[player][input.Action]
+		if !materializeExists {
+			return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, input.Action)
+		}
+		if err := g.materializeChampion(
+			player,
+			card,
+		); err != nil {
+			return err
+		}
+		g.advanceKnowledgeRevision()
+		g.recordReplayStep(
+			player,
+			input,
+		)
+		return nil
 	}
 	switch kind {
 	case constants.ActionConcede:
@@ -216,6 +244,9 @@ func (g *Game) PlayerView(player constants.PlayerID) (PlayerView, error) {
 		TurnPlayer:        g.state.Scheduler.TurnPlayer,
 		Phase:             g.state.Scheduler.Phase,
 		OpportunityHolder: g.state.Scheduler.OpportunityHolder,
+		Champions: g.visibleChampions(
+			player,
+		),
 		Cards: g.visibleCards(
 			player,
 		),
@@ -245,6 +276,8 @@ func (g *Game) StateHash() string {
 		Cards:         g.state.Cards,
 		Zones:         g.state.Zones,
 		Champions:     g.state.Champions,
+		EffectSources: g.state.EffectSources,
+		EffectsStack:  g.state.EffectsStack,
 		Scheduler:     g.state.Scheduler,
 		Events:        g.state.Events,
 		NextHandle:    g.state.NextHandle,
@@ -260,6 +293,14 @@ func (g *Game) StateHash() string {
 
 func (g *Game) Replay() Replay {
 	replay := g.replay
+	if replay.InitialState != nil {
+		state := cloneGameState(*replay.InitialState)
+		replay.InitialState = &state
+	}
+	replay.InitialPlayers = append(
+		[]constants.PlayerID(nil),
+		replay.InitialPlayers...,
+	)
 	replay.Steps = append(
 		[]ReplayStep(nil),
 		g.replay.Steps...,

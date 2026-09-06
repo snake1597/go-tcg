@@ -29,6 +29,13 @@ func (g *Game) passOpportunity(player constants.PlayerID) error {
 	}
 	scheduler.OpportunityHolder = ""
 	scheduler.ConsecutivePasses = 0
+	if len(g.state.EffectsStack) > 0 {
+		g.resolveTopEffectStack()
+		if len(g.state.EffectsStack) > 0 {
+			g.grantOpportunity(scheduler.TurnPlayer)
+			return nil
+		}
+	}
 	g.advanceAfterOpportunity()
 	return nil
 }
@@ -36,6 +43,8 @@ func (g *Game) passOpportunity(player constants.PlayerID) error {
 func (g *Game) advanceAfterOpportunity() {
 	scheduler := &g.state.Scheduler
 	switch scheduler.Phase {
+	case PhaseMaterialize:
+		scheduler.Phase = PhaseRecollection
 	case PhaseRecollection:
 		scheduler.Phase = PhaseDraw
 	case PhaseMain:
@@ -65,6 +74,7 @@ func (g *Game) runStandardScheduler() {
 		scheduler := &g.state.Scheduler
 		switch scheduler.Phase {
 		case PhaseWakeUp:
+			g.expireTimedChampionEffects()
 			scheduler.Phase = PhaseMaterialize
 		case PhaseMaterialize:
 			if g.isFirstTurn() {
