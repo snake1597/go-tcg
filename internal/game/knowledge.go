@@ -16,10 +16,11 @@ type knowledgeEntity struct {
 }
 
 type knowledgeState struct {
-	Actions map[constants.PlayerID]map[ViewHandle]constants.ActionKind `json:"actions"`
-	Cards   map[constants.PlayerID]map[entityID]ViewHandle             `json:"cards"`
-	Events  map[constants.PlayerID][]VisibleEvent                      `json:"events"`
-	Choice  *pendingChoice                                             `json:"choice,omitempty"`
+	Actions          map[constants.PlayerID]map[ViewHandle]constants.ActionKind `json:"actions"`
+	Materializations map[constants.PlayerID]map[ViewHandle]cardInstanceID       `json:"materializations"`
+	Cards            map[constants.PlayerID]map[entityID]ViewHandle             `json:"cards"`
+	Events           map[constants.PlayerID][]VisibleEvent                      `json:"events"`
+	Choice           *pendingChoice                                             `json:"choice,omitempty"`
 }
 
 type pendingChoice struct {
@@ -29,12 +30,14 @@ type pendingChoice struct {
 
 func (g *Game) initializeKnowledgeState() {
 	knowledge := knowledgeState{
-		Actions: make(map[constants.PlayerID]map[ViewHandle]constants.ActionKind, len(g.players)),
-		Cards:   make(map[constants.PlayerID]map[entityID]ViewHandle, len(g.players)),
-		Events:  make(map[constants.PlayerID][]VisibleEvent, len(g.players)),
+		Actions:          make(map[constants.PlayerID]map[ViewHandle]constants.ActionKind, len(g.players)),
+		Materializations: make(map[constants.PlayerID]map[ViewHandle]cardInstanceID, len(g.players)),
+		Cards:            make(map[constants.PlayerID]map[entityID]ViewHandle, len(g.players)),
+		Events:           make(map[constants.PlayerID][]VisibleEvent, len(g.players)),
 	}
 	for _, player := range g.players {
 		knowledge.Actions[player] = make(map[ViewHandle]constants.ActionKind)
+		knowledge.Materializations[player] = make(map[ViewHandle]cardInstanceID)
 		knowledge.Cards[player] = make(map[entityID]ViewHandle)
 		knowledge.Events[player] = []VisibleEvent{}
 	}
@@ -45,7 +48,9 @@ func (g *Game) initializeKnowledgeState() {
 func (g *Game) refreshLegalActions() {
 	for _, player := range g.players {
 		actions := g.state.Knowledge.Actions[player]
+		materializations := g.state.Knowledge.Materializations[player]
 		clear(actions)
+		clear(materializations)
 		if g.state.Finished {
 			continue
 		}
@@ -63,6 +68,13 @@ func (g *Game) refreshLegalActions() {
 				)
 				actions[handle] = constants.ActionPass
 			case player == g.state.Scheduler.TurnPlayer && g.state.Scheduler.Phase == PhaseMaterialize:
+				for _, card := range g.legalChampionMaterializations(player) {
+					handle := g.newViewHandle(
+						player,
+						"action:materialize:"+string(card),
+					)
+					materializations[handle] = card
+				}
 				handle := g.newViewHandle(
 					player,
 					"action:skip-materialize",
@@ -94,6 +106,16 @@ func (g *Game) legalActions(player constants.PlayerID) []LegalAction {
 			},
 		)
 	}
+	for handle, card := range g.state.Knowledge.Materializations[player] {
+		legalActions = append(
+			legalActions,
+			LegalAction{
+				Handle:   handle,
+				Kind:     constants.ActionMaterialize,
+				CardName: g.state.Entities[entityID(card)].Name,
+			},
+		)
+	}
 	sort.Slice(
 		legalActions,
 		func(first, second int) bool {
@@ -101,6 +123,26 @@ func (g *Game) legalActions(player constants.PlayerID) []LegalAction {
 		},
 	)
 	return legalActions
+}
+
+func (g *Game) visibleChampions(_ constants.PlayerID) []VisibleChampion {
+	champions := make([]VisibleChampion, 0, len(g.state.Champions))
+	for _, owner := range g.players {
+		champion, exists := g.state.Champions[owner]
+		if !exists {
+			continue
+		}
+		champions = append(
+			champions,
+			VisibleChampion{
+				Owner:    owner,
+				CardName: g.state.Entities[entityID(champion.Card)].Name,
+				Rested:   champion.Rested,
+				Taunt:    champion.TauntUntilTurn > g.state.Scheduler.TurnNumber,
+			},
+		)
+	}
+	return champions
 }
 
 func (g *Game) grantCardTracking(player constants.PlayerID, card entityID) {
@@ -207,7 +249,8 @@ func (g *Game) submitChoice(player constants.PlayerID, input Input) error {
 	if choice == nil || choice.Actor != player {
 		return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, input.Choice)
 	}
-	if _, exists := choice.Options[input.Choice]; !exists {
+	_, exists := choice.Options[input.Choice]
+	if !exists {
 		return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, input.Choice)
 	}
 	g.state.Knowledge.Choice = nil

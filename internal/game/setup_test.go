@@ -1,6 +1,7 @@
 package game
 
 import (
+	"encoding/json"
 	"go-tcg/internal/constants"
 	"path/filepath"
 	"testing"
@@ -239,6 +240,249 @@ func TestStandardTurnStopsAtMaterializeUntilTurnPlayerSkipsIt(t *testing.T) {
 			constants.ActionPass,
 		},
 	)
+}
+
+// Rules: 602c917f2f8fd4df7198429a72eb596bf7f647c6,
+// card-types-champion.md § Leveling Champions;
+// playing-cards-card-materialization.md § Materialization.
+func TestMaterializingTonorisLevelsUpChampionAndGrantsTaunt(t *testing.T) {
+	game := newTonorisMaterializationGame(t)
+	player := constants.PlayerTwo
+	championBefore := game.state.Champions[player]
+	championBefore.Rested = true
+	championBefore.Counters = map[string]int{
+		"enlighten": 2,
+	}
+	championBefore.CombatRole = "attacker"
+	game.state.Champions[player] = championBefore
+	game.captureReplayInitialState()
+
+	view, err := game.PlayerView(player)
+	if err != nil {
+		t.Fatalf("PlayerView() error = %v", err)
+	}
+	materialize := actionByKind(
+		t,
+		view,
+		constants.ActionMaterialize,
+	)
+	if materialize.CardName != "Tonoris, Lone Mercenary" {
+		t.Fatalf("materialize CardName = %q, want Tonoris, Lone Mercenary", materialize.CardName)
+	}
+	if err := game.Submit(
+		player,
+		Input{
+			Revision: view.Revision,
+			Action:   materialize.Handle,
+		},
+	); err != nil {
+		t.Fatalf("Submit() error = %v", err)
+	}
+	if len(game.state.EffectsStack) != 1 {
+		t.Fatalf("EffectsStack = %#v, want one materialization", game.state.EffectsStack)
+	}
+	if len(game.state.EffectSources) != 1 {
+		t.Fatalf("EffectSources = %#v, want one source card", game.state.EffectSources)
+	}
+
+	passOpportunityRound(t, game, player)
+	championAfterLevelUp := game.state.Champions[player]
+	if championAfterLevelUp.ID != championBefore.ID {
+		t.Fatalf("Champion ID = %q, want preserved ID %q", championAfterLevelUp.ID, championBefore.ID)
+	}
+	if championAfterLevelUp.Card == championBefore.Card {
+		t.Fatal("Champion top card did not change after Level Up")
+	}
+	if len(championAfterLevelUp.InnerLineage) != 1 || championAfterLevelUp.InnerLineage[0] != championBefore.Card {
+		t.Fatalf("InnerLineage = %#v, want original top card %q", championAfterLevelUp.InnerLineage, championBefore.Card)
+	}
+	if !championAfterLevelUp.Rested || championAfterLevelUp.Counters["enlighten"] != 2 || championAfterLevelUp.CombatRole != "attacker" {
+		t.Fatalf("Champion runtime state reset after Level Up: %#v", championAfterLevelUp)
+	}
+
+	passOpportunityRound(t, game, player)
+	view, err = game.PlayerView(player)
+	if err != nil {
+		t.Fatalf("PlayerView() after taunt error = %v", err)
+	}
+	champion := championByOwner(
+		t,
+		view,
+		player,
+	)
+	if !champion.Taunt {
+		t.Fatalf("PlayerView().Champions = %#v, want Tonoris taunt", view.Champions)
+	}
+	if !hasVisibleEvent(view.VisibleEvents, "level-up", "Tonoris, Lone Mercenary") || !hasVisibleEvent(view.VisibleEvents, "taunt-granted", "Tonoris, Lone Mercenary") {
+		t.Fatalf("PlayerView().VisibleEvents = %#v, want level-up and taunt-granted", view.VisibleEvents)
+	}
+	replayData, err := json.Marshal(game.Replay())
+	if err != nil {
+		t.Fatalf("marshal Replay() error = %v", err)
+	}
+	var replay Replay
+	if err := json.Unmarshal(
+		replayData,
+		&replay,
+	); err != nil {
+		t.Fatalf("unmarshal Replay() error = %v", err)
+	}
+	if err := replay.Verify(); err != nil {
+		t.Fatalf("serialized Replay().Verify() error = %v", err)
+	}
+	for game.state.Scheduler.TurnPlayer != player || game.state.Scheduler.Phase != PhaseMaterialize {
+		currentView, err := game.PlayerView(game.state.Scheduler.TurnPlayer)
+		if err != nil {
+			t.Fatalf("PlayerView() advancing taunt duration error = %v", err)
+		}
+		submitCurrentTurnAction(
+			t,
+			game,
+			currentView,
+		)
+	}
+	view, err = game.PlayerView(player)
+	if err != nil {
+		t.Fatalf("PlayerView() after taunt expiry error = %v", err)
+	}
+	champion = championByOwner(
+		t,
+		view,
+		player,
+	)
+	if champion.Taunt {
+		t.Fatalf("PlayerView().Champions = %#v, want expired Tonoris taunt", view.Champions)
+	}
+	if !hasVisibleEvent(view.VisibleEvents, "taunt-expired", "Tonoris, Lone Mercenary") {
+		t.Fatalf("PlayerView().VisibleEvents = %#v, want taunt-expired", view.VisibleEvents)
+	}
+}
+
+func TestMaterializingTonorisRejectsInsufficientPaymentWithoutChangingState(t *testing.T) {
+	game := newTonorisMaterializationGame(t)
+	player := constants.PlayerTwo
+	zones := game.state.Zones[player]
+	zones.Memory = nil
+	game.state.Zones[player] = zones
+	game.advanceKnowledgeRevision()
+	view, err := game.PlayerView(player)
+	if err != nil {
+		t.Fatalf("PlayerView() error = %v", err)
+	}
+	before := game.StateHash()
+	if err := game.Submit(
+		player,
+		Input{
+			Revision: view.Revision,
+			Action:   ViewHandle("not-a-materialization-option"),
+		},
+	); err == nil {
+		t.Fatal("Submit() insufficient payment error = nil")
+	}
+	if got := game.StateHash(); got != before {
+		t.Fatalf("StateHash() after insufficient payment = %q, want unchanged %q", got, before)
+	}
+}
+
+func TestMaterializingTonorisRejectsIllegalLineageWithoutChangingState(t *testing.T) {
+	game := newTonorisMaterializationGame(t)
+	player := constants.PlayerTwo
+	view, err := game.PlayerView(player)
+	if err != nil {
+		t.Fatalf("PlayerView() error = %v", err)
+	}
+	materialize := actionByKind(
+		t,
+		view,
+		constants.ActionMaterialize,
+	)
+	champion := game.state.Champions[player]
+	card := game.state.Cards[champion.Card]
+	card.Definition = tonorisCardID
+	game.state.Cards[champion.Card] = card
+	before := game.StateHash()
+	if err := game.Submit(
+		player,
+		Input{
+			Revision: view.Revision,
+			Action:   materialize.Handle,
+		},
+	); err == nil {
+		t.Fatal("Submit() illegal lineage error = nil")
+	}
+	if got := game.StateHash(); got != before {
+		t.Fatalf("StateHash() after illegal lineage = %q, want unchanged %q", got, before)
+	}
+}
+
+func TestMaterializingTonorisRejectsIllegalTimingWithoutChangingState(t *testing.T) {
+	game := newTonorisMaterializationGame(t)
+	player := constants.PlayerTwo
+	view, err := game.PlayerView(player)
+	if err != nil {
+		t.Fatalf("PlayerView() error = %v", err)
+	}
+	materialize := actionByKind(
+		t,
+		view,
+		constants.ActionMaterialize,
+	)
+	game.state.Scheduler.Phase = PhaseMain
+	before := game.StateHash()
+	if err := game.Submit(
+		player,
+		Input{
+			Revision: view.Revision,
+			Action:   materialize.Handle,
+		},
+	); err == nil {
+		t.Fatal("Submit() illegal timing error = nil")
+	}
+	if got := game.StateHash(); got != before {
+		t.Fatalf("StateHash() after illegal timing = %q, want unchanged %q", got, before)
+	}
+}
+
+func TestMaterializingTonorisFizzlesWhenLineageBecomesIllegalBeforeResolution(t *testing.T) {
+	game := newTonorisMaterializationGame(t)
+	player := constants.PlayerTwo
+	championBefore := game.state.Champions[player]
+	view, err := game.PlayerView(player)
+	if err != nil {
+		t.Fatalf("PlayerView() error = %v", err)
+	}
+	materialize := actionByKind(
+		t,
+		view,
+		constants.ActionMaterialize,
+	)
+	if err := game.Submit(
+		player,
+		Input{
+			Revision: view.Revision,
+			Action:   materialize.Handle,
+		},
+	); err != nil {
+		t.Fatalf("Submit() error = %v", err)
+	}
+	champion := game.state.Champions[player]
+	card := game.state.Cards[champion.Card]
+	card.Definition = tonorisCardID
+	game.state.Cards[champion.Card] = card
+	materializedCard := game.state.EffectsStack[0].Source
+
+	passOpportunityRound(t, game, player)
+	championAfter := game.state.Champions[player]
+	if championAfter.ID != championBefore.ID || championAfter.Card != championBefore.Card || len(championAfter.InnerLineage) != 0 {
+		t.Fatalf("Champion after fizzle = %#v, want unchanged lineage %#v", championAfter, championBefore)
+	}
+	if len(game.state.EffectsStack) != 0 {
+		t.Fatalf("EffectsStack after fizzle = %#v, want empty", game.state.EffectsStack)
+	}
+	zones := game.state.Zones[player]
+	if cardIndex(zones.Banishment, materializedCard) < 0 {
+		t.Fatalf("Banishment after fizzle = %#v, want materialized card %q", zones.Banishment, materializedCard)
+	}
 }
 
 func TestNewStandardSetupCreatesMirroredOpeningState(t *testing.T) {
@@ -480,4 +724,87 @@ func submitCurrentTurnAction(t *testing.T, game *Game, view PlayerView) {
 		view.TurnPlayer,
 		constants.ActionSkipMaterialize,
 	)
+}
+
+func newTonorisMaterializationGame(t *testing.T) *Game {
+	t.Helper()
+	repositoryRoot := filepath.Clean("../..")
+	configuration := StandardGameConfig{
+		Players: [2]constants.PlayerID{
+			constants.PlayerOne,
+			constants.PlayerTwo,
+		},
+		RepositoryRoot: repositoryRoot,
+		Seed:           42,
+	}
+	game, err := NewStandardSetup(configuration)
+	if err != nil {
+		t.Fatalf("NewStandardSetup() error = %v", err)
+	}
+	for game.state.Scheduler.TurnPlayer != constants.PlayerTwo || game.state.Scheduler.Phase != PhaseMaterialize {
+		view, err := game.PlayerView(constants.PlayerOne)
+		if err != nil {
+			t.Fatalf("PlayerView() error = %v", err)
+		}
+		submitCurrentTurnAction(t, game, view)
+	}
+	zones := game.state.Zones[constants.PlayerTwo]
+	if len(zones.Hand) == 0 {
+		t.Fatal("player two has no card to place in Memory")
+	}
+	payment := zones.Hand[len(zones.Hand)-1]
+	zones.Hand = zones.Hand[:len(zones.Hand)-1]
+	zones.Memory = append(zones.Memory, payment)
+	game.state.Zones[constants.PlayerTwo] = zones
+	game.advanceKnowledgeRevision()
+	game.captureReplayInitialState()
+	return game
+}
+
+func actionByKind(t *testing.T, view PlayerView, want constants.ActionKind) LegalAction {
+	t.Helper()
+	for _, action := range view.LegalActions {
+		if action.Kind == want {
+			return action
+		}
+	}
+	t.Fatalf("PlayerView().LegalActions = %#v, want %q", view.LegalActions, want)
+	return LegalAction{}
+}
+
+func passOpportunityRound(t *testing.T, game *Game, first constants.PlayerID) {
+	t.Helper()
+	second := game.otherPlayer(first)
+	submitActionKind(
+		t,
+		game,
+		first,
+		constants.ActionPass,
+	)
+	submitActionKind(
+		t,
+		game,
+		second,
+		constants.ActionPass,
+	)
+}
+
+func hasVisibleEvent(events []VisibleEvent, kind, cardName string) bool {
+	for _, event := range events {
+		if event.Kind == kind && event.CardName == cardName {
+			return true
+		}
+	}
+	return false
+}
+
+func championByOwner(t *testing.T, view PlayerView, owner constants.PlayerID) VisibleChampion {
+	t.Helper()
+	for _, champion := range view.Champions {
+		if champion.Owner == owner {
+			return champion
+		}
+	}
+	t.Fatalf("PlayerView().Champions = %#v, want owner %q", view.Champions, owner)
+	return VisibleChampion{}
 }

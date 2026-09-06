@@ -4,9 +4,9 @@
 
 **Blocked by:** 05: 讓 Standard 回合與 Opportunity 可持續推進.
 
-**Status:** ready-for-agent
+**Status:** complete
 
-- [ ] 合法 Materialization 經 Effects Stack 與 Opportunity 流程完成，非法 lineage、時序或付款不改變狀態。
-- [ ] Level Up 保持 Champion Object ID，原頂端卡成為 Inner Lineage 且不再是 Field Object。
-- [ ] orientation、counter、戰鬥角色與依法保留的 runtime 狀態不因 Level Up 被重置。
-- [ ] Tonoris 的 On Enter 正確授予有期限的 taunt，結果可由 Player View、events、hash 與 replay 驗證。
+- [x] 合法 Materialization 經 Effects Stack 與 Opportunity 流程完成，非法 lineage、時序或付款不改變狀態。
+- [x] Level Up 保持 Champion Object ID，原頂端卡成為 Inner Lineage 且不再是 Field Object。
+- [x] orientation、counter、戰鬥角色與依法保留的 runtime 狀態不因 Level Up 被重置。
+- [x] Tonoris 的 On Enter 正確授予有期限的 taunt，結果可由 Player View、events、hash 與 replay 驗證。

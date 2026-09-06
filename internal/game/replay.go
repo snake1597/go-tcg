@@ -1,6 +1,7 @@
 package game
 
 import (
+	"encoding/json"
 	"fmt"
 	"go-tcg/internal/constants"
 )
@@ -46,10 +47,12 @@ type Versions struct {
 }
 
 type Replay struct {
-	FormatVersion int          `json:"format_version"`
-	Versions      Versions     `json:"versions"`
-	InitialSeed   uint64       `json:"initial_seed"`
-	Steps         []ReplayStep `json:"steps"`
+	FormatVersion  int                  `json:"format_version"`
+	Versions       Versions             `json:"versions"`
+	InitialSeed    uint64               `json:"initial_seed"`
+	InitialState   *gameState           `json:"initial_state"`
+	InitialPlayers []constants.PlayerID `json:"initial_players"`
+	Steps          []ReplayStep         `json:"steps"`
 }
 
 type ReplayStep struct {
@@ -73,7 +76,15 @@ func (r Replay) Verify() error {
 		return err
 	}
 
+	if r.InitialState == nil || len(r.InitialPlayers) == 0 {
+		return newReplayVersionMismatch("missing initial state")
+	}
 	game := NewGame(r.InitialSeed)
+	game.state = cloneGameState(*r.InitialState)
+	game.players = append(
+		[]constants.PlayerID(nil),
+		r.InitialPlayers...,
+	)
 	for index, step := range r.Steps {
 		if err := game.Submit(step.Player, step.Input); err != nil {
 			return &ReplayError{
@@ -92,6 +103,31 @@ func (r Replay) Verify() error {
 		}
 	}
 	return nil
+}
+
+func (g *Game) captureReplayInitialState() {
+	state := cloneGameState(g.state)
+	g.replay.InitialState = &state
+	g.replay.InitialPlayers = append(
+		[]constants.PlayerID(nil),
+		g.players...,
+	)
+	g.replay.Steps = nil
+}
+
+func cloneGameState(state gameState) gameState {
+	encoded, err := json.Marshal(state)
+	if err != nil {
+		panic(err)
+	}
+	var clone gameState
+	if err := json.Unmarshal(
+		encoded,
+		&clone,
+	); err != nil {
+		panic(err)
+	}
+	return clone
 }
 
 func verifyVersions(got Versions) error {

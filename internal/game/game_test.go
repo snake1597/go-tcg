@@ -22,8 +22,8 @@ func TestNewGamePinsReplayVersionsAndSeed(t *testing.T) {
 		Deck:     "standard-fire-v2",
 		PRNG:     "splitmix64-v1",
 	}
-	if replay.FormatVersion != 1 {
-		t.Fatalf("Replay().FormatVersion = %d, want 1", replay.FormatVersion)
+	if replay.FormatVersion != 2 {
+		t.Fatalf("Replay().FormatVersion = %d, want 2", replay.FormatVersion)
 	}
 	if replay.Versions != wantVersions {
 		t.Fatalf("Replay().Versions = %#v, want %#v", replay.Versions, wantVersions)
@@ -203,7 +203,7 @@ func TestSameSeedAndInputProduceSameStateHash(t *testing.T) {
 
 func TestStateHashUsesCanonicalVersionedState(t *testing.T) {
 	game := NewGame(42)
-	const want = "2ab4a3e01a8119fc674fda44bce17942a87073b81b3c17760bd1265a71d38a7f"
+	const want = "f2a16d83adb6e9a94c88b0fa078d1a9aa47ccc8ef30a775bd23123636468ace4"
 
 	if got := game.StateHash(); got != want {
 		t.Fatalf("StateHash() = %q, want canonical digest %q", got, want)

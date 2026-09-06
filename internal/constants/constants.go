@@ -11,6 +11,7 @@ type ActionKind string
 
 const (
 	ActionConcede         ActionKind = "concede"
+	ActionMaterialize     ActionKind = "materialize"
 	ActionPass            ActionKind = "pass"
 	ActionSkipMaterialize ActionKind = "skip_materialize"
 )
@@ -18,7 +19,7 @@ const (
 const (
 	CardDataSchemaVersion = 1
 	CardDataSourcePattern = "./card/*.json"
-	ReplayFormatVersion   = 1
+	ReplayFormatVersion   = 2
 	FixedDeckVersion      = "standard-fire-v2"
 	FixedCardDataVersion  = "card-data-v3"
 )
