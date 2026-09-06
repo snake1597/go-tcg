@@ -28,6 +28,7 @@ type LegalAction struct {
 type VisibleChampion struct {
 	Owner    constants.PlayerID `json:"owner"`
 	CardName string             `json:"card_name"`
+	Rested   bool               `json:"rested"`
 	Taunt    bool               `json:"taunt"`
 }
 
@@ -178,6 +179,9 @@ func (g *Game) Submit(player constants.PlayerID, input Input) error {
 		return nil
 	}
 	kind, exists := g.state.Knowledge.Actions[player][input.Action]
+	if g.state.Knowledge.Choice != nil && (!exists || kind != constants.ActionConcede) {
+		return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, input.Action)
+	}
 	if !exists {
 		card, materializeExists := g.state.Knowledge.Materializations[player][input.Action]
 		if !materializeExists {

@@ -137,6 +137,7 @@ func (g *Game) visibleChampions(_ constants.PlayerID) []VisibleChampion {
 			VisibleChampion{
 				Owner:    owner,
 				CardName: g.state.Entities[entityID(champion.Card)].Name,
+				Rested:   champion.Rested,
 				Taunt:    champion.TauntUntilTurn > g.state.Scheduler.TurnNumber,
 			},
 		)

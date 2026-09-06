@@ -46,6 +46,7 @@ func (g *Game) advanceAfterOpportunity() {
 	case PhaseMaterialize:
 		scheduler.Phase = PhaseRecollection
 	case PhaseRecollection:
+		g.recollectMemory(scheduler.TurnPlayer)
 		scheduler.Phase = PhaseDraw
 	case PhaseMain:
 		scheduler.Phase = PhaseEnd
@@ -74,6 +75,7 @@ func (g *Game) runStandardScheduler() {
 		scheduler := &g.state.Scheduler
 		switch scheduler.Phase {
 		case PhaseWakeUp:
+			g.wakeUpChampion(scheduler.TurnPlayer)
 			g.expireTimedChampionEffects()
 			scheduler.Phase = PhaseMaterialize
 		case PhaseMaterialize:
@@ -101,6 +103,50 @@ func (g *Game) runStandardScheduler() {
 			panic(fmt.Sprintf("unknown standard phase %q", scheduler.Phase))
 		}
 	}
+}
+
+func (g *Game) wakeUpChampion(player constants.PlayerID) {
+	champion, exists := g.state.Champions[player]
+	if !exists || !champion.Rested {
+		return
+	}
+	champion.Rested = false
+	g.state.Champions[player] = champion
+	g.recordPublicEvent(
+		player,
+		"turn:wake-up",
+		"wake-up",
+		champion.Card,
+	)
+}
+
+func (g *Game) recollectMemory(player constants.PlayerID) {
+	zones := g.state.Zones[player]
+	if len(zones.Memory) == 0 {
+		return
+	}
+	batch := eventBatch{
+		Player: player,
+		Cause:  "turn:recollection",
+		Events: make([]gameEvent, 0, len(zones.Memory)),
+	}
+	for _, card := range zones.Memory {
+		zones.Hand = append(zones.Hand, card)
+		g.grantCardTracking(player, entityID(card))
+		g.state.NextEvent++
+		batch.Events = append(
+			batch.Events,
+			gameEvent{
+				Sequence: g.state.NextEvent,
+				Kind:     "recollect",
+				Card:     card,
+			},
+		)
+		g.recordVisibleEvent(player, "recollect", entityID(card))
+	}
+	zones.Memory = nil
+	g.state.Zones[player] = zones
+	g.state.Events = append(g.state.Events, batch)
 }
 
 func (g *Game) grantOpportunity(player constants.PlayerID) {
