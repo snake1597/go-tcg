@@ -39,8 +39,12 @@ const (
 )
 
 type schedulerFrame struct {
-	Kind       schedulerKind      `json:"kind"`
-	TurnPlayer constants.PlayerID `json:"turn_player"`
+	Kind              schedulerKind      `json:"kind"`
+	TurnPlayer        constants.PlayerID `json:"turn_player"`
+	Phase             Phase              `json:"phase,omitempty"`
+	OpportunityHolder constants.PlayerID `json:"opportunity_holder,omitempty"`
+	ConsecutivePasses int                `json:"consecutive_passes"`
+	TurnNumber        uint64             `json:"turn_number"`
 }
 
 type gameEvent struct {
@@ -110,7 +114,10 @@ func newStandardSetup(
 		game.state.Scheduler = schedulerFrame{
 			Kind:       schedulerStable,
 			TurnPlayer: game.players[0],
+			Phase:      PhaseWakeUp,
+			TurnNumber: 1,
 		}
+		game.runStandardScheduler()
 	}
 	game.advanceKnowledgeRevision()
 	return game, nil

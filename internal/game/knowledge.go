@@ -45,16 +45,30 @@ func (g *Game) initializeKnowledgeState() {
 func (g *Game) refreshLegalActions() {
 	for _, player := range g.players {
 		actions := g.state.Knowledge.Actions[player]
+		clear(actions)
 		if g.state.Finished {
-			clear(actions)
 			continue
 		}
-		if !g.hasAction(player, constants.ActionConcede) {
-			handle := g.newViewHandle(
-				player,
-				"action:concede",
-			)
-			actions[handle] = constants.ActionConcede
+		handle := g.newViewHandle(
+			player,
+			"action:concede",
+		)
+		actions[handle] = constants.ActionConcede
+		if g.state.Knowledge.Choice == nil {
+			switch {
+			case player == g.state.Scheduler.OpportunityHolder:
+				handle := g.newViewHandle(
+					player,
+					"action:pass",
+				)
+				actions[handle] = constants.ActionPass
+			case player == g.state.Scheduler.TurnPlayer && g.state.Scheduler.Phase == PhaseMaterialize:
+				handle := g.newViewHandle(
+					player,
+					"action:skip-materialize",
+				)
+				actions[handle] = constants.ActionSkipMaterialize
+			}
 		}
 	}
 }

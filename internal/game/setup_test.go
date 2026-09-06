@@ -6,6 +6,241 @@ import (
 	"testing"
 )
 
+// Rules: 602c917f2f8fd4df7198429a72eb596bf7f647c6,
+// general-rules-starting-the-game.md § Standard Game Setup;
+// turn-order-main-phase.md § General Rules.
+func TestStandardSetupStartsFirstTurnAtMainAndPassesToSecondPlayersDraw(t *testing.T) {
+	configuration := StandardGameConfig{
+		Players: [2]constants.PlayerID{
+			constants.PlayerOne,
+			constants.PlayerTwo,
+		},
+		RepositoryRoot: filepath.Clean("../.."),
+		Seed:           42,
+	}
+	game, err := NewStandardSetup(configuration)
+	if err != nil {
+		t.Fatalf("NewStandardSetup() error = %v", err)
+	}
+
+	assertTurnView(
+		t,
+		game,
+		constants.PlayerOne,
+		constants.PlayerOne,
+		PhaseMain,
+		constants.PlayerOne,
+		[]constants.ActionKind{
+			constants.ActionConcede,
+			constants.ActionPass,
+		},
+	)
+	assertTurnView(
+		t,
+		game,
+		constants.PlayerTwo,
+		constants.PlayerOne,
+		PhaseMain,
+		constants.PlayerOne,
+		[]constants.ActionKind{
+			constants.ActionConcede,
+		},
+	)
+
+	submitActionKind(
+		t,
+		game,
+		constants.PlayerOne,
+		constants.ActionPass,
+	)
+	assertTurnView(
+		t,
+		game,
+		constants.PlayerTwo,
+		constants.PlayerOne,
+		PhaseMain,
+		constants.PlayerTwo,
+		[]constants.ActionKind{
+			constants.ActionConcede,
+			constants.ActionPass,
+		},
+	)
+
+	submitActionKind(
+		t,
+		game,
+		constants.PlayerTwo,
+		constants.ActionPass,
+	)
+	assertTurnView(
+		t,
+		game,
+		constants.PlayerOne,
+		constants.PlayerOne,
+		PhaseEnd,
+		constants.PlayerOne,
+		[]constants.ActionKind{
+			constants.ActionConcede,
+			constants.ActionPass,
+		},
+	)
+
+	submitActionKind(
+		t,
+		game,
+		constants.PlayerOne,
+		constants.ActionPass,
+	)
+	submitActionKind(
+		t,
+		game,
+		constants.PlayerTwo,
+		constants.ActionPass,
+	)
+	secondView, err := game.PlayerView(constants.PlayerTwo)
+	if err != nil {
+		t.Fatalf("PlayerView() error = %v", err)
+	}
+	if len(secondView.VisibleEvents) != 8 {
+		t.Fatalf("PlayerView().VisibleEvents = %#v, want seven opening draws and one turn draw", secondView.VisibleEvents)
+	}
+	assertTurnView(
+		t,
+		game,
+		constants.PlayerTwo,
+		constants.PlayerTwo,
+		PhaseMain,
+		constants.PlayerTwo,
+		[]constants.ActionKind{
+			constants.ActionConcede,
+			constants.ActionPass,
+		},
+	)
+}
+
+// Rules: 602c917f2f8fd4df7198429a72eb596bf7f647c6,
+// game-mechanics-timing-and-permissions.md § Opportunity;
+// turn-order-recollection-phase.md § General Rules.
+func TestStandardPassesDeterministicallyReachRecollectionOnTheNextTurn(t *testing.T) {
+	configuration := StandardGameConfig{
+		Players: [2]constants.PlayerID{
+			constants.PlayerOne,
+			constants.PlayerTwo,
+		},
+		RepositoryRoot: filepath.Clean("../.."),
+		Seed:           42,
+	}
+	first, err := NewStandardSetup(configuration)
+	if err != nil {
+		t.Fatalf("first NewStandardSetup() error = %v", err)
+	}
+	second, err := NewStandardSetup(configuration)
+	if err != nil {
+		t.Fatalf("second NewStandardSetup() error = %v", err)
+	}
+
+	for step := 0; step < 8; step++ {
+		firstView, err := first.PlayerView(constants.PlayerOne)
+		if err != nil {
+			t.Fatalf("first PlayerView() error = %v", err)
+		}
+		submitCurrentTurnAction(t, first, firstView)
+		secondView, err := second.PlayerView(constants.PlayerOne)
+		if err != nil {
+			t.Fatalf("second PlayerView() error = %v", err)
+		}
+		submitCurrentTurnAction(t, second, secondView)
+		if first.StateHash() != second.StateHash() {
+			t.Fatalf("state hashes differ after pass %d: %q != %q", step+1, first.StateHash(), second.StateHash())
+		}
+	}
+
+	assertTurnView(
+		t,
+		first,
+		constants.PlayerOne,
+		constants.PlayerOne,
+		PhaseMaterialize,
+		"",
+		[]constants.ActionKind{
+			constants.ActionConcede,
+			constants.ActionSkipMaterialize,
+		},
+	)
+	materializeView, err := first.PlayerView(constants.PlayerOne)
+	if err != nil {
+		t.Fatalf("PlayerView() error = %v", err)
+	}
+	submitCurrentTurnAction(t, first, materializeView)
+	assertTurnView(
+		t,
+		first,
+		constants.PlayerOne,
+		constants.PlayerOne,
+		PhaseRecollection,
+		constants.PlayerOne,
+		[]constants.ActionKind{
+			constants.ActionConcede,
+			constants.ActionPass,
+		},
+	)
+}
+
+// Rules: 602c917f2f8fd4df7198429a72eb596bf7f647c6,
+// turn-order-materialize-phase.md § General Rules.
+func TestStandardTurnStopsAtMaterializeUntilTurnPlayerSkipsIt(t *testing.T) {
+	configuration := StandardGameConfig{
+		Players: [2]constants.PlayerID{
+			constants.PlayerOne,
+			constants.PlayerTwo,
+		},
+		RepositoryRoot: filepath.Clean("../.."),
+		Seed:           42,
+	}
+	game, err := NewStandardSetup(configuration)
+	if err != nil {
+		t.Fatalf("NewStandardSetup() error = %v", err)
+	}
+	for step := 0; step < 15; step++ {
+		view, err := game.PlayerView(constants.PlayerOne)
+		if err != nil {
+			t.Fatalf("PlayerView() error = %v", err)
+		}
+		submitCurrentTurnAction(t, game, view)
+	}
+
+	assertTurnView(
+		t,
+		game,
+		constants.PlayerTwo,
+		constants.PlayerTwo,
+		PhaseMaterialize,
+		"",
+		[]constants.ActionKind{
+			constants.ActionConcede,
+			constants.ActionSkipMaterialize,
+		},
+	)
+	submitActionKind(
+		t,
+		game,
+		constants.PlayerTwo,
+		constants.ActionSkipMaterialize,
+	)
+	assertTurnView(
+		t,
+		game,
+		constants.PlayerTwo,
+		constants.PlayerTwo,
+		PhaseRecollection,
+		constants.PlayerTwo,
+		[]constants.ActionKind{
+			constants.ActionConcede,
+			constants.ActionPass,
+		},
+	)
+}
+
 func TestNewStandardSetupCreatesMirroredOpeningState(t *testing.T) {
 	configuration := StandardGameConfig{
 		Players: [2]constants.PlayerID{
@@ -166,4 +401,83 @@ func TestNewStandardSetupIsReproducibleForTheSameSeed(t *testing.T) {
 	if firstHash == otherHash {
 		t.Fatalf("different seed produced setup hash %q", otherHash)
 	}
+}
+
+func assertTurnView(
+	t *testing.T,
+	game *Game,
+	player constants.PlayerID,
+	wantTurnPlayer constants.PlayerID,
+	wantPhase Phase,
+	wantOpportunity constants.PlayerID,
+	wantActions []constants.ActionKind,
+) {
+	t.Helper()
+	view, err := game.PlayerView(player)
+	if err != nil {
+		t.Fatalf("PlayerView() error = %v", err)
+	}
+	if view.TurnPlayer != wantTurnPlayer {
+		t.Fatalf("PlayerView().TurnPlayer = %q, want %q", view.TurnPlayer, wantTurnPlayer)
+	}
+	if view.Phase != wantPhase {
+		t.Fatalf("PlayerView().Phase = %q, want %q", view.Phase, wantPhase)
+	}
+	if view.OpportunityHolder != wantOpportunity {
+		t.Fatalf("PlayerView().OpportunityHolder = %q, want %q", view.OpportunityHolder, wantOpportunity)
+	}
+	if len(view.LegalActions) != len(wantActions) {
+		t.Fatalf("PlayerView().LegalActions = %#v, want %d actions", view.LegalActions, len(wantActions))
+	}
+	for index, wantAction := range wantActions {
+		if view.LegalActions[index].Kind != wantAction {
+			t.Fatalf("PlayerView().LegalActions[%d].Kind = %q, want %q", index, view.LegalActions[index].Kind, wantAction)
+		}
+	}
+}
+
+func submitActionKind(
+	t *testing.T,
+	game *Game,
+	player constants.PlayerID,
+	wantKind constants.ActionKind,
+) {
+	t.Helper()
+	view, err := game.PlayerView(player)
+	if err != nil {
+		t.Fatalf("PlayerView() error = %v", err)
+	}
+	for _, action := range view.LegalActions {
+		if action.Kind != wantKind {
+			continue
+		}
+		input := Input{
+			Revision: view.Revision,
+			Action:   action.Handle,
+		}
+		if err := game.Submit(player, input); err != nil {
+			t.Fatalf("Submit() error = %v", err)
+		}
+		return
+	}
+	t.Fatalf("PlayerView().LegalActions = %#v, want %q", view.LegalActions, wantKind)
+}
+
+func submitCurrentTurnAction(t *testing.T, game *Game, view PlayerView) {
+	t.Helper()
+	if view.OpportunityHolder != "" {
+		submitActionKind(
+			t,
+			game,
+			view.OpportunityHolder,
+			constants.ActionPass,
+		)
+		return
+	}
+	submitActionKind(
+		t,
+		game,
+		view.TurnPlayer,
+		constants.ActionSkipMaterialize,
+	)
 }

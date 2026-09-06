@@ -10,7 +10,9 @@ const (
 type ActionKind string
 
 const (
-	ActionConcede ActionKind = "concede"
+	ActionConcede         ActionKind = "concede"
+	ActionPass            ActionKind = "pass"
+	ActionSkipMaterialize ActionKind = "skip_materialize"
 )
 
 const (
