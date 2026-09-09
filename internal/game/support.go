@@ -1,7 +1,6 @@
 package game
 
 import (
-	"errors"
 	"fmt"
 	"go-tcg/internal/constants"
 	"go-tcg/internal/model"
@@ -80,8 +79,12 @@ type validatedStandardDecks struct {
 }
 
 func loadValidatedStandardDecks(configuration StandardGameConfig) (validatedStandardDecks, error) {
-	if configuration.Players[0] == nil || configuration.Players[1] == nil || configuration.Players[0].UID == "" || configuration.Players[1].UID == "" || samePlayer(configuration.Players[0], configuration.Players[1]) {
-		return validatedStandardDecks{}, errors.New("standard game requires two distinct players")
+	if configuration.Players[0] == nil ||
+		configuration.Players[1] == nil ||
+		configuration.Players[0].UID == "" ||
+		configuration.Players[1].UID == "" ||
+		samePlayer(configuration.Players[0], configuration.Players[1]) {
+		return validatedStandardDecks{}, fmt.Errorf("standard game requires two distinct players")
 	}
 	definitions, err := loadCardDefinitions(
 		filepath.Join(configuration.RepositoryRoot, "card"),

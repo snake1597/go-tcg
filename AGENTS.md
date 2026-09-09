@@ -65,6 +65,7 @@ go-tcg/
 - 先載入 default.rules, path: ./.codex/rules
 - YAML 測試資料不得使用 inline map；每筆資料的欄位需逐行展開，以維持可讀性與方便檢視差異。
 - struct literal、包含匿名函式或巢狀呼叫的函式呼叫不得 inline；即使只有一個欄位或參數，欄位、參數與匿名函式 body 均須逐行展開。
+- 錯誤回傳都採用 fmt.Errorf
 
 ## 安全規範
 

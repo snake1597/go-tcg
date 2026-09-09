@@ -260,7 +260,7 @@ func validateFixedStandardDeck(deck DeckManifest, definitions map[CardID]CardDef
 		return fmt.Errorf("material deck has %d cards, maximum is 12", deck.MaterialDeck.Count())
 	}
 	if deck.OutsideGamePool == nil {
-		return errors.New("outside game pool is required")
+		return fmt.Errorf("outside game pool is required")
 	}
 	if err := validateDeckSection("main deck", deck.MainDeck, 4, definitions); err != nil {
 		return err
@@ -275,7 +275,7 @@ func validateFixedStandardDeck(deck DeckManifest, definitions map[CardID]CardDef
 	if !slices.Equal(deck.MainDeck, canonicalDeck.MainDeck) ||
 		!slices.Equal(deck.MaterialDeck, canonicalDeck.MaterialDeck) ||
 		!slices.Equal(deck.OutsideGamePool, canonicalDeck.OutsideGamePool) {
-		return errors.New("deck does not match the fixed manifest")
+		return fmt.Errorf("deck does not match the fixed manifest")
 	}
 
 	startingChampions := 0
@@ -286,7 +286,7 @@ func validateFixedStandardDeck(deck DeckManifest, definitions map[CardID]CardDef
 		}
 	}
 	if startingChampions == 0 {
-		return errors.New("material deck has no Level 0 Champion")
+		return fmt.Errorf("material deck has no Level 0 Champion")
 	}
 	return nil
 }
@@ -297,7 +297,7 @@ func validateMirroredDecks(first, second DeckManifest) error {
 		!slices.Equal(first.MainDeck, second.MainDeck) ||
 		!slices.Equal(first.MaterialDeck, second.MaterialDeck) ||
 		!slices.Equal(first.OutsideGamePool, second.OutsideGamePool) {
-		return errors.New("both players must use identical fixed deck manifests")
+		return fmt.Errorf("both players must use identical fixed deck manifests")
 	}
 	return nil
 }

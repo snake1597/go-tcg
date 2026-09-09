@@ -1,10 +1,10 @@
 package tcgerrors
 
-import "errors"
+import "fmt"
 
 var (
-	ErrGameFinished      = errors.New("game is finished")
-	ErrStaleRevision     = errors.New("stale revision")
-	ErrUnknownPlayer     = errors.New("unknown player")
-	ErrInvalidViewHandle = errors.New("invalid view handle")
+	ErrGameFinished      = fmt.Errorf("game is finished")
+	ErrStaleRevision     = fmt.Errorf("stale revision")
+	ErrUnknownPlayer     = fmt.Errorf("unknown player")
+	ErrInvalidViewHandle = fmt.Errorf("invalid view handle")
 )

@@ -45,7 +45,7 @@ type cardMetadata struct {
 
 func BuildManifest(cardDir, dataVersion string) (Manifest, error) {
 	if strings.TrimSpace(dataVersion) == "" {
-		return Manifest{}, errors.New("card data version is required")
+		return Manifest{}, fmt.Errorf("card data version is required")
 	}
 
 	directoryEntries, err := os.ReadDir(cardDir)
@@ -61,7 +61,7 @@ func BuildManifest(cardDir, dataVersion string) (Manifest, error) {
 	}
 	sort.Strings(names)
 	if len(names) == 0 {
-		return Manifest{}, errors.New("card directory contains no JSON files")
+		return Manifest{}, fmt.Errorf("card directory contains no JSON files")
 	}
 
 	manifest := Manifest{
@@ -176,7 +176,7 @@ func decodeCardMetadata(contents []byte) (cardMetadata, error) {
 		return cardMetadata{}, fmt.Errorf("card file must contain exactly one JSON object: %w", err)
 	}
 	if metadata.UUID == "" || metadata.Slug == "" || metadata.Name == "" || metadata.LastUpdate == "" {
-		return cardMetadata{}, errors.New("uuid, slug, name, and last_update are required")
+		return cardMetadata{}, fmt.Errorf("uuid, slug, name, and last_update are required")
 	}
 	if _, err := time.Parse(time.RFC3339Nano, metadata.LastUpdate); err != nil {
 		return cardMetadata{}, fmt.Errorf("invalid last_update %q: %w", metadata.LastUpdate, err)
@@ -188,7 +188,7 @@ func requireEOF(decoder *json.Decoder) error {
 	var extra json.RawMessage
 	if err := decoder.Decode(&extra); !errors.Is(err, io.EOF) {
 		if err == nil {
-			return errors.New("found another JSON value")
+			return fmt.Errorf("found another JSON value")
 		}
 		return err
 	}
