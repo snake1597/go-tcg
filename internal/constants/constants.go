@@ -1,12 +1,5 @@
 package constants
 
-type PlayerID string
-
-const (
-	PlayerOne PlayerID = "player-1"
-	PlayerTwo PlayerID = "player-2"
-)
-
 type ActionKind string
 
 const (
@@ -19,7 +12,7 @@ const (
 const (
 	CardDataSchemaVersion = 1
 	CardDataSourcePattern = "./card/*.json"
-	ReplayFormatVersion   = 2
+	ReplayFormatVersion   = 3
 	FixedDeckVersion      = "standard-fire-v2"
 	FixedCardDataVersion  = "card-data-v3"
 )

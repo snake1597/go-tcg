@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"go-tcg/internal/constants"
+	"go-tcg/internal/model"
 	tcgErrors "go-tcg/internal/tcg_errors"
 	"sort"
 )
@@ -16,30 +17,30 @@ type knowledgeEntity struct {
 }
 
 type knowledgeState struct {
-	Actions          map[constants.PlayerID]map[ViewHandle]constants.ActionKind `json:"actions"`
-	Materializations map[constants.PlayerID]map[ViewHandle]cardInstanceID       `json:"materializations"`
-	Cards            map[constants.PlayerID]map[entityID]ViewHandle             `json:"cards"`
-	Events           map[constants.PlayerID][]VisibleEvent                      `json:"events"`
-	Choice           *pendingChoice                                             `json:"choice,omitempty"`
+	Actions          map[string]map[ViewHandle]constants.ActionKind `json:"actions"`
+	Materializations map[string]map[ViewHandle]cardInstanceID       `json:"materializations"`
+	Cards            map[string]map[entityID]ViewHandle             `json:"cards"`
+	Events           map[string][]VisibleEvent                      `json:"events"`
+	Choice           *pendingChoice                                 `json:"choice,omitempty"`
 }
 
 type pendingChoice struct {
-	Actor   constants.PlayerID      `json:"actor"`
+	Actor   *model.Player           `json:"actor"`
 	Options map[ViewHandle]entityID `json:"options"`
 }
 
 func (g *Game) initializeKnowledgeState() {
 	knowledge := knowledgeState{
-		Actions:          make(map[constants.PlayerID]map[ViewHandle]constants.ActionKind, len(g.players)),
-		Materializations: make(map[constants.PlayerID]map[ViewHandle]cardInstanceID, len(g.players)),
-		Cards:            make(map[constants.PlayerID]map[entityID]ViewHandle, len(g.players)),
-		Events:           make(map[constants.PlayerID][]VisibleEvent, len(g.players)),
+		Actions:          make(map[string]map[ViewHandle]constants.ActionKind, len(g.players)),
+		Materializations: make(map[string]map[ViewHandle]cardInstanceID, len(g.players)),
+		Cards:            make(map[string]map[entityID]ViewHandle, len(g.players)),
+		Events:           make(map[string][]VisibleEvent, len(g.players)),
 	}
 	for _, player := range g.players {
-		knowledge.Actions[player] = make(map[ViewHandle]constants.ActionKind)
-		knowledge.Materializations[player] = make(map[ViewHandle]cardInstanceID)
-		knowledge.Cards[player] = make(map[entityID]ViewHandle)
-		knowledge.Events[player] = []VisibleEvent{}
+		knowledge.Actions[player.UID] = make(map[ViewHandle]constants.ActionKind)
+		knowledge.Materializations[player.UID] = make(map[ViewHandle]cardInstanceID)
+		knowledge.Cards[player.UID] = make(map[entityID]ViewHandle)
+		knowledge.Events[player.UID] = []VisibleEvent{}
 	}
 	g.state.Knowledge = knowledge
 	g.refreshLegalActions()
@@ -47,8 +48,8 @@ func (g *Game) initializeKnowledgeState() {
 
 func (g *Game) refreshLegalActions() {
 	for _, player := range g.players {
-		actions := g.state.Knowledge.Actions[player]
-		materializations := g.state.Knowledge.Materializations[player]
+		actions := g.state.Knowledge.Actions[player.UID]
+		materializations := g.state.Knowledge.Materializations[player.UID]
 		clear(actions)
 		clear(materializations)
 		if g.state.Finished {
@@ -61,13 +62,13 @@ func (g *Game) refreshLegalActions() {
 		actions[handle] = constants.ActionConcede
 		if g.state.Knowledge.Choice == nil {
 			switch {
-			case player == g.state.Scheduler.OpportunityHolder:
+			case samePlayer(player, g.state.Scheduler.OpportunityHolder):
 				handle := g.newViewHandle(
 					player,
 					"action:pass",
 				)
 				actions[handle] = constants.ActionPass
-			case player == g.state.Scheduler.TurnPlayer && g.state.Scheduler.Phase == PhaseMaterialize:
+			case samePlayer(player, g.state.Scheduler.TurnPlayer) && g.state.Scheduler.Phase == PhaseMaterialize:
 				for _, card := range g.legalChampionMaterializations(player) {
 					handle := g.newViewHandle(
 						player,
@@ -85,8 +86,8 @@ func (g *Game) refreshLegalActions() {
 	}
 }
 
-func (g *Game) hasAction(player constants.PlayerID, kind constants.ActionKind) bool {
-	for _, candidate := range g.state.Knowledge.Actions[player] {
+func (g *Game) hasAction(player *model.Player, kind constants.ActionKind) bool {
+	for _, candidate := range g.state.Knowledge.Actions[player.UID] {
 		if candidate == kind {
 			return true
 		}
@@ -94,8 +95,8 @@ func (g *Game) hasAction(player constants.PlayerID, kind constants.ActionKind) b
 	return false
 }
 
-func (g *Game) legalActions(player constants.PlayerID) []LegalAction {
-	actions := g.state.Knowledge.Actions[player]
+func (g *Game) legalActions(player *model.Player) []LegalAction {
+	actions := g.state.Knowledge.Actions[player.UID]
 	legalActions := make([]LegalAction, 0, len(actions))
 	for handle, kind := range actions {
 		legalActions = append(
@@ -106,7 +107,7 @@ func (g *Game) legalActions(player constants.PlayerID) []LegalAction {
 			},
 		)
 	}
-	for handle, card := range g.state.Knowledge.Materializations[player] {
+	for handle, card := range g.state.Knowledge.Materializations[player.UID] {
 		legalActions = append(
 			legalActions,
 			LegalAction{
@@ -125,10 +126,10 @@ func (g *Game) legalActions(player constants.PlayerID) []LegalAction {
 	return legalActions
 }
 
-func (g *Game) visibleChampions(_ constants.PlayerID) []VisibleChampion {
+func (g *Game) visibleChampions(_ *model.Player) []VisibleChampion {
 	champions := make([]VisibleChampion, 0, len(g.state.Champions))
 	for _, owner := range g.players {
-		champion, exists := g.state.Champions[owner]
+		champion, exists := g.state.Champions[owner.UID]
 		if !exists {
 			continue
 		}
@@ -145,25 +146,25 @@ func (g *Game) visibleChampions(_ constants.PlayerID) []VisibleChampion {
 	return champions
 }
 
-func (g *Game) grantCardTracking(player constants.PlayerID, card entityID) {
-	if _, exists := g.state.Knowledge.Cards[player][card]; exists {
+func (g *Game) grantCardTracking(player *model.Player, card entityID) {
+	if _, exists := g.state.Knowledge.Cards[player.UID][card]; exists {
 		return
 	}
 	handle := g.newViewHandle(
 		player,
 		"card:"+string(card),
 	)
-	g.state.Knowledge.Cards[player][card] = handle
+	g.state.Knowledge.Cards[player.UID][card] = handle
 }
 
-func (g *Game) revokeCardTracking(player constants.PlayerID, card entityID) {
-	handle, exists := g.state.Knowledge.Cards[player][card]
+func (g *Game) revokeCardTracking(player *model.Player, card entityID) {
+	handle, exists := g.state.Knowledge.Cards[player.UID][card]
 	if !exists {
 		return
 	}
-	delete(g.state.Knowledge.Cards[player], card)
+	delete(g.state.Knowledge.Cards[player.UID], card)
 	choice := g.state.Knowledge.Choice
-	if choice == nil || choice.Actor != player {
+	if choice == nil || !samePlayer(choice.Actor, player) {
 		return
 	}
 	delete(choice.Options, handle)
@@ -172,8 +173,8 @@ func (g *Game) revokeCardTracking(player constants.PlayerID, card entityID) {
 	}
 }
 
-func (g *Game) visibleCards(player constants.PlayerID) []VisibleCard {
-	cards := g.state.Knowledge.Cards[player]
+func (g *Game) visibleCards(player *model.Player) []VisibleCard {
+	cards := g.state.Knowledge.Cards[player.UID]
 	visibleCards := make([]VisibleCard, 0, len(cards))
 	for card, handle := range cards {
 		visibleCards = append(
@@ -193,26 +194,26 @@ func (g *Game) visibleCards(player constants.PlayerID) []VisibleCard {
 	return visibleCards
 }
 
-func (g *Game) recordVisibleEvent(player constants.PlayerID, kind string, card entityID) {
+func (g *Game) recordVisibleEvent(player *model.Player, kind string, card entityID) {
 	event := VisibleEvent{
 		Kind:     kind,
 		CardName: g.state.Entities[card].Name,
 	}
-	g.state.Knowledge.Events[player] = append(
-		g.state.Knowledge.Events[player],
+	g.state.Knowledge.Events[player.UID] = append(
+		g.state.Knowledge.Events[player.UID],
 		event,
 	)
 }
 
-func (g *Game) visibleEvents(player constants.PlayerID) []VisibleEvent {
+func (g *Game) visibleEvents(player *model.Player) []VisibleEvent {
 	return append(
 		[]VisibleEvent(nil),
-		g.state.Knowledge.Events[player]...,
+		g.state.Knowledge.Events[player.UID]...,
 	)
 }
 
-func (g *Game) setPendingCardChoice(player constants.PlayerID, card entityID) {
-	handle, exists := g.state.Knowledge.Cards[player][card]
+func (g *Game) setPendingCardChoice(player *model.Player, card entityID) {
+	handle, exists := g.state.Knowledge.Cards[player.UID][card]
 	if !exists {
 		return
 	}
@@ -224,9 +225,9 @@ func (g *Game) setPendingCardChoice(player constants.PlayerID, card entityID) {
 	}
 }
 
-func (g *Game) pendingChoice(player constants.PlayerID) *PendingChoice {
+func (g *Game) pendingChoice(player *model.Player) *PendingChoice {
 	choice := g.state.Knowledge.Choice
-	if choice == nil || choice.Actor != player {
+	if choice == nil || !samePlayer(choice.Actor, player) {
 		return nil
 	}
 	options := make([]ViewHandle, 0, len(choice.Options))
@@ -244,9 +245,9 @@ func (g *Game) pendingChoice(player constants.PlayerID) *PendingChoice {
 	}
 }
 
-func (g *Game) submitChoice(player constants.PlayerID, input Input) error {
+func (g *Game) submitChoice(player *model.Player, input Input) error {
 	choice := g.state.Knowledge.Choice
-	if choice == nil || choice.Actor != player {
+	if choice == nil || !samePlayer(choice.Actor, player) {
 		return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, input.Choice)
 	}
 	_, exists := choice.Options[input.Choice]
@@ -263,7 +264,7 @@ func (g *Game) advanceKnowledgeRevision() {
 	g.refreshLegalActions()
 }
 
-func (g *Game) newViewHandle(player constants.PlayerID, subject string) ViewHandle {
+func (g *Game) newViewHandle(player *model.Player, subject string) ViewHandle {
 	g.state.NextHandle++
 	value := fmt.Sprintf(
 		"view-handle-v1:%d:%d:%s:%s",

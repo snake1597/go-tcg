@@ -1,8 +1,8 @@
 package game
 
-import "go-tcg/internal/constants"
+import "go-tcg/internal/model"
 
-func (g *Game) addKnowledgeFixtureCard(player constants.PlayerID, name string) entityID {
+func (g *Game) addKnowledgeFixtureCard(player *model.Player, name string) entityID {
 	card := entityID("fixture-card")
 	g.state.Entities[card] = knowledgeEntity{
 		Name: name,

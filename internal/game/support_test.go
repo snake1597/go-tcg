@@ -3,6 +3,7 @@ package game
 import (
 	"errors"
 	"go-tcg/internal/constants"
+	"go-tcg/internal/model"
 	"path/filepath"
 	"slices"
 	"testing"
@@ -274,9 +275,9 @@ func TestSupportSetReportsEveryMissingRequirement(t *testing.T) {
 func TestNewStandardGameReturnsCompleteGateFailure(t *testing.T) {
 	repositoryRoot := filepath.Join("..", "..")
 	configuration := StandardGameConfig{
-		Players: [2]constants.PlayerID{
-			constants.PlayerID("player-1"),
-			constants.PlayerID("player-2"),
+		Players: [2]*model.Player{
+			model.PlayerOne,
+			model.PlayerTwo,
 		},
 		RepositoryRoot: repositoryRoot,
 	}

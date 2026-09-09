@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"go-tcg/internal/constants"
+	"go-tcg/internal/model"
 )
 
 type ReplayError struct {
@@ -47,18 +48,18 @@ type Versions struct {
 }
 
 type Replay struct {
-	FormatVersion  int                  `json:"format_version"`
-	Versions       Versions             `json:"versions"`
-	InitialSeed    uint64               `json:"initial_seed"`
-	InitialState   *gameState           `json:"initial_state"`
-	InitialPlayers []constants.PlayerID `json:"initial_players"`
-	Steps          []ReplayStep         `json:"steps"`
+	FormatVersion  int             `json:"format_version"`
+	Versions       Versions        `json:"versions"`
+	InitialSeed    uint64          `json:"initial_seed"`
+	InitialState   *gameState      `json:"initial_state"`
+	InitialPlayers []*model.Player `json:"initial_players"`
+	Steps          []ReplayStep    `json:"steps"`
 }
 
 type ReplayStep struct {
-	Player    constants.PlayerID `json:"player"`
-	Input     Input              `json:"input"`
-	StateHash string             `json:"state_hash"`
+	Player    *model.Player `json:"player"`
+	Input     Input         `json:"input"`
+	StateHash string        `json:"state_hash"`
 }
 
 // Verify replays the canonical input sequence against a fresh game instance.
@@ -82,7 +83,7 @@ func (r Replay) Verify() error {
 	game := NewGame(r.InitialSeed)
 	game.state = cloneGameState(*r.InitialState)
 	game.players = append(
-		[]constants.PlayerID(nil),
+		[]*model.Player(nil),
 		r.InitialPlayers...,
 	)
 	for index, step := range r.Steps {
@@ -109,7 +110,7 @@ func (g *Game) captureReplayInitialState() {
 	state := cloneGameState(g.state)
 	g.replay.InitialState = &state
 	g.replay.InitialPlayers = append(
-		[]constants.PlayerID(nil),
+		[]*model.Player(nil),
 		g.players...,
 	)
 	g.replay.Steps = nil

@@ -1,7 +1,7 @@
 package game
 
 import (
-	"go-tcg/internal/constants"
+	"go-tcg/internal/model"
 	"strings"
 	"testing"
 )
@@ -9,20 +9,20 @@ import (
 func TestPlayerViewProjectsOnlyTrackedCardsAndVisibleHistory(t *testing.T) {
 	game := NewGame(42)
 	secretCard := game.addKnowledgeFixtureCard(
-		constants.PlayerOne,
+		model.PlayerOne,
 		"Secret Flame",
 	)
 	game.recordVisibleEvent(
-		constants.PlayerOne,
+		model.PlayerOne,
 		"reveal",
 		secretCard,
 	)
 
-	firstView, err := game.PlayerView(constants.PlayerOne)
+	firstView, err := game.PlayerView(model.PlayerOne)
 	if err != nil {
 		t.Fatalf("first PlayerView() error = %v", err)
 	}
-	secondView, err := game.PlayerView(constants.PlayerTwo)
+	secondView, err := game.PlayerView(model.PlayerTwo)
 	if err != nil {
 		t.Fatalf("second PlayerView() error = %v", err)
 	}
@@ -46,27 +46,27 @@ func TestPlayerViewProjectsOnlyTrackedCardsAndVisibleHistory(t *testing.T) {
 func TestPlayerViewRevokesTrackingHandleButRetainsRevealHistory(t *testing.T) {
 	game := NewGame(42)
 	secretCard := game.addKnowledgeFixtureCard(
-		constants.PlayerOne,
+		model.PlayerOne,
 		"Secret Flame",
 	)
 	game.recordVisibleEvent(
-		constants.PlayerOne,
+		model.PlayerOne,
 		"reveal",
 		secretCard,
 	)
-	beforeShuffle, err := game.PlayerView(constants.PlayerOne)
+	beforeShuffle, err := game.PlayerView(model.PlayerOne)
 	if err != nil {
 		t.Fatalf("PlayerView() before shuffle error = %v", err)
 	}
 	oldHandle := beforeShuffle.Cards[0].Handle
 
 	game.revokeCardTracking(
-		constants.PlayerOne,
+		model.PlayerOne,
 		secretCard,
 	)
 	game.advanceKnowledgeRevision()
 
-	afterShuffle, err := game.PlayerView(constants.PlayerOne)
+	afterShuffle, err := game.PlayerView(model.PlayerOne)
 	if err != nil {
 		t.Fatalf("PlayerView() after shuffle error = %v", err)
 	}
@@ -78,12 +78,12 @@ func TestPlayerViewRevokesTrackingHandleButRetainsRevealHistory(t *testing.T) {
 	}
 
 	game.grantCardTracking(
-		constants.PlayerOne,
+		model.PlayerOne,
 		secretCard,
 	)
 	game.advanceKnowledgeRevision()
 
-	afterReturn, err := game.PlayerView(constants.PlayerOne)
+	afterReturn, err := game.PlayerView(model.PlayerOne)
 	if err != nil {
 		t.Fatalf("PlayerView() after return error = %v", err)
 	}
@@ -98,19 +98,19 @@ func TestPlayerViewRevokesTrackingHandleButRetainsRevealHistory(t *testing.T) {
 func TestPendingChoiceAcceptsOnlyCurrentPlayersVisibleHandle(t *testing.T) {
 	game := NewGame(42)
 	secretCard := game.addKnowledgeFixtureCard(
-		constants.PlayerOne,
+		model.PlayerOne,
 		"Secret Flame",
 	)
 	game.setPendingCardChoice(
-		constants.PlayerOne,
+		model.PlayerOne,
 		secretCard,
 	)
 
-	firstView, err := game.PlayerView(constants.PlayerOne)
+	firstView, err := game.PlayerView(model.PlayerOne)
 	if err != nil {
 		t.Fatalf("first PlayerView() error = %v", err)
 	}
-	secondView, err := game.PlayerView(constants.PlayerTwo)
+	secondView, err := game.PlayerView(model.PlayerTwo)
 	if err != nil {
 		t.Fatalf("second PlayerView() error = %v", err)
 	}
@@ -127,7 +127,7 @@ func TestPendingChoiceAcceptsOnlyCurrentPlayersVisibleHandle(t *testing.T) {
 		Revision: secondView.Revision,
 		Choice:   choice,
 	}
-	err = game.Submit(constants.PlayerTwo, crossPlayerInput)
+	err = game.Submit(model.PlayerTwo, crossPlayerInput)
 	if err == nil || !strings.Contains(err.Error(), "invalid view handle") {
 		t.Fatalf("cross-player Submit() error = %v, want invalid view handle", err)
 	}
@@ -138,10 +138,10 @@ func TestPendingChoiceAcceptsOnlyCurrentPlayersVisibleHandle(t *testing.T) {
 		Revision: firstView.Revision,
 		Choice:   choice,
 	}
-	if err := game.Submit(constants.PlayerOne, input); err != nil {
+	if err := game.Submit(model.PlayerOne, input); err != nil {
 		t.Fatalf("Submit() error = %v", err)
 	}
-	afterChoice, err := game.PlayerView(constants.PlayerOne)
+	afterChoice, err := game.PlayerView(model.PlayerOne)
 	if err != nil {
 		t.Fatalf("PlayerView() after choice error = %v", err)
 	}
@@ -156,26 +156,26 @@ func TestPendingChoiceAcceptsOnlyCurrentPlayersVisibleHandle(t *testing.T) {
 func TestRevokingTrackingRevokesPendingChoiceOptionWithoutChangingStateOnSubmission(t *testing.T) {
 	game := NewGame(42)
 	secretCard := game.addKnowledgeFixtureCard(
-		constants.PlayerOne,
+		model.PlayerOne,
 		"Secret Flame",
 	)
 	game.setPendingCardChoice(
-		constants.PlayerOne,
+		model.PlayerOne,
 		secretCard,
 	)
-	view, err := game.PlayerView(constants.PlayerOne)
+	view, err := game.PlayerView(model.PlayerOne)
 	if err != nil {
 		t.Fatalf("PlayerView() error = %v", err)
 	}
 	oldChoice := view.PendingChoice.Options[0]
 
 	game.revokeCardTracking(
-		constants.PlayerOne,
+		model.PlayerOne,
 		secretCard,
 	)
 	game.advanceKnowledgeRevision()
 
-	afterRevocation, err := game.PlayerView(constants.PlayerOne)
+	afterRevocation, err := game.PlayerView(model.PlayerOne)
 	if err != nil {
 		t.Fatalf("PlayerView() after revocation error = %v", err)
 	}
@@ -187,7 +187,7 @@ func TestRevokingTrackingRevokesPendingChoiceOptionWithoutChangingStateOnSubmiss
 		Revision: afterRevocation.Revision,
 		Choice:   oldChoice,
 	}
-	err = game.Submit(constants.PlayerOne, input)
+	err = game.Submit(model.PlayerOne, input)
 	if err == nil || !strings.Contains(err.Error(), "invalid view handle") {
 		t.Fatalf("Submit() error = %v, want invalid view handle", err)
 	}
@@ -199,16 +199,16 @@ func TestRevokingTrackingRevokesPendingChoiceOptionWithoutChangingStateOnSubmiss
 func TestPendingChoiceOmitsUntrackedCards(t *testing.T) {
 	game := NewGame(42)
 	secretCard := game.addKnowledgeFixtureCard(
-		constants.PlayerOne,
+		model.PlayerOne,
 		"Secret Flame",
 	)
 
 	game.setPendingCardChoice(
-		constants.PlayerTwo,
+		model.PlayerTwo,
 		secretCard,
 	)
 
-	view, err := game.PlayerView(constants.PlayerTwo)
+	view, err := game.PlayerView(model.PlayerTwo)
 	if err != nil {
 		t.Fatalf("PlayerView() error = %v", err)
 	}

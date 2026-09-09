@@ -2,7 +2,7 @@ package game
 
 import (
 	"fmt"
-	"go-tcg/internal/constants"
+	"go-tcg/internal/model"
 	"strconv"
 )
 
@@ -13,13 +13,13 @@ type cardInstanceID string
 type objectID string
 
 type cardInstance struct {
-	ID         cardInstanceID     `json:"id"`
-	Owner      constants.PlayerID `json:"owner"`
-	Definition CardID             `json:"definition"`
-	Face       CardFaceID         `json:"face"`
-	Level      int64              `json:"level"`
-	Types      []string           `json:"types"`
-	MemoryCost int                `json:"memory_cost"`
+	ID         cardInstanceID `json:"id"`
+	Owner      *model.Player  `json:"owner"`
+	Definition CardID         `json:"definition"`
+	Face       CardFaceID     `json:"face"`
+	Level      int64          `json:"level"`
+	Types      []string       `json:"types"`
+	MemoryCost int            `json:"memory_cost"`
 }
 
 type playerZones struct {
@@ -32,14 +32,14 @@ type playerZones struct {
 }
 
 type championObject struct {
-	ID             objectID           `json:"id"`
-	Card           cardInstanceID     `json:"card"`
-	Owner          constants.PlayerID `json:"owner"`
-	InnerLineage   []cardInstanceID   `json:"inner_lineage"`
-	Rested         bool               `json:"rested"`
-	Counters       map[string]int     `json:"counters"`
-	CombatRole     string             `json:"combat_role"`
-	TauntUntilTurn uint64             `json:"taunt_until_turn"`
+	ID             objectID         `json:"id"`
+	Card           cardInstanceID   `json:"card"`
+	Owner          *model.Player    `json:"owner"`
+	InnerLineage   []cardInstanceID `json:"inner_lineage"`
+	Rested         bool             `json:"rested"`
+	Counters       map[string]int   `json:"counters"`
+	CombatRole     string           `json:"combat_role"`
+	TauntUntilTurn uint64           `json:"taunt_until_turn"`
 }
 
 type schedulerKind string
@@ -50,12 +50,12 @@ const (
 )
 
 type schedulerFrame struct {
-	Kind              schedulerKind      `json:"kind"`
-	TurnPlayer        constants.PlayerID `json:"turn_player"`
-	Phase             Phase              `json:"phase,omitempty"`
-	OpportunityHolder constants.PlayerID `json:"opportunity_holder,omitempty"`
-	ConsecutivePasses int                `json:"consecutive_passes"`
-	TurnNumber        uint64             `json:"turn_number"`
+	Kind              schedulerKind `json:"kind"`
+	TurnPlayer        *model.Player `json:"turn_player"`
+	Phase             Phase         `json:"phase,omitempty"`
+	OpportunityHolder *model.Player `json:"opportunity_holder,omitempty"`
+	ConsecutivePasses int           `json:"consecutive_passes"`
+	TurnNumber        uint64        `json:"turn_number"`
 }
 
 type gameEvent struct {
@@ -65,9 +65,9 @@ type gameEvent struct {
 }
 
 type eventBatch struct {
-	Player constants.PlayerID `json:"player"`
-	Cause  string             `json:"cause"`
-	Events []gameEvent        `json:"events"`
+	Player *model.Player `json:"player"`
+	Cause  string        `json:"cause"`
+	Events []gameEvent   `json:"events"`
 }
 
 // NewStandardSetup builds the deterministic opening state for the fixed deck.
@@ -93,14 +93,14 @@ func newStandardSetup(
 	secondDeck DeckManifest,
 ) (*Game, error) {
 	game := NewGame(configuration.Seed)
-	game.players = []constants.PlayerID{
+	game.players = []*model.Player{
 		configuration.Players[0],
 		configuration.Players[1],
 	}
 	game.state.NextHandle = 0
 	game.initializeKnowledgeState()
-	game.state.Zones = make(map[constants.PlayerID]playerZones, len(game.players))
-	game.state.Champions = make(map[constants.PlayerID]championObject, len(game.players))
+	game.state.Zones = make(map[string]playerZones, len(game.players))
+	game.state.Champions = make(map[string]championObject, len(game.players))
 
 	decks := []DeckManifest{
 		firstDeck,
@@ -135,7 +135,7 @@ func newStandardSetup(
 	return game, nil
 }
 
-func (g *Game) addPlayerDeck(player constants.PlayerID, deck DeckManifest, definitions map[CardID]CardDefinition) error {
+func (g *Game) addPlayerDeck(player *model.Player, deck DeckManifest, definitions map[CardID]CardDefinition) error {
 	zones := playerZones{}
 	for _, entry := range deck.MainDeck {
 		for count := 0; count < entry.Count; count++ {
@@ -148,20 +148,20 @@ func (g *Game) addPlayerDeck(player constants.PlayerID, deck DeckManifest, defin
 			card := g.newCardInstance(player, entry, definitions)
 			definition := definitions[entry.CardID]
 			if definition.Face().HasType("CHAMPION") && definition.Face().Level() == 0 {
-				if _, exists := g.state.Champions[player]; exists {
+				if _, exists := g.state.Champions[player.UID]; exists {
 					return fmt.Errorf("player %q has multiple starting Champions", player)
 				}
-				playerName := string(player)
+				playerName := player.UID
 				championID := objectID("champion:" + playerName)
 				champion := championObject{
 					ID:    championID,
 					Card:  card,
 					Owner: player,
 				}
-				g.state.Champions[player] = champion
+				g.state.Champions[player.UID] = champion
 				g.grantCardTracking(player, entityID(card))
 				for _, opponent := range g.players {
-					if opponent != player {
+					if !samePlayer(opponent, player) {
 						g.grantCardTracking(opponent, entityID(card))
 					}
 				}
@@ -176,11 +176,11 @@ func (g *Game) addPlayerDeck(player constants.PlayerID, deck DeckManifest, defin
 			zones.OutsideGamePool = append(zones.OutsideGamePool, card)
 		}
 	}
-	g.state.Zones[player] = zones
+	g.state.Zones[player.UID] = zones
 	return nil
 }
 
-func (g *Game) newCardInstance(player constants.PlayerID, entry DeckEntry, definitions map[CardID]CardDefinition) cardInstanceID {
+func (g *Game) newCardInstance(player *model.Player, entry DeckEntry, definitions map[CardID]CardDefinition) cardInstanceID {
 	definition := definitions[entry.CardID]
 	face := definition.Face()
 	cardData := definition.faceData()
@@ -217,13 +217,13 @@ func memoryCost(card Card) int {
 	return cost
 }
 
-func (g *Game) shuffleMainDeck(player constants.PlayerID) {
-	zones := g.state.Zones[player]
+func (g *Game) shuffleMainDeck(player *model.Player) {
+	zones := g.state.Zones[player.UID]
 	for index := len(zones.MainDeck) - 1; index > 0; index-- {
 		swapIndex := int(g.nextRandom() % uint64(index+1))
 		zones.MainDeck[index], zones.MainDeck[swapIndex] = zones.MainDeck[swapIndex], zones.MainDeck[index]
 	}
-	g.state.Zones[player] = zones
+	g.state.Zones[player.UID] = zones
 }
 
 func (g *Game) nextRandom() uint64 {
@@ -234,14 +234,14 @@ func (g *Game) nextRandom() uint64 {
 	return value ^ (value >> 31)
 }
 
-func (g *Game) resolveSpiritOfFireOnEnter(player constants.PlayerID) bool {
+func (g *Game) resolveSpiritOfFireOnEnter(player *model.Player) bool {
 	batch := eventBatch{
 		Player: player,
 		Cause:  spiritOfFireOnEnterCause,
 		Events: make([]gameEvent, 0, 7),
 	}
 	for draw := 0; draw < 7; draw++ {
-		zones := g.state.Zones[player]
+		zones := g.state.Zones[player.UID]
 		if len(zones.MainDeck) == 0 {
 			if len(batch.Events) > 0 {
 				g.state.Events = append(g.state.Events, batch)
@@ -256,7 +256,7 @@ func (g *Game) resolveSpiritOfFireOnEnter(player constants.PlayerID) bool {
 		card := zones.MainDeck[len(zones.MainDeck)-1]
 		zones.MainDeck = zones.MainDeck[:len(zones.MainDeck)-1]
 		zones.Hand = append(zones.Hand, card)
-		g.state.Zones[player] = zones
+		g.state.Zones[player.UID] = zones
 		g.grantCardTracking(player, entityID(card))
 		g.state.NextEvent++
 		batch.Events = append(batch.Events, gameEvent{

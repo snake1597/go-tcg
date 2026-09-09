@@ -2,7 +2,7 @@ package game
 
 import (
 	"fmt"
-	"go-tcg/internal/constants"
+	"go-tcg/internal/model"
 	tcgErrors "go-tcg/internal/tcg_errors"
 )
 
@@ -17,9 +17,9 @@ const (
 	PhaseEnd          Phase = "end"
 )
 
-func (g *Game) passOpportunity(player constants.PlayerID) error {
+func (g *Game) passOpportunity(player *model.Player) error {
 	scheduler := &g.state.Scheduler
-	if scheduler.Kind != schedulerStable || scheduler.OpportunityHolder != player {
+	if scheduler.Kind != schedulerStable || !samePlayer(scheduler.OpportunityHolder, player) {
 		return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, player)
 	}
 	scheduler.ConsecutivePasses++
@@ -27,7 +27,7 @@ func (g *Game) passOpportunity(player constants.PlayerID) error {
 		scheduler.OpportunityHolder = g.nextPlayer(player)
 		return nil
 	}
-	scheduler.OpportunityHolder = ""
+	scheduler.OpportunityHolder = nil
 	scheduler.ConsecutivePasses = 0
 	if len(g.state.EffectsStack) > 0 {
 		g.resolveTopEffectStack()
@@ -60,9 +60,9 @@ func (g *Game) advanceAfterOpportunity() {
 	g.runStandardScheduler()
 }
 
-func (g *Game) skipMaterialize(player constants.PlayerID) error {
+func (g *Game) skipMaterialize(player *model.Player) error {
 	scheduler := &g.state.Scheduler
-	if scheduler.Kind != schedulerStable || scheduler.Phase != PhaseMaterialize || scheduler.TurnPlayer != player {
+	if scheduler.Kind != schedulerStable || scheduler.Phase != PhaseMaterialize || !samePlayer(scheduler.TurnPlayer, player) {
 		return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, player)
 	}
 	scheduler.Phase = PhaseRecollection
@@ -105,13 +105,13 @@ func (g *Game) runStandardScheduler() {
 	}
 }
 
-func (g *Game) wakeUpChampion(player constants.PlayerID) {
-	champion, exists := g.state.Champions[player]
+func (g *Game) wakeUpChampion(player *model.Player) {
+	champion, exists := g.state.Champions[player.UID]
 	if !exists || !champion.Rested {
 		return
 	}
 	champion.Rested = false
-	g.state.Champions[player] = champion
+	g.state.Champions[player.UID] = champion
 	g.recordPublicEvent(
 		player,
 		"turn:wake-up",
@@ -120,8 +120,8 @@ func (g *Game) wakeUpChampion(player constants.PlayerID) {
 	)
 }
 
-func (g *Game) recollectMemory(player constants.PlayerID) {
-	zones := g.state.Zones[player]
+func (g *Game) recollectMemory(player *model.Player) {
+	zones := g.state.Zones[player.UID]
 	if len(zones.Memory) == 0 {
 		return
 	}
@@ -145,11 +145,11 @@ func (g *Game) recollectMemory(player constants.PlayerID) {
 		g.recordVisibleEvent(player, "recollect", entityID(card))
 	}
 	zones.Memory = nil
-	g.state.Zones[player] = zones
+	g.state.Zones[player.UID] = zones
 	g.state.Events = append(g.state.Events, batch)
 }
 
-func (g *Game) grantOpportunity(player constants.PlayerID) {
+func (g *Game) grantOpportunity(player *model.Player) {
 	g.state.Scheduler.OpportunityHolder = player
 	g.state.Scheduler.ConsecutivePasses = 0
 }
@@ -158,18 +158,18 @@ func (g *Game) isFirstTurn() bool {
 	return g.state.Scheduler.TurnNumber <= uint64(len(g.players))
 }
 
-func (g *Game) nextPlayer(player constants.PlayerID) constants.PlayerID {
+func (g *Game) nextPlayer(player *model.Player) *model.Player {
 	for index, candidate := range g.players {
-		if candidate != player {
+		if !samePlayer(candidate, player) {
 			continue
 		}
 		return g.players[(index+1)%len(g.players)]
 	}
-	panic(fmt.Sprintf("unknown player %q", player))
+	panic(fmt.Sprintf("unknown player %q", player.UID))
 }
 
-func (g *Game) drawTurnCard(player constants.PlayerID) bool {
-	zones := g.state.Zones[player]
+func (g *Game) drawTurnCard(player *model.Player) bool {
+	zones := g.state.Zones[player.UID]
 	if len(zones.MainDeck) == 0 {
 		g.state.Finished = true
 		g.state.Winner = g.otherPlayer(player)
@@ -181,7 +181,7 @@ func (g *Game) drawTurnCard(player constants.PlayerID) bool {
 	card := zones.MainDeck[len(zones.MainDeck)-1]
 	zones.MainDeck = zones.MainDeck[:len(zones.MainDeck)-1]
 	zones.Hand = append(zones.Hand, card)
-	g.state.Zones[player] = zones
+	g.state.Zones[player.UID] = zones
 	g.grantCardTracking(player, entityID(card))
 	g.state.NextEvent++
 	g.state.Events = append(

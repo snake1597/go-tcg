@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"go-tcg/internal/constants"
+	"go-tcg/internal/model"
 	tcgErrors "go-tcg/internal/tcg_errors"
 	"strings"
 	"testing"
@@ -22,8 +23,8 @@ func TestNewGamePinsReplayVersionsAndSeed(t *testing.T) {
 		Deck:     "standard-fire-v2",
 		PRNG:     "splitmix64-v1",
 	}
-	if replay.FormatVersion != 2 {
-		t.Fatalf("Replay().FormatVersion = %d, want 2", replay.FormatVersion)
+	if replay.FormatVersion != 3 {
+		t.Fatalf("Replay().FormatVersion = %d, want 3", replay.FormatVersion)
 	}
 	if replay.Versions != wantVersions {
 		t.Fatalf("Replay().Versions = %#v, want %#v", replay.Versions, wantVersions)
@@ -36,11 +37,11 @@ func TestNewGamePinsReplayVersionsAndSeed(t *testing.T) {
 func TestPlayerViewScopesOpaqueActionHandles(t *testing.T) {
 	game := NewGame(42)
 
-	firstView, err := game.PlayerView(constants.PlayerOne)
+	firstView, err := game.PlayerView(model.PlayerOne)
 	if err != nil {
 		t.Fatalf("PlayerView() error = %v", err)
 	}
-	secondView, err := game.PlayerView(constants.PlayerTwo)
+	secondView, err := game.PlayerView(model.PlayerTwo)
 	if err != nil {
 		t.Fatalf("PlayerView() error = %v", err)
 	}
@@ -72,7 +73,11 @@ func TestPlayerViewScopesOpaqueActionHandles(t *testing.T) {
 			t.Fatalf("PlayerView() exposed %q in %s", forbidden, viewJSON)
 		}
 	}
-	_, err = game.PlayerView("intruder")
+	_, err = game.PlayerView(
+		&model.Player{
+			UID: "intruder",
+		},
+	)
 	if !errors.Is(err, tcgErrors.ErrUnknownPlayer) {
 		t.Fatalf("PlayerView() error = %v, want unknown player", err)
 	}
@@ -81,13 +86,13 @@ func TestPlayerViewScopesOpaqueActionHandles(t *testing.T) {
 func TestSubmitRejectsInvalidActionHandleWithoutChangingGame(t *testing.T) {
 	testCases := []struct {
 		name       string
-		player     constants.PlayerID
+		player     *model.Player
 		input      func(*Game) Input
 		wantReason string
 	}{
 		{
 			name:   "forged handle",
-			player: constants.PlayerOne,
+			player: model.PlayerOne,
 			input: func(game *Game) Input {
 				return Input{
 					Revision: 1,
@@ -98,22 +103,22 @@ func TestSubmitRejectsInvalidActionHandleWithoutChangingGame(t *testing.T) {
 		},
 		{
 			name:   "cross player handle",
-			player: constants.PlayerTwo,
+			player: model.PlayerTwo,
 			input: func(game *Game) Input {
 				return Input{
 					Revision: 1,
-					Action:   actionHandle(t, game, constants.PlayerOne),
+					Action:   actionHandle(t, game, model.PlayerOne),
 				}
 			},
 			wantReason: "invalid view handle",
 		},
 		{
 			name:   "stale revision",
-			player: constants.PlayerOne,
+			player: model.PlayerOne,
 			input: func(game *Game) Input {
 				return Input{
 					Revision: 0,
-					Action:   actionHandle(t, game, constants.PlayerOne),
+					Action:   actionHandle(t, game, model.PlayerOne),
 				}
 			},
 			wantReason: "stale revision",
@@ -163,13 +168,13 @@ func TestSameSeedAndInputProduceSameStateHash(t *testing.T) {
 	input := concedeInput(
 		t,
 		first,
-		constants.PlayerOne,
+		model.PlayerOne,
 	)
 
-	if err := first.Submit(constants.PlayerOne, input); err != nil {
+	if err := first.Submit(model.PlayerOne, input); err != nil {
 		t.Fatalf("first Submit() error = %v", err)
 	}
-	if err := second.Submit(constants.PlayerOne, input); err != nil {
+	if err := second.Submit(model.PlayerOne, input); err != nil {
 		t.Fatalf("second Submit() error = %v", err)
 	}
 
@@ -178,15 +183,15 @@ func TestSameSeedAndInputProduceSameStateHash(t *testing.T) {
 	if firstHash != secondHash {
 		t.Fatalf("state hashes differ: %q != %q", firstHash, secondHash)
 	}
-	firstView, err := first.PlayerView(constants.PlayerTwo)
+	firstView, err := first.PlayerView(model.PlayerTwo)
 	if err != nil {
 		t.Fatalf("first PlayerView() error = %v", err)
 	}
-	secondView, err := second.PlayerView(constants.PlayerTwo)
+	secondView, err := second.PlayerView(model.PlayerTwo)
 	if err != nil {
 		t.Fatalf("second PlayerView() error = %v", err)
 	}
-	if !firstView.Finished || !secondView.Finished || firstView.Winner != constants.PlayerTwo || secondView.Winner != constants.PlayerTwo {
+	if !firstView.Finished || !secondView.Finished || firstView.Winner != model.PlayerTwo || secondView.Winner != model.PlayerTwo {
 		t.Fatalf("final views = %#v and %#v, want player two to win", firstView, secondView)
 	}
 	firstReplay := first.Replay()
@@ -203,7 +208,7 @@ func TestSameSeedAndInputProduceSameStateHash(t *testing.T) {
 
 func TestStateHashUsesCanonicalVersionedState(t *testing.T) {
 	game := NewGame(42)
-	const want = "f2a16d83adb6e9a94c88b0fa078d1a9aa47ccc8ef30a775bd23123636468ace4"
+	const want = "f51f518ef846e8804d06b39c60248851ea8f6a9eec27c13b2622ba7a63ddd273"
 
 	if got := game.StateHash(); got != want {
 		t.Fatalf("StateHash() = %q, want canonical digest %q", got, want)
@@ -217,18 +222,18 @@ func TestStateHashUsesCanonicalVersionedState(t *testing.T) {
 func TestRejectedInputDoesNotChangeGame(t *testing.T) {
 	testCases := []struct {
 		name       string
-		player     constants.PlayerID
+		player     *model.Player
 		input      func(*Game) Input
 		wantReason string
 	}{
 		{
 			name:   "stale revision",
-			player: constants.PlayerOne,
+			player: model.PlayerOne,
 			input: func(game *Game) Input {
 				input := concedeInput(
 					t,
 					game,
-					constants.PlayerOne,
+					model.PlayerOne,
 				)
 				input.Revision = 0
 				return input
@@ -236,20 +241,22 @@ func TestRejectedInputDoesNotChangeGame(t *testing.T) {
 			wantReason: "stale revision",
 		},
 		{
-			name:   "unknown player",
-			player: "intruder",
+			name: "unknown player",
+			player: &model.Player{
+				UID: "intruder",
+			},
 			input: func(game *Game) Input {
 				return concedeInput(
 					t,
 					game,
-					constants.PlayerOne,
+					model.PlayerOne,
 				)
 			},
 			wantReason: "unknown player",
 		},
 		{
 			name:   "invalid action handle",
-			player: constants.PlayerOne,
+			player: model.PlayerOne,
 			input: func(game *Game) Input {
 				return Input{
 					Revision: 1,
@@ -265,7 +272,7 @@ func TestRejectedInputDoesNotChangeGame(t *testing.T) {
 			testCase.name,
 			func(t *testing.T) {
 				game := NewGame(42)
-				beforeView, err := game.PlayerView(constants.PlayerOne)
+				beforeView, err := game.PlayerView(model.PlayerOne)
 				if err != nil {
 					t.Fatalf("PlayerView() before input error = %v", err)
 				}
@@ -291,7 +298,7 @@ func TestRejectedInputDoesNotChangeGame(t *testing.T) {
 				if err != nil {
 					t.Fatalf("marshal replay after input: %v", err)
 				}
-				afterView, err := game.PlayerView(constants.PlayerOne)
+				afterView, err := game.PlayerView(model.PlayerOne)
 				if err != nil {
 					t.Fatalf("PlayerView() after input error = %v", err)
 				}
@@ -322,9 +329,9 @@ func TestReplayVerifiesFromRecordedVersionsAndSeed(t *testing.T) {
 	input := concedeInput(
 		t,
 		game,
-		constants.PlayerTwo,
+		model.PlayerTwo,
 	)
-	if err := game.Submit(constants.PlayerTwo, input); err != nil {
+	if err := game.Submit(model.PlayerTwo, input); err != nil {
 		t.Fatalf("Submit() error = %v", err)
 	}
 
@@ -418,9 +425,9 @@ func TestReplayReportsFirstStateHashDivergence(t *testing.T) {
 	input := concedeInput(
 		t,
 		game,
-		constants.PlayerOne,
+		model.PlayerOne,
 	)
-	if err := game.Submit(constants.PlayerOne, input); err != nil {
+	if err := game.Submit(model.PlayerOne, input); err != nil {
 		t.Fatalf("Submit() error = %v", err)
 	}
 	replay := game.Replay()
@@ -443,7 +450,7 @@ func TestReplayReportsFirstStateHashDivergence(t *testing.T) {
 	}
 }
 
-func actionHandle(t *testing.T, game *Game, player constants.PlayerID) ViewHandle {
+func actionHandle(t *testing.T, game *Game, player *model.Player) ViewHandle {
 	t.Helper()
 	view, err := game.PlayerView(player)
 	if err != nil {
@@ -455,7 +462,7 @@ func actionHandle(t *testing.T, game *Game, player constants.PlayerID) ViewHandl
 	return view.LegalActions[0].Handle
 }
 
-func concedeInput(t *testing.T, game *Game, player constants.PlayerID) Input {
+func concedeInput(t *testing.T, game *Game, player *model.Player) Input {
 	view, err := game.PlayerView(player)
 	if err != nil {
 		t.Fatalf("PlayerView() error = %v", err)

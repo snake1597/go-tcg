@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"go-tcg/internal/constants"
+	"go-tcg/internal/model"
 	tcgErrors "go-tcg/internal/tcg_errors"
 
 	"github.com/samber/lo"
@@ -26,10 +27,10 @@ type LegalAction struct {
 }
 
 type VisibleChampion struct {
-	Owner    constants.PlayerID `json:"owner"`
-	CardName string             `json:"card_name"`
-	Rested   bool               `json:"rested"`
-	Taunt    bool               `json:"taunt"`
+	Owner    *model.Player `json:"owner"`
+	CardName string        `json:"card_name"`
+	Rested   bool          `json:"rested"`
+	Taunt    bool          `json:"taunt"`
 }
 
 type VisibleCard struct {
@@ -47,22 +48,22 @@ type PendingChoice struct {
 }
 
 type PlayerView struct {
-	Revision          uint64             `json:"revision"`
-	Finished          bool               `json:"finished"`
-	Winner            constants.PlayerID `json:"winner,omitempty"`
-	TurnPlayer        constants.PlayerID `json:"turn_player,omitempty"`
-	Phase             Phase              `json:"phase,omitempty"`
-	OpportunityHolder constants.PlayerID `json:"opportunity_holder,omitempty"`
-	Champions         []VisibleChampion  `json:"champions,omitempty"`
-	Cards             []VisibleCard      `json:"cards"`
-	VisibleEvents     []VisibleEvent     `json:"visible_events"`
-	LegalActions      []LegalAction      `json:"legal_actions"`
-	PendingChoice     *PendingChoice     `json:"pending_choice,omitempty"`
+	Revision          uint64            `json:"revision"`
+	Finished          bool              `json:"finished"`
+	Winner            *model.Player     `json:"winner,omitempty"`
+	TurnPlayer        *model.Player     `json:"turn_player,omitempty"`
+	Phase             Phase             `json:"phase,omitempty"`
+	OpportunityHolder *model.Player     `json:"opportunity_holder,omitempty"`
+	Champions         []VisibleChampion `json:"champions,omitempty"`
+	Cards             []VisibleCard     `json:"cards"`
+	VisibleEvents     []VisibleEvent    `json:"visible_events"`
+	LegalActions      []LegalAction     `json:"legal_actions"`
+	PendingChoice     *PendingChoice    `json:"pending_choice,omitempty"`
 }
 
 type Game struct {
 	versions Versions
-	players  []constants.PlayerID
+	players  []*model.Player
 	state    gameState
 	replay   Replay
 }
@@ -70,13 +71,13 @@ type Game struct {
 type gameState struct {
 	Revision      uint64
 	Finished      bool
-	Winner        constants.PlayerID
+	Winner        *model.Player
 	PRNG          prngState
 	Knowledge     knowledgeState
 	Entities      map[entityID]knowledgeEntity
 	Cards         map[cardInstanceID]cardInstance
-	Zones         map[constants.PlayerID]playerZones
-	Champions     map[constants.PlayerID]championObject
+	Zones         map[string]playerZones
+	Champions     map[string]championObject
 	EffectSources []cardInstanceID
 	EffectsStack  []effectStackItem
 	Scheduler     schedulerFrame
@@ -91,40 +92,40 @@ type prngState struct {
 }
 
 type canonicalState struct {
-	SchemaVersion int                                   `json:"schema_version"`
-	Versions      Versions                              `json:"versions"`
-	Players       []constants.PlayerID                  `json:"players"`
-	Revision      uint64                                `json:"revision"`
-	Finished      bool                                  `json:"finished"`
-	Winner        constants.PlayerID                    `json:"winner"`
-	PRNG          prngState                             `json:"prng"`
-	Knowledge     knowledgeState                        `json:"knowledge"`
-	Entities      map[entityID]knowledgeEntity          `json:"entities"`
-	Cards         map[cardInstanceID]cardInstance       `json:"cards"`
-	Zones         map[constants.PlayerID]playerZones    `json:"zones"`
-	Champions     map[constants.PlayerID]championObject `json:"champions"`
-	EffectSources []cardInstanceID                      `json:"effect_sources,omitempty"`
-	EffectsStack  []effectStackItem                     `json:"effects_stack,omitempty"`
-	Scheduler     schedulerFrame                        `json:"scheduler"`
-	Events        []eventBatch                          `json:"events"`
-	NextHandle    uint64                                `json:"next_handle"`
-	NextEvent     uint64                                `json:"next_event"`
+	SchemaVersion int                             `json:"schema_version"`
+	Versions      Versions                        `json:"versions"`
+	Players       []*model.Player                 `json:"players"`
+	Revision      uint64                          `json:"revision"`
+	Finished      bool                            `json:"finished"`
+	Winner        *model.Player                   `json:"winner"`
+	PRNG          prngState                       `json:"prng"`
+	Knowledge     knowledgeState                  `json:"knowledge"`
+	Entities      map[entityID]knowledgeEntity    `json:"entities"`
+	Cards         map[cardInstanceID]cardInstance `json:"cards"`
+	Zones         map[string]playerZones          `json:"zones"`
+	Champions     map[string]championObject       `json:"champions"`
+	EffectSources []cardInstanceID                `json:"effect_sources,omitempty"`
+	EffectsStack  []effectStackItem               `json:"effects_stack,omitempty"`
+	Scheduler     schedulerFrame                  `json:"scheduler"`
+	Events        []eventBatch                    `json:"events"`
+	NextHandle    uint64                          `json:"next_handle"`
+	NextEvent     uint64                          `json:"next_event"`
 }
 
 func NewGame(seed uint64) *Game {
 	versions := currentVersions()
 	game := &Game{
 		versions: versions,
-		players: []constants.PlayerID{
-			constants.PlayerOne,
-			constants.PlayerTwo,
+		players: []*model.Player{
+			model.PlayerOne,
+			model.PlayerTwo,
 		},
 		state: gameState{
 			Revision:  1,
 			Entities:  make(map[entityID]knowledgeEntity),
 			Cards:     make(map[cardInstanceID]cardInstance),
-			Zones:     make(map[constants.PlayerID]playerZones),
-			Champions: make(map[constants.PlayerID]championObject),
+			Zones:     make(map[string]playerZones),
+			Champions: make(map[string]championObject),
 			Events:    []eventBatch{},
 			PRNG: prngState{
 				Seed: seed,
@@ -151,7 +152,7 @@ func currentVersions() Versions {
 	}
 }
 
-func (g *Game) Submit(player constants.PlayerID, input Input) error {
+func (g *Game) Submit(player *model.Player, input Input) error {
 	if !g.hasPlayer(player) {
 		return fmt.Errorf("%w %q", tcgErrors.ErrUnknownPlayer, player)
 	}
@@ -178,12 +179,12 @@ func (g *Game) Submit(player constants.PlayerID, input Input) error {
 		)
 		return nil
 	}
-	kind, exists := g.state.Knowledge.Actions[player][input.Action]
+	kind, exists := g.state.Knowledge.Actions[player.UID][input.Action]
 	if g.state.Knowledge.Choice != nil && (!exists || kind != constants.ActionConcede) {
 		return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, input.Action)
 	}
 	if !exists {
-		card, materializeExists := g.state.Knowledge.Materializations[player][input.Action]
+		card, materializeExists := g.state.Knowledge.Materializations[player.UID][input.Action]
 		if !materializeExists {
 			return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, input.Action)
 		}
@@ -226,7 +227,7 @@ func (g *Game) Submit(player constants.PlayerID, input Input) error {
 	return nil
 }
 
-func (g *Game) recordReplayStep(player constants.PlayerID, input Input) {
+func (g *Game) recordReplayStep(player *model.Player, input Input) {
 	g.replay.Steps = append(
 		g.replay.Steps,
 		ReplayStep{
@@ -237,7 +238,7 @@ func (g *Game) recordReplayStep(player constants.PlayerID, input Input) {
 	g.replay.Steps[len(g.replay.Steps)-1].StateHash = g.StateHash()
 }
 
-func (g *Game) PlayerView(player constants.PlayerID) (PlayerView, error) {
+func (g *Game) PlayerView(player *model.Player) (PlayerView, error) {
 	if !g.hasPlayer(player) {
 		return PlayerView{}, fmt.Errorf("%w %q", tcgErrors.ErrUnknownPlayer, player)
 	}
@@ -268,7 +269,7 @@ func (g *Game) PlayerView(player constants.PlayerID) (PlayerView, error) {
 
 func (g *Game) StateHash() string {
 	canonical := canonicalState{
-		SchemaVersion: 1,
+		SchemaVersion: 2,
 		Versions:      g.versions,
 		Players:       g.players,
 		Revision:      g.state.Revision,
@@ -302,7 +303,7 @@ func (g *Game) Replay() Replay {
 		replay.InitialState = &state
 	}
 	replay.InitialPlayers = append(
-		[]constants.PlayerID(nil),
+		[]*model.Player(nil),
 		replay.InitialPlayers...,
 	)
 	replay.Steps = append(
@@ -312,15 +313,27 @@ func (g *Game) Replay() Replay {
 	return replay
 }
 
-func (g *Game) hasPlayer(player constants.PlayerID) bool {
-	return lo.Contains(g.players, player)
+func (g *Game) hasPlayer(player *model.Player) bool {
+	return lo.ContainsBy(
+		g.players,
+		func(candidate *model.Player) bool {
+			return samePlayer(candidate, player)
+		},
+	)
 }
 
-func (g *Game) otherPlayer(player constants.PlayerID) constants.PlayerID {
+func (g *Game) otherPlayer(player *model.Player) *model.Player {
 	for _, candidate := range g.players {
-		if candidate != player {
+		if !samePlayer(candidate, player) {
 			return candidate
 		}
 	}
-	return ""
+	return nil
+}
+
+func samePlayer(first, second *model.Player) bool {
+	if first == nil || second == nil {
+		return first == second
+	}
+	return first.UID == second.UID
 }

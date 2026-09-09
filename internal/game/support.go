@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"go-tcg/internal/constants"
+	"go-tcg/internal/model"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -31,7 +32,7 @@ func (gateError *GateError) Error() string {
 }
 
 type StandardGameConfig struct {
-	Players        [2]constants.PlayerID
+	Players        [2]*model.Player
 	RepositoryRoot string
 	Seed           uint64
 }
@@ -68,10 +69,7 @@ func NewStandardGame(configuration StandardGameConfig) (*Game, error) {
 	}
 
 	game := NewGame(configuration.Seed)
-	game.players = []constants.PlayerID{
-		configuration.Players[0],
-		configuration.Players[1],
-	}
+	game.players = configuration.Players[:]
 	return game, nil
 }
 
@@ -82,7 +80,7 @@ type validatedStandardDecks struct {
 }
 
 func loadValidatedStandardDecks(configuration StandardGameConfig) (validatedStandardDecks, error) {
-	if configuration.Players[0] == "" || configuration.Players[1] == "" || configuration.Players[0] == configuration.Players[1] {
+	if configuration.Players[0] == nil || configuration.Players[1] == nil || configuration.Players[0].UID == "" || configuration.Players[1].UID == "" || samePlayer(configuration.Players[0], configuration.Players[1]) {
 		return validatedStandardDecks{}, errors.New("standard game requires two distinct players")
 	}
 	definitions, err := loadCardDefinitions(

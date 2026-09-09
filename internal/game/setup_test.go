@@ -3,6 +3,7 @@ package game
 import (
 	"encoding/json"
 	"go-tcg/internal/constants"
+	"go-tcg/internal/model"
 	"path/filepath"
 	"testing"
 )
@@ -12,9 +13,9 @@ import (
 // turn-order-main-phase.md § General Rules.
 func TestStandardSetupStartsFirstTurnAtMainAndPassesToSecondPlayersDraw(t *testing.T) {
 	configuration := StandardGameConfig{
-		Players: [2]constants.PlayerID{
-			constants.PlayerOne,
-			constants.PlayerTwo,
+		Players: [2]*model.Player{
+			model.PlayerOne,
+			model.PlayerTwo,
 		},
 		RepositoryRoot: filepath.Clean("../.."),
 		Seed:           42,
@@ -27,10 +28,10 @@ func TestStandardSetupStartsFirstTurnAtMainAndPassesToSecondPlayersDraw(t *testi
 	assertTurnView(
 		t,
 		game,
-		constants.PlayerOne,
-		constants.PlayerOne,
+		model.PlayerOne,
+		model.PlayerOne,
 		PhaseMain,
-		constants.PlayerOne,
+		model.PlayerOne,
 		[]constants.ActionKind{
 			constants.ActionConcede,
 			constants.ActionPass,
@@ -39,10 +40,10 @@ func TestStandardSetupStartsFirstTurnAtMainAndPassesToSecondPlayersDraw(t *testi
 	assertTurnView(
 		t,
 		game,
-		constants.PlayerTwo,
-		constants.PlayerOne,
+		model.PlayerTwo,
+		model.PlayerOne,
 		PhaseMain,
-		constants.PlayerOne,
+		model.PlayerOne,
 		[]constants.ActionKind{
 			constants.ActionConcede,
 		},
@@ -51,16 +52,16 @@ func TestStandardSetupStartsFirstTurnAtMainAndPassesToSecondPlayersDraw(t *testi
 	submitActionKind(
 		t,
 		game,
-		constants.PlayerOne,
+		model.PlayerOne,
 		constants.ActionPass,
 	)
 	assertTurnView(
 		t,
 		game,
-		constants.PlayerTwo,
-		constants.PlayerOne,
+		model.PlayerTwo,
+		model.PlayerOne,
 		PhaseMain,
-		constants.PlayerTwo,
+		model.PlayerTwo,
 		[]constants.ActionKind{
 			constants.ActionConcede,
 			constants.ActionPass,
@@ -70,16 +71,16 @@ func TestStandardSetupStartsFirstTurnAtMainAndPassesToSecondPlayersDraw(t *testi
 	submitActionKind(
 		t,
 		game,
-		constants.PlayerTwo,
+		model.PlayerTwo,
 		constants.ActionPass,
 	)
 	assertTurnView(
 		t,
 		game,
-		constants.PlayerOne,
-		constants.PlayerOne,
+		model.PlayerOne,
+		model.PlayerOne,
 		PhaseEnd,
-		constants.PlayerOne,
+		model.PlayerOne,
 		[]constants.ActionKind{
 			constants.ActionConcede,
 			constants.ActionPass,
@@ -89,16 +90,16 @@ func TestStandardSetupStartsFirstTurnAtMainAndPassesToSecondPlayersDraw(t *testi
 	submitActionKind(
 		t,
 		game,
-		constants.PlayerOne,
+		model.PlayerOne,
 		constants.ActionPass,
 	)
 	submitActionKind(
 		t,
 		game,
-		constants.PlayerTwo,
+		model.PlayerTwo,
 		constants.ActionPass,
 	)
-	secondView, err := game.PlayerView(constants.PlayerTwo)
+	secondView, err := game.PlayerView(model.PlayerTwo)
 	if err != nil {
 		t.Fatalf("PlayerView() error = %v", err)
 	}
@@ -108,10 +109,10 @@ func TestStandardSetupStartsFirstTurnAtMainAndPassesToSecondPlayersDraw(t *testi
 	assertTurnView(
 		t,
 		game,
-		constants.PlayerTwo,
-		constants.PlayerTwo,
+		model.PlayerTwo,
+		model.PlayerTwo,
 		PhaseMain,
-		constants.PlayerTwo,
+		model.PlayerTwo,
 		[]constants.ActionKind{
 			constants.ActionConcede,
 			constants.ActionPass,
@@ -124,9 +125,9 @@ func TestStandardSetupStartsFirstTurnAtMainAndPassesToSecondPlayersDraw(t *testi
 // turn-order-recollection-phase.md § General Rules.
 func TestStandardPassesDeterministicallyReachRecollectionOnTheNextTurn(t *testing.T) {
 	configuration := StandardGameConfig{
-		Players: [2]constants.PlayerID{
-			constants.PlayerOne,
-			constants.PlayerTwo,
+		Players: [2]*model.Player{
+			model.PlayerOne,
+			model.PlayerTwo,
 		},
 		RepositoryRoot: filepath.Clean("../.."),
 		Seed:           42,
@@ -141,12 +142,12 @@ func TestStandardPassesDeterministicallyReachRecollectionOnTheNextTurn(t *testin
 	}
 
 	for step := 0; step < 8; step++ {
-		firstView, err := first.PlayerView(constants.PlayerOne)
+		firstView, err := first.PlayerView(model.PlayerOne)
 		if err != nil {
 			t.Fatalf("first PlayerView() error = %v", err)
 		}
 		submitCurrentTurnAction(t, first, firstView)
-		secondView, err := second.PlayerView(constants.PlayerOne)
+		secondView, err := second.PlayerView(model.PlayerOne)
 		if err != nil {
 			t.Fatalf("second PlayerView() error = %v", err)
 		}
@@ -159,16 +160,16 @@ func TestStandardPassesDeterministicallyReachRecollectionOnTheNextTurn(t *testin
 	assertTurnView(
 		t,
 		first,
-		constants.PlayerOne,
-		constants.PlayerOne,
+		model.PlayerOne,
+		model.PlayerOne,
 		PhaseMaterialize,
-		"",
+		nil,
 		[]constants.ActionKind{
 			constants.ActionConcede,
 			constants.ActionSkipMaterialize,
 		},
 	)
-	materializeView, err := first.PlayerView(constants.PlayerOne)
+	materializeView, err := first.PlayerView(model.PlayerOne)
 	if err != nil {
 		t.Fatalf("PlayerView() error = %v", err)
 	}
@@ -176,10 +177,10 @@ func TestStandardPassesDeterministicallyReachRecollectionOnTheNextTurn(t *testin
 	assertTurnView(
 		t,
 		first,
-		constants.PlayerOne,
-		constants.PlayerOne,
+		model.PlayerOne,
+		model.PlayerOne,
 		PhaseRecollection,
-		constants.PlayerOne,
+		model.PlayerOne,
 		[]constants.ActionKind{
 			constants.ActionConcede,
 			constants.ActionPass,
@@ -191,9 +192,9 @@ func TestStandardPassesDeterministicallyReachRecollectionOnTheNextTurn(t *testin
 // turn-order-materialize-phase.md § General Rules.
 func TestStandardTurnStopsAtMaterializeUntilTurnPlayerSkipsIt(t *testing.T) {
 	configuration := StandardGameConfig{
-		Players: [2]constants.PlayerID{
-			constants.PlayerOne,
-			constants.PlayerTwo,
+		Players: [2]*model.Player{
+			model.PlayerOne,
+			model.PlayerTwo,
 		},
 		RepositoryRoot: filepath.Clean("../.."),
 		Seed:           42,
@@ -203,7 +204,7 @@ func TestStandardTurnStopsAtMaterializeUntilTurnPlayerSkipsIt(t *testing.T) {
 		t.Fatalf("NewStandardSetup() error = %v", err)
 	}
 	for step := 0; step < 15; step++ {
-		view, err := game.PlayerView(constants.PlayerOne)
+		view, err := game.PlayerView(model.PlayerOne)
 		if err != nil {
 			t.Fatalf("PlayerView() error = %v", err)
 		}
@@ -213,10 +214,10 @@ func TestStandardTurnStopsAtMaterializeUntilTurnPlayerSkipsIt(t *testing.T) {
 	assertTurnView(
 		t,
 		game,
-		constants.PlayerTwo,
-		constants.PlayerTwo,
+		model.PlayerTwo,
+		model.PlayerTwo,
 		PhaseMaterialize,
-		"",
+		nil,
 		[]constants.ActionKind{
 			constants.ActionConcede,
 			constants.ActionSkipMaterialize,
@@ -225,16 +226,16 @@ func TestStandardTurnStopsAtMaterializeUntilTurnPlayerSkipsIt(t *testing.T) {
 	submitActionKind(
 		t,
 		game,
-		constants.PlayerTwo,
+		model.PlayerTwo,
 		constants.ActionSkipMaterialize,
 	)
 	assertTurnView(
 		t,
 		game,
-		constants.PlayerTwo,
-		constants.PlayerTwo,
+		model.PlayerTwo,
+		model.PlayerTwo,
 		PhaseRecollection,
-		constants.PlayerTwo,
+		model.PlayerTwo,
 		[]constants.ActionKind{
 			constants.ActionConcede,
 			constants.ActionPass,
@@ -247,14 +248,14 @@ func TestStandardTurnStopsAtMaterializeUntilTurnPlayerSkipsIt(t *testing.T) {
 // playing-cards-card-materialization.md § Materialization.
 func TestMaterializingTonorisLevelsUpChampionAndGrantsTaunt(t *testing.T) {
 	game := newTonorisMaterializationGame(t)
-	player := constants.PlayerTwo
-	championBefore := game.state.Champions[player]
+	player := model.PlayerTwo
+	championBefore := game.state.Champions[player.UID]
 	championBefore.Rested = true
 	championBefore.Counters = map[string]int{
 		"enlighten": 2,
 	}
 	championBefore.CombatRole = "attacker"
-	game.state.Champions[player] = championBefore
+	game.state.Champions[player.UID] = championBefore
 	game.captureReplayInitialState()
 
 	view, err := game.PlayerView(player)
@@ -286,7 +287,7 @@ func TestMaterializingTonorisLevelsUpChampionAndGrantsTaunt(t *testing.T) {
 	}
 
 	passOpportunityRound(t, game, player)
-	championAfterLevelUp := game.state.Champions[player]
+	championAfterLevelUp := game.state.Champions[player.UID]
 	if championAfterLevelUp.ID != championBefore.ID {
 		t.Fatalf("Champion ID = %q, want preserved ID %q", championAfterLevelUp.ID, championBefore.ID)
 	}
@@ -360,10 +361,10 @@ func TestMaterializingTonorisLevelsUpChampionAndGrantsTaunt(t *testing.T) {
 
 func TestMaterializingTonorisRejectsInsufficientPaymentWithoutChangingState(t *testing.T) {
 	game := newTonorisMaterializationGame(t)
-	player := constants.PlayerTwo
-	zones := game.state.Zones[player]
+	player := model.PlayerTwo
+	zones := game.state.Zones[player.UID]
 	zones.Memory = nil
-	game.state.Zones[player] = zones
+	game.state.Zones[player.UID] = zones
 	game.advanceKnowledgeRevision()
 	view, err := game.PlayerView(player)
 	if err != nil {
@@ -386,7 +387,7 @@ func TestMaterializingTonorisRejectsInsufficientPaymentWithoutChangingState(t *t
 
 func TestMaterializingTonorisRejectsIllegalLineageWithoutChangingState(t *testing.T) {
 	game := newTonorisMaterializationGame(t)
-	player := constants.PlayerTwo
+	player := model.PlayerTwo
 	view, err := game.PlayerView(player)
 	if err != nil {
 		t.Fatalf("PlayerView() error = %v", err)
@@ -396,7 +397,7 @@ func TestMaterializingTonorisRejectsIllegalLineageWithoutChangingState(t *testin
 		view,
 		constants.ActionMaterialize,
 	)
-	champion := game.state.Champions[player]
+	champion := game.state.Champions[player.UID]
 	card := game.state.Cards[champion.Card]
 	card.Definition = tonorisCardID
 	game.state.Cards[champion.Card] = card
@@ -417,7 +418,7 @@ func TestMaterializingTonorisRejectsIllegalLineageWithoutChangingState(t *testin
 
 func TestMaterializingTonorisRejectsIllegalTimingWithoutChangingState(t *testing.T) {
 	game := newTonorisMaterializationGame(t)
-	player := constants.PlayerTwo
+	player := model.PlayerTwo
 	view, err := game.PlayerView(player)
 	if err != nil {
 		t.Fatalf("PlayerView() error = %v", err)
@@ -445,8 +446,8 @@ func TestMaterializingTonorisRejectsIllegalTimingWithoutChangingState(t *testing
 
 func TestMaterializingTonorisFizzlesWhenLineageBecomesIllegalBeforeResolution(t *testing.T) {
 	game := newTonorisMaterializationGame(t)
-	player := constants.PlayerTwo
-	championBefore := game.state.Champions[player]
+	player := model.PlayerTwo
+	championBefore := game.state.Champions[player.UID]
 	view, err := game.PlayerView(player)
 	if err != nil {
 		t.Fatalf("PlayerView() error = %v", err)
@@ -465,21 +466,21 @@ func TestMaterializingTonorisFizzlesWhenLineageBecomesIllegalBeforeResolution(t 
 	); err != nil {
 		t.Fatalf("Submit() error = %v", err)
 	}
-	champion := game.state.Champions[player]
+	champion := game.state.Champions[player.UID]
 	card := game.state.Cards[champion.Card]
 	card.Definition = tonorisCardID
 	game.state.Cards[champion.Card] = card
 	materializedCard := game.state.EffectsStack[0].Source
 
 	passOpportunityRound(t, game, player)
-	championAfter := game.state.Champions[player]
+	championAfter := game.state.Champions[player.UID]
 	if championAfter.ID != championBefore.ID || championAfter.Card != championBefore.Card || len(championAfter.InnerLineage) != 0 {
 		t.Fatalf("Champion after fizzle = %#v, want unchanged lineage %#v", championAfter, championBefore)
 	}
 	if len(game.state.EffectsStack) != 0 {
 		t.Fatalf("EffectsStack after fizzle = %#v, want empty", game.state.EffectsStack)
 	}
-	zones := game.state.Zones[player]
+	zones := game.state.Zones[player.UID]
 	if cardIndex(zones.Banishment, materializedCard) < 0 {
 		t.Fatalf("Banishment after fizzle = %#v, want materialized card %q", zones.Banishment, materializedCard)
 	}
@@ -487,9 +488,13 @@ func TestMaterializingTonorisFizzlesWhenLineageBecomesIllegalBeforeResolution(t 
 
 func TestNewStandardSetupCreatesMirroredOpeningState(t *testing.T) {
 	configuration := StandardGameConfig{
-		Players: [2]constants.PlayerID{
-			"aria",
-			"boris",
+		Players: [2]*model.Player{
+			&model.Player{
+				UID: "aria",
+			},
+			&model.Player{
+				UID: "boris",
+			},
 		},
 		RepositoryRoot: filepath.Join(
 			"..",
@@ -512,7 +517,7 @@ func TestNewStandardSetupCreatesMirroredOpeningState(t *testing.T) {
 		t.Fatalf("scheduler turn player = %q, want %q", game.state.Scheduler.TurnPlayer, configuration.Players[0])
 	}
 	for _, player := range configuration.Players {
-		zones := game.state.Zones[player]
+		zones := game.state.Zones[player.UID]
 		if len(zones.MainDeck) != 53 {
 			t.Fatalf("%s main deck = %d cards, want 53", player, len(zones.MainDeck))
 		}
@@ -522,7 +527,7 @@ func TestNewStandardSetupCreatesMirroredOpeningState(t *testing.T) {
 		if len(zones.MaterialDeck) != 11 {
 			t.Fatalf("%s material deck = %d cards, want 11", player, len(zones.MaterialDeck))
 		}
-		if _, exists := game.state.Champions[player]; !exists {
+		if _, exists := game.state.Champions[player.UID]; !exists {
 			t.Fatalf("%s has no starting Champion Object", player)
 		}
 	}
@@ -556,9 +561,13 @@ func TestNewStandardSetupCreatesMirroredOpeningState(t *testing.T) {
 
 func TestStandardSetupEndsWhenStartingHandDrawDecksOut(t *testing.T) {
 	configuration := StandardGameConfig{
-		Players: [2]constants.PlayerID{
-			"aria",
-			"boris",
+		Players: [2]*model.Player{
+			&model.Player{
+				UID: "aria",
+			},
+			&model.Player{
+				UID: "boris",
+			},
 		},
 		RepositoryRoot: filepath.Join(
 			"..",
@@ -605,7 +614,7 @@ func TestStandardSetupEndsWhenStartingHandDrawDecksOut(t *testing.T) {
 	if len(game.state.Events) != 1 || len(game.state.Events[0].Events) != 3 {
 		t.Fatalf("committed draws = %#v, want one batch with three events", game.state.Events)
 	}
-	secondZones := game.state.Zones[configuration.Players[1]]
+	secondZones := game.state.Zones[configuration.Players[1].UID]
 	if len(secondZones.Hand) != 0 {
 		t.Fatalf("second player hand = %d cards, want no draws after game end", len(secondZones.Hand))
 	}
@@ -613,9 +622,13 @@ func TestStandardSetupEndsWhenStartingHandDrawDecksOut(t *testing.T) {
 
 func TestNewStandardSetupIsReproducibleForTheSameSeed(t *testing.T) {
 	configuration := StandardGameConfig{
-		Players: [2]constants.PlayerID{
-			"aria",
-			"boris",
+		Players: [2]*model.Player{
+			&model.Player{
+				UID: "aria",
+			},
+			&model.Player{
+				UID: "boris",
+			},
 		},
 		RepositoryRoot: filepath.Join(
 			"..",
@@ -650,10 +663,10 @@ func TestNewStandardSetupIsReproducibleForTheSameSeed(t *testing.T) {
 func assertTurnView(
 	t *testing.T,
 	game *Game,
-	player constants.PlayerID,
-	wantTurnPlayer constants.PlayerID,
+	player *model.Player,
+	wantTurnPlayer *model.Player,
 	wantPhase Phase,
-	wantOpportunity constants.PlayerID,
+	wantOpportunity *model.Player,
 	wantActions []constants.ActionKind,
 ) {
 	t.Helper()
@@ -683,7 +696,7 @@ func assertTurnView(
 func submitActionKind(
 	t *testing.T,
 	game *Game,
-	player constants.PlayerID,
+	player *model.Player,
 	wantKind constants.ActionKind,
 ) {
 	t.Helper()
@@ -709,7 +722,7 @@ func submitActionKind(
 
 func submitCurrentTurnAction(t *testing.T, game *Game, view PlayerView) {
 	t.Helper()
-	if view.OpportunityHolder != "" {
+	if view.OpportunityHolder != nil {
 		submitActionKind(
 			t,
 			game,
@@ -730,9 +743,9 @@ func newTonorisMaterializationGame(t *testing.T) *Game {
 	t.Helper()
 	repositoryRoot := filepath.Clean("../..")
 	configuration := StandardGameConfig{
-		Players: [2]constants.PlayerID{
-			constants.PlayerOne,
-			constants.PlayerTwo,
+		Players: [2]*model.Player{
+			model.PlayerOne,
+			model.PlayerTwo,
 		},
 		RepositoryRoot: repositoryRoot,
 		Seed:           42,
@@ -741,21 +754,21 @@ func newTonorisMaterializationGame(t *testing.T) *Game {
 	if err != nil {
 		t.Fatalf("NewStandardSetup() error = %v", err)
 	}
-	for game.state.Scheduler.TurnPlayer != constants.PlayerTwo || game.state.Scheduler.Phase != PhaseMaterialize {
-		view, err := game.PlayerView(constants.PlayerOne)
+	for game.state.Scheduler.TurnPlayer != model.PlayerTwo || game.state.Scheduler.Phase != PhaseMaterialize {
+		view, err := game.PlayerView(model.PlayerOne)
 		if err != nil {
 			t.Fatalf("PlayerView() error = %v", err)
 		}
 		submitCurrentTurnAction(t, game, view)
 	}
-	zones := game.state.Zones[constants.PlayerTwo]
+	zones := game.state.Zones[model.PlayerTwo.UID]
 	if len(zones.Hand) == 0 {
 		t.Fatal("player two has no card to place in Memory")
 	}
 	payment := zones.Hand[len(zones.Hand)-1]
 	zones.Hand = zones.Hand[:len(zones.Hand)-1]
 	zones.Memory = append(zones.Memory, payment)
-	game.state.Zones[constants.PlayerTwo] = zones
+	game.state.Zones[model.PlayerTwo.UID] = zones
 	game.advanceKnowledgeRevision()
 	game.captureReplayInitialState()
 	return game
@@ -772,7 +785,7 @@ func actionByKind(t *testing.T, view PlayerView, want constants.ActionKind) Lega
 	return LegalAction{}
 }
 
-func passOpportunityRound(t *testing.T, game *Game, first constants.PlayerID) {
+func passOpportunityRound(t *testing.T, game *Game, first *model.Player) {
 	t.Helper()
 	second := game.otherPlayer(first)
 	submitActionKind(
@@ -798,7 +811,7 @@ func hasVisibleEvent(events []VisibleEvent, kind, cardName string) bool {
 	return false
 }
 
-func championByOwner(t *testing.T, view PlayerView, owner constants.PlayerID) VisibleChampion {
+func championByOwner(t *testing.T, view PlayerView, owner *model.Player) VisibleChampion {
 	t.Helper()
 	for _, champion := range view.Champions {
 		if champion.Owner == owner {

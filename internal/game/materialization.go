@@ -2,7 +2,7 @@ package game
 
 import (
 	"fmt"
-	"go-tcg/internal/constants"
+	"go-tcg/internal/model"
 	tcgErrors "go-tcg/internal/tcg_errors"
 )
 
@@ -21,12 +21,12 @@ const (
 
 type effectStackItem struct {
 	Kind       effectStackItemKind `json:"kind"`
-	Controller constants.PlayerID  `json:"controller"`
+	Controller *model.Player       `json:"controller"`
 	Source     cardInstanceID      `json:"source"`
 }
 
-func (g *Game) legalChampionMaterializations(player constants.PlayerID) []cardInstanceID {
-	zones := g.state.Zones[player]
+func (g *Game) legalChampionMaterializations(player *model.Player) []cardInstanceID {
+	zones := g.state.Zones[player.UID]
 	materialDeckSize := len(zones.MaterialDeck)
 	cards := make([]cardInstanceID, 0, materialDeckSize)
 	for _, card := range zones.MaterialDeck {
@@ -40,16 +40,16 @@ func (g *Game) legalChampionMaterializations(player constants.PlayerID) []cardIn
 	return cards
 }
 
-func (g *Game) canMaterializeChampion(player constants.PlayerID, card cardInstanceID) bool {
+func (g *Game) canMaterializeChampion(player *model.Player, card cardInstanceID) bool {
 	scheduler := g.state.Scheduler
-	if scheduler.Kind != schedulerStable || scheduler.Phase != PhaseMaterialize || scheduler.TurnPlayer != player || scheduler.OpportunityHolder != "" {
+	if scheduler.Kind != schedulerStable || scheduler.Phase != PhaseMaterialize || !samePlayer(scheduler.TurnPlayer, player) || scheduler.OpportunityHolder != nil {
 		return false
 	}
 	candidate, exists := g.state.Cards[card]
-	if !exists || candidate.Owner != player || candidate.Definition != tonorisCardID {
+	if !exists || !samePlayer(candidate.Owner, player) || candidate.Definition != tonorisCardID {
 		return false
 	}
-	champion, exists := g.state.Champions[player]
+	champion, exists := g.state.Champions[player.UID]
 	if !exists {
 		return false
 	}
@@ -57,17 +57,17 @@ func (g *Game) canMaterializeChampion(player constants.PlayerID, card cardInstan
 	if !exists || current.Definition != spiritOfFireCardID || candidate.Level != current.Level+1 {
 		return false
 	}
-	return len(g.state.Zones[player].Memory) >= candidate.MemoryCost
+	return len(g.state.Zones[player.UID].Memory) >= candidate.MemoryCost
 }
 
-func (g *Game) materializeChampion(player constants.PlayerID, card cardInstanceID) error {
+func (g *Game) materializeChampion(player *model.Player, card cardInstanceID) error {
 	if !g.canMaterializeChampion(
 		player,
 		card,
 	) {
 		return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, card)
 	}
-	zones := g.state.Zones[player]
+	zones := g.state.Zones[player.UID]
 	materialDeckIndex := cardIndex(
 		zones.MaterialDeck,
 		card,
@@ -78,14 +78,14 @@ func (g *Game) materializeChampion(player constants.PlayerID, card cardInstanceI
 	return g.payChampionMaterialization(player, card)
 }
 
-func (g *Game) payChampionMaterialization(player constants.PlayerID, card cardInstanceID) error {
+func (g *Game) payChampionMaterialization(player *model.Player, card cardInstanceID) error {
 	if !g.canMaterializeChampion(
 		player,
 		card,
 	) {
 		return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, card)
 	}
-	zones := g.state.Zones[player]
+	zones := g.state.Zones[player.UID]
 	materialDeckIndex := cardIndex(
 		zones.MaterialDeck,
 		card,
@@ -106,7 +106,7 @@ func (g *Game) payChampionMaterialization(player constants.PlayerID, card cardIn
 		zones.Memory = removeCardAt(zones.Memory, paymentIndex)
 		zones.Banishment = append(zones.Banishment, payment)
 	}
-	g.state.Zones[player] = zones
+	g.state.Zones[player.UID] = zones
 	g.state.EffectSources = append(g.state.EffectSources, card)
 	g.state.EffectsStack = append(
 		g.state.EffectsStack,
@@ -157,17 +157,17 @@ func (g *Game) resolveChampionLevelUp(item effectStackItem) {
 	}
 	g.state.EffectSources = removeCardAt(g.state.EffectSources, sourceIndex)
 	if !g.canResolveChampionLevelUp(item) {
-		zones := g.state.Zones[item.Controller]
+		zones := g.state.Zones[item.Controller.UID]
 		zones.Banishment = append(zones.Banishment, item.Source)
-		g.state.Zones[item.Controller] = zones
+		g.state.Zones[item.Controller.UID] = zones
 		return
 	}
-	champion := g.state.Champions[item.Controller]
+	champion := g.state.Champions[item.Controller.UID]
 	previousTop := champion.Card
 	sourceEntity := entityID(item.Source)
 	champion.Card = item.Source
 	champion.InnerLineage = append(champion.InnerLineage, previousTop)
-	g.state.Champions[item.Controller] = champion
+	g.state.Champions[item.Controller.UID] = champion
 	for _, player := range g.players {
 		g.grantCardTracking(player, sourceEntity)
 	}
@@ -189,10 +189,10 @@ func (g *Game) resolveChampionLevelUp(item effectStackItem) {
 
 func (g *Game) canResolveChampionLevelUp(item effectStackItem) bool {
 	candidate, exists := g.state.Cards[item.Source]
-	if !exists || candidate.Owner != item.Controller || candidate.Definition != tonorisCardID {
+	if !exists || !samePlayer(candidate.Owner, item.Controller) || candidate.Definition != tonorisCardID {
 		return false
 	}
-	champion, exists := g.state.Champions[item.Controller]
+	champion, exists := g.state.Champions[item.Controller.UID]
 	if !exists {
 		return false
 	}
@@ -204,10 +204,10 @@ func (g *Game) canResolveChampionLevelUp(item effectStackItem) bool {
 }
 
 func (g *Game) resolveTonorisTaunt(item effectStackItem) {
-	champion := g.state.Champions[item.Controller]
+	champion := g.state.Champions[item.Controller.UID]
 	playerCount := len(g.players)
 	champion.TauntUntilTurn = g.state.Scheduler.TurnNumber + uint64(playerCount)
-	g.state.Champions[item.Controller] = champion
+	g.state.Champions[item.Controller.UID] = champion
 	g.recordPublicEvent(
 		item.Controller,
 		tonorisOnEnterCause,
@@ -218,12 +218,12 @@ func (g *Game) resolveTonorisTaunt(item effectStackItem) {
 
 func (g *Game) expireTimedChampionEffects() {
 	for _, player := range g.players {
-		champion := g.state.Champions[player]
+		champion := g.state.Champions[player.UID]
 		if champion.TauntUntilTurn == 0 || champion.TauntUntilTurn > g.state.Scheduler.TurnNumber {
 			continue
 		}
 		champion.TauntUntilTurn = 0
-		g.state.Champions[player] = champion
+		g.state.Champions[player.UID] = champion
 		g.recordPublicEvent(
 			player,
 			tonorisOnEnterCause,
@@ -233,7 +233,7 @@ func (g *Game) expireTimedChampionEffects() {
 	}
 }
 
-func (g *Game) recordPublicEvent(player constants.PlayerID, cause, kind string, card cardInstanceID) {
+func (g *Game) recordPublicEvent(player *model.Player, cause, kind string, card cardInstanceID) {
 	cardEntity := entityID(card)
 	g.state.NextEvent++
 	g.state.Events = append(
