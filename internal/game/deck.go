@@ -268,7 +268,7 @@ func validateFixedStandardDeck(deck DeckManifest, definitions map[CardID]CardDef
 	if err := validateDeckSection("material deck", deck.MaterialDeck, 1, definitions); err != nil {
 		return err
 	}
-	if err := validateDeckSection("outside game pool", deck.OutsideGamePool, 0, definitions); err != nil {
+	if err := validateDeckSection("outside game pool", deck.OutsideGamePool, 4, definitions); err != nil {
 		return err
 	}
 	canonicalDeck := fixedStandardDeck()

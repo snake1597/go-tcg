@@ -86,6 +86,7 @@ func loadValidatedStandardDecks(configuration StandardGameConfig) (validatedStan
 		samePlayer(configuration.Players[0], configuration.Players[1]) {
 		return validatedStandardDecks{}, fmt.Errorf("standard game requires two distinct players")
 	}
+
 	definitions, err := loadCardDefinitions(
 		filepath.Join(configuration.RepositoryRoot, "card"),
 		filepath.Join(configuration.RepositoryRoot, "card-data-manifest.json"),
@@ -93,6 +94,7 @@ func loadValidatedStandardDecks(configuration StandardGameConfig) (validatedStan
 	if err != nil {
 		return validatedStandardDecks{}, fmt.Errorf("load fixed card data: %w", err)
 	}
+
 	firstDeck := fixedStandardDeck()
 	secondDeck := fixedStandardDeck()
 	if err := validateFixedStandardDeck(firstDeck, definitions); err != nil {
