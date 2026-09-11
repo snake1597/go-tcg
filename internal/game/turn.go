@@ -183,35 +183,45 @@ func (g *Game) nextPlayer(player *model.Player) *model.Player {
 }
 
 func (g *Game) drawTurnCard(player *model.Player) bool {
-	zones := g.state.Zones[player.UID]
-	if len(zones.MainDeck) == 0 {
-		g.state.Finished = true
-		g.state.Winner = g.otherPlayer(player)
-		g.state.Scheduler = schedulerFrame{
-			Kind: schedulerFinished,
-		}
-		return false
-	}
-	card := zones.MainDeck[len(zones.MainDeck)-1]
-	zones.MainDeck = zones.MainDeck[:len(zones.MainDeck)-1]
-	zones.Hand = append(zones.Hand, card)
-	g.state.Zones[player.UID] = zones
-	g.grantCardTracking(player, entityID(card))
-	g.state.NextEvent++
-	g.state.Events = append(
-		g.state.Events,
-		eventBatch{
-			Player: player,
-			Cause:  "turn:draw",
-			Events: []gameEvent{
-				{
-					Sequence: g.state.NextEvent,
-					Kind:     "draw",
-					Card:     card,
-				},
-			},
-		},
+	return g.drawCards(
+		player,
+		1,
+		"turn:draw",
 	)
-	g.recordVisibleEvent(player, "draw", entityID(card))
+}
+
+func (g *Game) drawCards(player *model.Player, count int, cause string) bool {
+	batch := eventBatch{
+		Player: player,
+		Cause:  cause,
+		Events: make([]gameEvent, 0, count),
+	}
+	for range count {
+		zones := g.state.Zones[player.UID]
+		if len(zones.MainDeck) == 0 {
+			if len(batch.Events) > 0 {
+				g.state.Events = append(g.state.Events, batch)
+			}
+			g.state.Finished = true
+			g.state.Winner = g.otherPlayer(player)
+			g.state.Scheduler = schedulerFrame{
+				Kind: schedulerFinished,
+			}
+			return false
+		}
+		card := zones.MainDeck[len(zones.MainDeck)-1]
+		zones.MainDeck = zones.MainDeck[:len(zones.MainDeck)-1]
+		zones.Hand = append(zones.Hand, card)
+		g.state.Zones[player.UID] = zones
+		g.grantCardTracking(player, entityID(card))
+		g.state.NextEvent++
+		batch.Events = append(batch.Events, gameEvent{
+			Sequence: g.state.NextEvent,
+			Kind:     "draw",
+			Card:     card,
+		})
+		g.recordVisibleEvent(player, "draw", entityID(card))
+	}
+	g.state.Events = append(g.state.Events, batch)
 	return true
 }

@@ -71,7 +71,7 @@ This is a single-context repo using root `CONTEXT.md` and `docs/adr/`. See `docs
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **go-tcg** (1700 symbols, 4866 relationships, 117 execution flows).
+This project is indexed by GitNexus as **go-tcg** (1777 symbols, 4458 relationships, 82 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > Index stale? Run `node .gitnexus/run.cjs analyze --index-only` from the project root — it auto-selects an available runner. No `.gitnexus/run.cjs` yet? Bootstrap with `npx`, `bunx`, or `pnpm dlx` — e.g. `bunx gitnexus@latest analyze` (npm 11 npx crash; #1939).
 

@@ -286,37 +286,9 @@ func (g *Game) nextRandom() uint64 {
 }
 
 func (g *Game) resolveSpiritOfFireOnEnter(player *model.Player) bool {
-	batch := eventBatch{
-		Player: player,
-		Cause:  spiritOfFireOnEnterCause,
-		Events: make([]gameEvent, 0, 7),
-	}
-	for draw := 0; draw < 7; draw++ {
-		zones := g.state.Zones[player.UID]
-		if len(zones.MainDeck) == 0 {
-			if len(batch.Events) > 0 {
-				g.state.Events = append(g.state.Events, batch)
-			}
-			g.state.Finished = true
-			g.state.Winner = g.otherPlayer(player)
-			g.state.Scheduler = schedulerFrame{
-				Kind: schedulerFinished,
-			}
-			return false
-		}
-		card := zones.MainDeck[len(zones.MainDeck)-1]
-		zones.MainDeck = zones.MainDeck[:len(zones.MainDeck)-1]
-		zones.Hand = append(zones.Hand, card)
-		g.state.Zones[player.UID] = zones
-		g.grantCardTracking(player, entityID(card))
-		g.state.NextEvent++
-		batch.Events = append(batch.Events, gameEvent{
-			Sequence: g.state.NextEvent,
-			Kind:     "draw",
-			Card:     card,
-		})
-		g.recordVisibleEvent(player, "draw", entityID(card))
-	}
-	g.state.Events = append(g.state.Events, batch)
-	return true
+	return g.drawCards(
+		player,
+		7,
+		spiritOfFireOnEnterCause,
+	)
 }
