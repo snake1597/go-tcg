@@ -4,7 +4,7 @@
 
 **Blocked by:** 04: 以 Spirit of Fire 完成 Standard 開局.
 
-**Status:** complete
+**Status:** completed
 
 - [x] Wake Up、Materialize、Recollection、Draw、Main 與 End 依鎖定規則推進並套用第一回合修正。
 - [x] 目前已支援的合法行動（pass、Materialize、skip materialize）由時序、phase、Effects Stack 與既有 Materialize 合法性決定。

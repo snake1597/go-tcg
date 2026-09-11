@@ -8,5 +8,5 @@
 
 - [ ] Cardistry cost 使用共用 Suited distinct-cost query 與中央 cost evaluator。
 - [ ] Once-per-instance 依 Ability Instance 的正確 lifetime 記錄，離場再進場的新 Object 不沿用舊狀態。
-- [ ] 抽牌、draw-to-memory、buff counter、Floating Memory 與 temporary power 都透過 typed operations 產生事件。
+- [ ] 抽牌、draw-to-memory、buff counter、Floating Memory 與 temporary power 都透過 typed operations 產生事件；Floating Memory 只可從 owner 的 Graveyard 先行 banish，以支付 1 點 memory cost。
 - [ ] 重複啟動、費用不足、空牌庫及來源失效均有無副作用或依法失敗的情境測試。

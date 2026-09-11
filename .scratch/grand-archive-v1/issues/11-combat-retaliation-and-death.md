@@ -8,5 +8,5 @@
 
 - [ ] 攻擊者、目標、wield 與時序皆由 Player View 的合法選項建立並在提交時重驗。
 - [ ] 戰鬥與 Retaliation 傷害保留同時性、On Hit／On Kill 因果及確定順序。
-- [ ] State-based checks 每輪使用一致 derived view，變更後重跑直到收斂，再 flush triggers。
+- [ ] State-based checks 每輪使用一致 derived view，變更後重跑直到收斂，再 flush triggers；被 destroy 的卡依規則移入 owner 的 Graveyard。
 - [ ] Champion 死亡會結束單局；循環或超過保守上限則停止並輸出 replay、state hash 與診斷。
