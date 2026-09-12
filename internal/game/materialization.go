@@ -17,12 +17,14 @@ type effectStackItemKind string
 const (
 	effectStackMaterialization effectStackItemKind = "materialization"
 	effectStackTonorisTaunt    effectStackItemKind = "tonoris_on_enter_taunt"
+	effectStackAction          effectStackItemKind = "action"
 )
 
 type effectStackItem struct {
 	Kind       effectStackItemKind `json:"kind"`
 	Controller *model.Player       `json:"controller"`
 	Source     cardInstanceID      `json:"source"`
+	Target     objectID            `json:"target,omitempty"`
 }
 
 func (g *Game) legalChampionMaterializations(player *model.Player) []cardInstanceID {
@@ -145,6 +147,8 @@ func (g *Game) resolveTopEffectStack() {
 		g.resolveChampionLevelUp(item)
 	case effectStackTonorisTaunt:
 		g.resolveTonorisTaunt(item)
+	case effectStackAction:
+		g.resolveAction(item)
 	default:
 		panic(fmt.Sprintf("unknown effect stack item %q", item.Kind))
 	}
@@ -219,17 +223,20 @@ func (g *Game) resolveTonorisTaunt(item effectStackItem) {
 func (g *Game) expireTimedChampionEffects() {
 	for _, player := range g.players {
 		champion := g.state.Champions[player.UID]
-		if champion.TauntUntilTurn == 0 || champion.TauntUntilTurn > g.state.Scheduler.TurnNumber {
-			continue
+		if champion.RecoverProhibitedUntilTurn > 0 && champion.RecoverProhibitedUntilTurn < g.state.Scheduler.TurnNumber {
+			champion.RecoverProhibitedUntilTurn = 0
+			g.state.Champions[player.UID] = champion
 		}
-		champion.TauntUntilTurn = 0
-		g.state.Champions[player.UID] = champion
-		g.recordPublicEvent(
-			player,
-			tonorisOnEnterCause,
-			"taunt-expired",
-			champion.Card,
-		)
+		if champion.TauntUntilTurn > 0 && champion.TauntUntilTurn <= g.state.Scheduler.TurnNumber {
+			champion.TauntUntilTurn = 0
+			g.state.Champions[player.UID] = champion
+			g.recordPublicEvent(
+				player,
+				tonorisOnEnterCause,
+				"taunt-expired",
+				champion.Card,
+			)
+		}
 	}
 }
 

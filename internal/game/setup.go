@@ -13,13 +13,16 @@ type cardInstanceID string
 type objectID string
 
 type cardInstance struct {
-	ID         cardInstanceID `json:"id"`
-	Owner      *model.Player  `json:"owner"`
-	Definition CardID         `json:"definition"`
-	Face       CardFaceID     `json:"face"`
-	Level      int64          `json:"level"`
-	Types      []string       `json:"types"`
-	MemoryCost int            `json:"memory_cost"`
+	ID          cardInstanceID `json:"id"`
+	Owner       *model.Player  `json:"owner"`
+	Definition  CardID         `json:"definition"`
+	Face        CardFaceID     `json:"face"`
+	Level       int64          `json:"level"`
+	Types       []string       `json:"types"`
+	Subtypes    []string       `json:"subtypes"`
+	MemoryCost  int            `json:"memory_cost"`
+	ReserveCost int            `json:"reserve_cost"`
+	Fast        bool           `json:"fast"`
 }
 
 type playerZones struct {
@@ -28,18 +31,29 @@ type playerZones struct {
 	MaterialDeck    []cardInstanceID `json:"material_deck"`
 	Memory          []cardInstanceID `json:"memory"`
 	Banishment      []cardInstanceID `json:"banishment"`
+	Graveyard       []cardInstanceID `json:"graveyard"`
 	OutsideGamePool []cardInstanceID `json:"outside_game_pool"`
 }
 
 type championObject struct {
-	ID             objectID         `json:"id"`
-	Card           cardInstanceID   `json:"card"`
-	Owner          *model.Player    `json:"owner"`
-	InnerLineage   []cardInstanceID `json:"inner_lineage"`
-	Rested         bool             `json:"rested"`
-	Counters       map[string]int   `json:"counters"`
-	CombatRole     string           `json:"combat_role"`
-	TauntUntilTurn uint64           `json:"taunt_until_turn"`
+	ID                         objectID         `json:"id"`
+	Card                       cardInstanceID   `json:"card"`
+	Owner                      *model.Player    `json:"owner"`
+	InnerLineage               []cardInstanceID `json:"inner_lineage"`
+	Rested                     bool             `json:"rested"`
+	Counters                   map[string]int   `json:"counters"`
+	CombatRole                 string           `json:"combat_role"`
+	TauntUntilTurn             uint64           `json:"taunt_until_turn"`
+	Damage                     int              `json:"damage"`
+	RecoverProhibitedUntilTurn uint64           `json:"recover_prohibited_until_turn"`
+}
+
+type fieldObject struct {
+	ID     objectID       `json:"id"`
+	Card   cardInstanceID `json:"card"`
+	Owner  *model.Player  `json:"owner"`
+	Types  []string       `json:"types"`
+	Damage int            `json:"damage"`
 }
 
 type schedulerKind string
@@ -192,13 +206,16 @@ func (g *Game) newCardInstance(player *model.Player, entry DeckEntry, definition
 	)
 	identifier := cardInstanceID(identifierText)
 	g.state.Cards[identifier] = cardInstance{
-		ID:         identifier,
-		Owner:      player,
-		Definition: entry.CardID,
-		Face:       entry.FaceID,
-		Level:      face.Level(),
-		Types:      append([]string(nil), cardData.Types...),
-		MemoryCost: memoryCost(cardData),
+		ID:          identifier,
+		Owner:       player,
+		Definition:  entry.CardID,
+		Face:        entry.FaceID,
+		Level:       face.Level(),
+		Types:       append([]string(nil), cardData.Types...),
+		Subtypes:    append([]string(nil), cardData.Subtypes...),
+		MemoryCost:  memoryCost(cardData),
+		ReserveCost: reserveCost(cardData),
+		Fast:        cardData.Speed != nil && *cardData.Speed,
 	}
 	g.state.Entities[entityID(identifier)] = knowledgeEntity{
 		Name: definitions[entry.CardID].Name(),
@@ -208,6 +225,17 @@ func (g *Game) newCardInstance(player *model.Player, entry DeckEntry, definition
 
 func memoryCost(card Card) int {
 	if card.Cost == nil || card.Cost.Type != "memory" {
+		return 0
+	}
+	cost, err := strconv.Atoi(card.Cost.Value)
+	if err != nil {
+		return 0
+	}
+	return cost
+}
+
+func reserveCost(card Card) int {
+	if card.Cost == nil || card.Cost.Type != "reserve" {
 		return 0
 	}
 	cost, err := strconv.Atoi(card.Cost.Value)

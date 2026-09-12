@@ -26,4 +26,4 @@
 
 ## 目前可執行
 
-依目前狀態，issue 01 至 06 已完成；下一張可執行工作是 [07：以 Blazing Throw 建立第一條完整卡牌宣告與 Stack 路徑](./07-blazing-throw-declaration-stack.md)。Issue 08 及後續工作仍受各自的 `Blocked by` 限制。
+依目前狀態，issue 01 至 09 已完成；下一張可執行工作是 [10：以 Impact Hammer 建立 trigger ordering](./10-impact-hammer-trigger-ordering.md)。後續工作仍受各自的 `Blocked by` 限制。

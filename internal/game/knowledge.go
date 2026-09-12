@@ -19,9 +19,11 @@ type knowledgeEntity struct {
 type knowledgeState struct {
 	Actions          map[string]map[ViewHandle]constants.ActionKind `json:"actions"`
 	Materializations map[string]map[ViewHandle]cardInstanceID       `json:"materializations"`
+	Activations      map[string]map[ViewHandle]cardInstanceID       `json:"activations"`
 	Cards            map[string]map[entityID]ViewHandle             `json:"cards"`
 	Events           map[string][]VisibleEvent                      `json:"events"`
 	Choice           *pendingChoice                                 `json:"choice,omitempty"`
+	Declaration      *actionDeclaration                             `json:"declaration,omitempty"`
 }
 
 type pendingChoice struct {
@@ -33,12 +35,14 @@ func (g *Game) initializeKnowledgeState() {
 	knowledge := knowledgeState{
 		Actions:          make(map[string]map[ViewHandle]constants.ActionKind, len(g.players)),
 		Materializations: make(map[string]map[ViewHandle]cardInstanceID, len(g.players)),
+		Activations:      make(map[string]map[ViewHandle]cardInstanceID, len(g.players)),
 		Cards:            make(map[string]map[entityID]ViewHandle, len(g.players)),
 		Events:           make(map[string][]VisibleEvent, len(g.players)),
 	}
 	for _, player := range g.players {
 		knowledge.Actions[player.UID] = make(map[ViewHandle]constants.ActionKind)
 		knowledge.Materializations[player.UID] = make(map[ViewHandle]cardInstanceID)
+		knowledge.Activations[player.UID] = make(map[ViewHandle]cardInstanceID)
 		knowledge.Cards[player.UID] = make(map[entityID]ViewHandle)
 		knowledge.Events[player.UID] = []VisibleEvent{}
 	}
@@ -50,8 +54,10 @@ func (g *Game) refreshLegalActions() {
 	for _, player := range g.players {
 		actions := g.state.Knowledge.Actions[player.UID]
 		materializations := g.state.Knowledge.Materializations[player.UID]
+		activations := g.state.Knowledge.Activations[player.UID]
 		clear(actions)
 		clear(materializations)
+		clear(activations)
 		if g.state.Finished {
 			continue
 		}
@@ -68,6 +74,13 @@ func (g *Game) refreshLegalActions() {
 					"action:pass",
 				)
 				actions[handle] = constants.ActionPass
+				for _, card := range g.legalActionCards(player) {
+					handle := g.newViewHandle(
+						player,
+						"action:activate:"+string(card),
+					)
+					activations[handle] = card
+				}
 			case samePlayer(player, g.state.Scheduler.TurnPlayer) && g.state.Scheduler.Phase == PhaseMaterialize:
 				for _, card := range g.legalChampionMaterializations(player) {
 					handle := g.newViewHandle(
@@ -113,6 +126,16 @@ func (g *Game) legalActions(player *model.Player) []LegalAction {
 			LegalAction{
 				Handle:   handle,
 				Kind:     constants.ActionMaterialize,
+				CardName: g.state.Entities[entityID(card)].Name,
+			},
+		)
+	}
+	for handle, card := range g.state.Knowledge.Activations[player.UID] {
+		legalActions = append(
+			legalActions,
+			LegalAction{
+				Handle:   handle,
+				Kind:     constants.ActionActivate,
 				CardName: g.state.Entities[entityID(card)].Name,
 			},
 		)
@@ -250,9 +273,16 @@ func (g *Game) submitChoice(player *model.Player, input Input) error {
 	if choice == nil || !samePlayer(choice.Actor, player) {
 		return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, input.Choice)
 	}
-	_, exists := choice.Options[input.Choice]
+	subject, exists := choice.Options[input.Choice]
 	if !exists {
 		return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, input.Choice)
+	}
+	if g.state.Knowledge.Declaration != nil {
+		if err := g.submitActionDeclarationChoice(player, subject); err != nil {
+			return err
+		}
+		g.advanceKnowledgeRevision()
+		return nil
 	}
 	g.state.Knowledge.Choice = nil
 	g.advanceKnowledgeRevision()

@@ -78,6 +78,7 @@ type gameState struct {
 	Cards         map[cardInstanceID]cardInstance
 	Zones         map[string]playerZones
 	Champions     map[string]championObject
+	Objects       map[objectID]fieldObject
 	EffectSources []cardInstanceID
 	EffectsStack  []effectStackItem
 	Scheduler     schedulerFrame
@@ -104,6 +105,7 @@ type canonicalState struct {
 	Cards         map[cardInstanceID]cardInstance `json:"cards"`
 	Zones         map[string]playerZones          `json:"zones"`
 	Champions     map[string]championObject       `json:"champions"`
+	Objects       map[objectID]fieldObject        `json:"objects"`
 	EffectSources []cardInstanceID                `json:"effect_sources,omitempty"`
 	EffectsStack  []effectStackItem               `json:"effects_stack,omitempty"`
 	Scheduler     schedulerFrame                  `json:"scheduler"`
@@ -126,6 +128,7 @@ func NewGame(seed uint64) *Game {
 			Cards:     make(map[cardInstanceID]cardInstance),
 			Zones:     make(map[string]playerZones),
 			Champions: make(map[string]championObject),
+			Objects:   make(map[objectID]fieldObject),
 			Events:    []eventBatch{},
 			PRNG: prngState{
 				Seed: seed,
@@ -185,14 +188,24 @@ func (g *Game) Submit(player *model.Player, input Input) error {
 	}
 	if !exists {
 		card, materializeExists := g.state.Knowledge.Materializations[player.UID][input.Action]
-		if !materializeExists {
-			return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, input.Action)
-		}
-		if err := g.materializeChampion(
-			player,
-			card,
-		); err != nil {
-			return err
+		if materializeExists {
+			if err := g.materializeChampion(
+				player,
+				card,
+			); err != nil {
+				return err
+			}
+		} else {
+			card, activateExists := g.state.Knowledge.Activations[player.UID][input.Action]
+			if !activateExists {
+				return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, input.Action)
+			}
+			if err := g.beginActionDeclaration(
+				player,
+				card,
+			); err != nil {
+				return err
+			}
 		}
 		g.advanceKnowledgeRevision()
 		g.recordReplayStep(
@@ -281,6 +294,7 @@ func (g *Game) StateHash() string {
 		Cards:         g.state.Cards,
 		Zones:         g.state.Zones,
 		Champions:     g.state.Champions,
+		Objects:       g.state.Objects,
 		EffectSources: g.state.EffectSources,
 		EffectsStack:  g.state.EffectsStack,
 		Scheduler:     g.state.Scheduler,
