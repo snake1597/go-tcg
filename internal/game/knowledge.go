@@ -20,10 +20,15 @@ type knowledgeState struct {
 	Actions          map[string]map[ViewHandle]constants.ActionKind `json:"actions"`
 	Materializations map[string]map[ViewHandle]cardInstanceID       `json:"materializations"`
 	Activations      map[string]map[ViewHandle]cardInstanceID       `json:"activations"`
+	Attacks          map[string]map[ViewHandle]objectID             `json:"attacks"`
+	Wields           map[string]map[ViewHandle]objectID             `json:"wields"`
 	Cards            map[string]map[entityID]ViewHandle             `json:"cards"`
 	Events           map[string][]VisibleEvent                      `json:"events"`
 	Choice           *pendingChoice                                 `json:"choice,omitempty"`
 	Declaration      *actionDeclaration                             `json:"declaration,omitempty"`
+	TriggerOrder     *triggerOrder                                  `json:"trigger_order,omitempty"`
+	Attack           *attackDeclaration                             `json:"attack,omitempty"`
+	Wield            *wieldDeclaration                              `json:"wield,omitempty"`
 }
 
 type pendingChoice struct {
@@ -36,6 +41,8 @@ func (g *Game) initializeKnowledgeState() {
 		Actions:          make(map[string]map[ViewHandle]constants.ActionKind, len(g.players)),
 		Materializations: make(map[string]map[ViewHandle]cardInstanceID, len(g.players)),
 		Activations:      make(map[string]map[ViewHandle]cardInstanceID, len(g.players)),
+		Attacks:          make(map[string]map[ViewHandle]objectID, len(g.players)),
+		Wields:           make(map[string]map[ViewHandle]objectID, len(g.players)),
 		Cards:            make(map[string]map[entityID]ViewHandle, len(g.players)),
 		Events:           make(map[string][]VisibleEvent, len(g.players)),
 	}
@@ -43,6 +50,8 @@ func (g *Game) initializeKnowledgeState() {
 		knowledge.Actions[player.UID] = make(map[ViewHandle]constants.ActionKind)
 		knowledge.Materializations[player.UID] = make(map[ViewHandle]cardInstanceID)
 		knowledge.Activations[player.UID] = make(map[ViewHandle]cardInstanceID)
+		knowledge.Attacks[player.UID] = make(map[ViewHandle]objectID)
+		knowledge.Wields[player.UID] = make(map[ViewHandle]objectID)
 		knowledge.Cards[player.UID] = make(map[entityID]ViewHandle)
 		knowledge.Events[player.UID] = []VisibleEvent{}
 	}
@@ -55,9 +64,13 @@ func (g *Game) refreshLegalActions() {
 		actions := g.state.Knowledge.Actions[player.UID]
 		materializations := g.state.Knowledge.Materializations[player.UID]
 		activations := g.state.Knowledge.Activations[player.UID]
+		attacks := g.state.Knowledge.Attacks[player.UID]
+		wields := g.state.Knowledge.Wields[player.UID]
 		clear(actions)
 		clear(materializations)
 		clear(activations)
+		clear(attacks)
+		clear(wields)
 		if g.state.Finished {
 			continue
 		}
@@ -80,6 +93,17 @@ func (g *Game) refreshLegalActions() {
 						"action:activate:"+string(card),
 					)
 					activations[handle] = card
+				}
+				for _, attacker := range g.legalAttackers(player) {
+					handle := g.newViewHandle(player, "action:attack:"+string(attacker))
+					attacks[handle] = attacker
+				}
+				for _, weapon := range g.legalWeapons(player) {
+					if !g.canWield(player, weapon) {
+						continue
+					}
+					handle := g.newViewHandle(player, "action:wield:"+string(weapon))
+					wields[handle] = weapon
 				}
 			case samePlayer(player, g.state.Scheduler.TurnPlayer) && g.state.Scheduler.Phase == PhaseMaterialize:
 				for _, card := range g.legalChampionMaterializations(player) {
@@ -140,6 +164,19 @@ func (g *Game) legalActions(player *model.Player) []LegalAction {
 			},
 		)
 	}
+	for handle := range g.state.Knowledge.Attacks[player.UID] {
+		legalActions = append(legalActions, LegalAction{
+			Handle: handle,
+			Kind:   constants.ActionAttack,
+		})
+	}
+	for handle, weapon := range g.state.Knowledge.Wields[player.UID] {
+		legalActions = append(legalActions, LegalAction{
+			Handle:   handle,
+			Kind:     constants.ActionWield,
+			CardName: g.state.Entities[entityID(g.state.Objects[weapon].Card)].Name,
+		})
+	}
 	sort.Slice(
 		legalActions,
 		func(first, second int) bool {
@@ -161,6 +198,8 @@ func (g *Game) visibleChampions(_ *model.Player) []VisibleChampion {
 			VisibleChampion{
 				Owner:    owner,
 				CardName: g.state.Entities[entityID(champion.Card)].Name,
+				Power:    g.characteristicsFor(champion.ID).Power,
+				Life:     g.characteristicsFor(champion.ID).Life,
 				Rested:   champion.Rested,
 				Taunt:    champion.TauntUntilTurn > g.state.Scheduler.TurnNumber,
 			},
@@ -279,6 +318,27 @@ func (g *Game) submitChoice(player *model.Player, input Input) error {
 	}
 	if g.state.Knowledge.Declaration != nil {
 		if err := g.submitActionDeclarationChoice(player, subject); err != nil {
+			return err
+		}
+		g.advanceKnowledgeRevision()
+		return nil
+	}
+	if g.state.Knowledge.TriggerOrder != nil {
+		if err := g.submitTriggerOrderChoice(player, input.Choice); err != nil {
+			return err
+		}
+		g.advanceKnowledgeRevision()
+		return nil
+	}
+	if g.state.Knowledge.Attack != nil {
+		if err := g.submitAttackChoice(player, subject); err != nil {
+			return err
+		}
+		g.advanceKnowledgeRevision()
+		return nil
+	}
+	if g.state.Knowledge.Wield != nil {
+		if err := g.submitWieldChoice(player, subject); err != nil {
 			return err
 		}
 		g.advanceKnowledgeRevision()

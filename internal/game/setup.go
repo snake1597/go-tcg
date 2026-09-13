@@ -20,9 +20,12 @@ type cardInstance struct {
 	Level       int64          `json:"level"`
 	Types       []string       `json:"types"`
 	Subtypes    []string       `json:"subtypes"`
+	Classes     []string       `json:"classes"`
 	MemoryCost  int            `json:"memory_cost"`
 	ReserveCost int            `json:"reserve_cost"`
 	Fast        bool           `json:"fast"`
+	Power       int            `json:"power"`
+	Life        int            `json:"life"`
 }
 
 type playerZones struct {
@@ -49,11 +52,13 @@ type championObject struct {
 }
 
 type fieldObject struct {
-	ID     objectID       `json:"id"`
-	Card   cardInstanceID `json:"card"`
-	Owner  *model.Player  `json:"owner"`
-	Types  []string       `json:"types"`
-	Damage int            `json:"damage"`
+	ID                objectID       `json:"id"`
+	Card              cardInstanceID `json:"card"`
+	Owner             *model.Player  `json:"owner"`
+	Types             []string       `json:"types"`
+	Rested            bool           `json:"rested"`
+	ImmortalUntilTurn uint64         `json:"immortal_until_turn"`
+	Damage            int            `json:"damage"`
 }
 
 type schedulerKind string
@@ -79,9 +84,11 @@ type gameEvent struct {
 }
 
 type eventBatch struct {
-	Player *model.Player `json:"player"`
-	Cause  string        `json:"cause"`
-	Events []gameEvent   `json:"events"`
+	Player       *model.Player `json:"player"`
+	Cause        string        `json:"cause"`
+	ParentFlow   string        `json:"parent_flow,omitempty"`
+	Simultaneous bool          `json:"simultaneous"`
+	Events       []gameEvent   `json:"events"`
 }
 
 // NewStandardSetup builds the deterministic opening state for the fixed deck.
@@ -213,14 +220,24 @@ func (g *Game) newCardInstance(player *model.Player, entry DeckEntry, definition
 		Level:       face.Level(),
 		Types:       append([]string(nil), cardData.Types...),
 		Subtypes:    append([]string(nil), cardData.Subtypes...),
+		Classes:     append([]string(nil), cardData.Classes...),
 		MemoryCost:  memoryCost(cardData),
 		ReserveCost: reserveCost(cardData),
 		Fast:        cardData.Speed != nil && *cardData.Speed,
+		Power:       cardStat(cardData.Power),
+		Life:        cardStat(cardData.Life),
 	}
 	g.state.Entities[entityID(identifier)] = knowledgeEntity{
 		Name: definitions[entry.CardID].Name(),
 	}
 	return identifier
+}
+
+func cardStat(stat *int64) int {
+	if stat == nil {
+		return 0
+	}
+	return int(*stat)
 }
 
 func memoryCost(card Card) int {

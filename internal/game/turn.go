@@ -31,6 +31,9 @@ func (g *Game) passOpportunity(player *model.Player) error {
 	scheduler.ConsecutivePasses = 0
 	if len(g.state.EffectsStack) > 0 {
 		g.resolveTopEffectStack()
+		if g.state.Finished {
+			return nil
+		}
 		if len(g.state.EffectsStack) > 0 {
 			g.grantOpportunity(scheduler.TurnPlayer)
 			return nil

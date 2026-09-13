@@ -29,6 +29,8 @@ type LegalAction struct {
 type VisibleChampion struct {
 	Owner    *model.Player `json:"owner"`
 	CardName string        `json:"card_name"`
+	Power    int           `json:"power"`
+	Life     int           `json:"life"`
 	Rested   bool          `json:"rested"`
 	Taunt    bool          `json:"taunt"`
 }
@@ -51,6 +53,7 @@ type PlayerView struct {
 	Revision          uint64            `json:"revision"`
 	Finished          bool              `json:"finished"`
 	Winner            *model.Player     `json:"winner,omitempty"`
+	Diagnostic        string            `json:"diagnostic,omitempty"`
 	TurnPlayer        *model.Player     `json:"turn_player,omitempty"`
 	Phase             Phase             `json:"phase,omitempty"`
 	OpportunityHolder *model.Player     `json:"opportunity_holder,omitempty"`
@@ -72,6 +75,7 @@ type gameState struct {
 	Revision      uint64
 	Finished      bool
 	Winner        *model.Player
+	Diagnostic    string
 	PRNG          prngState
 	Knowledge     knowledgeState
 	Entities      map[entityID]knowledgeEntity
@@ -99,6 +103,7 @@ type canonicalState struct {
 	Revision      uint64                          `json:"revision"`
 	Finished      bool                            `json:"finished"`
 	Winner        *model.Player                   `json:"winner"`
+	Diagnostic    string                          `json:"diagnostic,omitempty"`
 	PRNG          prngState                       `json:"prng"`
 	Knowledge     knowledgeState                  `json:"knowledge"`
 	Entities      map[entityID]knowledgeEntity    `json:"entities"`
@@ -197,14 +202,25 @@ func (g *Game) Submit(player *model.Player, input Input) error {
 			}
 		} else {
 			card, activateExists := g.state.Knowledge.Activations[player.UID][input.Action]
-			if !activateExists {
-				return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, input.Action)
-			}
-			if err := g.beginActionDeclaration(
-				player,
-				card,
-			); err != nil {
-				return err
+			if activateExists {
+				if err := g.beginActionDeclaration(player, card); err != nil {
+					return err
+				}
+			} else {
+				attacker, attackExists := g.state.Knowledge.Attacks[player.UID][input.Action]
+				if attackExists {
+					if err := g.beginAttack(player, attacker); err != nil {
+						return err
+					}
+				} else {
+					weapon, wieldExists := g.state.Knowledge.Wields[player.UID][input.Action]
+					if !wieldExists {
+						return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, input.Action)
+					}
+					if err := g.beginWield(player, weapon); err != nil {
+						return err
+					}
+				}
 			}
 		}
 		g.advanceKnowledgeRevision()
@@ -259,6 +275,7 @@ func (g *Game) PlayerView(player *model.Player) (PlayerView, error) {
 		Revision:          g.state.Revision,
 		Finished:          g.state.Finished,
 		Winner:            g.state.Winner,
+		Diagnostic:        g.state.Diagnostic,
 		TurnPlayer:        g.state.Scheduler.TurnPlayer,
 		Phase:             g.state.Scheduler.Phase,
 		OpportunityHolder: g.state.Scheduler.OpportunityHolder,
@@ -288,6 +305,7 @@ func (g *Game) StateHash() string {
 		Revision:      g.state.Revision,
 		Finished:      g.state.Finished,
 		Winner:        g.state.Winner,
+		Diagnostic:    g.state.Diagnostic,
 		PRNG:          g.state.PRNG,
 		Knowledge:     g.state.Knowledge,
 		Entities:      g.state.Entities,

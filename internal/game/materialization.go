@@ -7,9 +7,11 @@ import (
 )
 
 const (
-	spiritOfFireCardID  CardID = "LMyKyVC2O9"
-	tonorisCardID       CardID = "zb14m4c8lj"
-	tonorisOnEnterCause        = "ability:zb14m4c8lj:front:on-enter-taunt"
+	spiritOfFireCardID       CardID = "LMyKyVC2O9"
+	tonorisCardID            CardID = "zb14m4c8lj"
+	tonorisOnEnterCause             = "ability:zb14m4c8lj:front:on-enter-taunt"
+	impactHammerCardID       CardID = "chsbalegbs"
+	impactHammerOnWieldCause        = "ability:chsbalegbs:front:on-wield-self-damage"
 )
 
 type effectStackItemKind string
@@ -18,6 +20,8 @@ const (
 	effectStackMaterialization effectStackItemKind = "materialization"
 	effectStackTonorisTaunt    effectStackItemKind = "tonoris_on_enter_taunt"
 	effectStackAction          effectStackItemKind = "action"
+	effectStackImpactHammer    effectStackItemKind = "impact_hammer_on_wield"
+	effectStackCombat          effectStackItemKind = "combat"
 )
 
 type effectStackItem struct {
@@ -25,6 +29,7 @@ type effectStackItem struct {
 	Controller *model.Player       `json:"controller"`
 	Source     cardInstanceID      `json:"source"`
 	Target     objectID            `json:"target,omitempty"`
+	SourceLKI  cardInstanceID      `json:"source_lki,omitempty"`
 }
 
 func (g *Game) legalChampionMaterializations(player *model.Player) []cardInstanceID {
@@ -149,6 +154,10 @@ func (g *Game) resolveTopEffectStack() {
 		g.resolveTonorisTaunt(item)
 	case effectStackAction:
 		g.resolveAction(item)
+	case effectStackImpactHammer:
+		g.damageUnit(item.Target, 3)
+	case effectStackCombat:
+		g.resolveCombat(item)
 	default:
 		panic(fmt.Sprintf("unknown effect stack item %q", item.Kind))
 	}

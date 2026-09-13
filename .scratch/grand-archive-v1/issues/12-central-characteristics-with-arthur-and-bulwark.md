@@ -4,7 +4,7 @@
 
 **Blocked by:** 10: 以 Impact Hammer 完成觸發收集與排序; 11: 完成攻擊、Retaliation、傷害與死亡的戰鬥縱切.
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] Evaluator 實作 Support Set 需要的 Layer A 至 E、power/life sub-layer、dependency、dependency loop 與 timestamp 規則。
 - [ ] 合法性、目標、費用、戰鬥及 Player View 顯示使用同一份 derived result。
