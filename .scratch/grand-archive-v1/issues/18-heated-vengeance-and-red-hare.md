@@ -2,7 +2,7 @@
 
 **What to build:** 讓本回合 Champion 受傷歷史、On Attack 自傷、Pride、Human 條件及 granted attack trigger 共同影響合法攻擊與戰鬥結果。
 
-**Blocked by:** 10: 以 Impact Hammer 完成觸發收集與排序; 11: 完成攻擊、Retaliation、傷害與死亡的戰鬥縱切; 12: 以 Arthur 與 Bulwark Sword 建立中央衍生特徵求值器; 14: 支援 Cardistry 的選擇、棄牌與部署互動.
+**Blocked by:** 10: 以 Impact Hammer 完成觸發收集與排序; 11: 完成攻擊、Retaliation、傷害與死亡的戰鬥縱切; 12: 以 Arthur 與 Bulwark Sword 建立中央衍生特徵求值器; 12.5: 建立統一 Ability 與 Effect Runtime; 14: 支援 Cardistry 的選擇、棄牌與部署互動.
 
 **Status:** ready-for-agent
 

@@ -31,6 +31,9 @@ func (g *Game) passOpportunity(player *model.Player) error {
 	scheduler.ConsecutivePasses = 0
 	if len(g.state.EffectsStack) > 0 {
 		g.resolveTopEffectStack()
+		if g.state.Finished {
+			return nil
+		}
 		if len(g.state.EffectsStack) > 0 {
 			g.grantOpportunity(scheduler.TurnPlayer)
 			return nil
@@ -53,6 +56,7 @@ func (g *Game) advanceAfterOpportunity() {
 	case PhaseEnd:
 		scheduler.TurnPlayer = g.nextPlayer(scheduler.TurnPlayer)
 		scheduler.TurnNumber++
+		clear(g.state.CardistryDiscounts)
 		scheduler.Phase = PhaseWakeUp
 	default:
 		panic(fmt.Sprintf("cannot advance after opportunity in phase %q", scheduler.Phase))

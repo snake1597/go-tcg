@@ -13,13 +13,20 @@ type cardInstanceID string
 type objectID string
 
 type cardInstance struct {
-	ID         cardInstanceID `json:"id"`
-	Owner      *model.Player  `json:"owner"`
-	Definition CardID         `json:"definition"`
-	Face       CardFaceID     `json:"face"`
-	Level      int64          `json:"level"`
-	Types      []string       `json:"types"`
-	MemoryCost int            `json:"memory_cost"`
+	ID          cardInstanceID `json:"id"`
+	Owner       *model.Player  `json:"owner"`
+	Definition  CardID         `json:"definition"`
+	Face        CardFaceID     `json:"face"`
+	Level       int64          `json:"level"`
+	Types       []string       `json:"types"`
+	Subtypes    []string       `json:"subtypes"`
+	Elements    []string       `json:"elements"`
+	Classes     []string       `json:"classes"`
+	MemoryCost  int            `json:"memory_cost"`
+	ReserveCost int            `json:"reserve_cost"`
+	Fast        bool           `json:"fast"`
+	Power       int            `json:"power"`
+	Life        int            `json:"life"`
 }
 
 type playerZones struct {
@@ -28,6 +35,7 @@ type playerZones struct {
 	MaterialDeck    []cardInstanceID `json:"material_deck"`
 	Memory          []cardInstanceID `json:"memory"`
 	Banishment      []cardInstanceID `json:"banishment"`
+	Graveyard       []cardInstanceID `json:"graveyard"`
 	OutsideGamePool []cardInstanceID `json:"outside_game_pool"`
 }
 
@@ -40,6 +48,18 @@ type championObject struct {
 	Counters       map[string]int   `json:"counters"`
 	CombatRole     string           `json:"combat_role"`
 	TauntUntilTurn uint64           `json:"taunt_until_turn"`
+	Damage         int              `json:"damage"`
+	DamageTurn     uint64           `json:"damage_turn,omitempty"`
+}
+
+type fieldObject struct {
+	ID       objectID       `json:"id"`
+	Card     cardInstanceID `json:"card"`
+	Owner    *model.Player  `json:"owner"`
+	Types    []string       `json:"types"`
+	Rested   bool           `json:"rested"`
+	Counters map[string]int `json:"counters,omitempty"`
+	Damage   int            `json:"damage"`
 }
 
 type schedulerKind string
@@ -65,9 +85,11 @@ type gameEvent struct {
 }
 
 type eventBatch struct {
-	Player *model.Player `json:"player"`
-	Cause  string        `json:"cause"`
-	Events []gameEvent   `json:"events"`
+	Player       *model.Player `json:"player"`
+	Cause        string        `json:"cause"`
+	ParentFlow   string        `json:"parent_flow,omitempty"`
+	Simultaneous bool          `json:"simultaneous"`
+	Events       []gameEvent   `json:"events"`
 }
 
 // NewStandardSetup builds the deterministic opening state for the fixed deck.
@@ -192,13 +214,20 @@ func (g *Game) newCardInstance(player *model.Player, entry DeckEntry, definition
 	)
 	identifier := cardInstanceID(identifierText)
 	g.state.Cards[identifier] = cardInstance{
-		ID:         identifier,
-		Owner:      player,
-		Definition: entry.CardID,
-		Face:       entry.FaceID,
-		Level:      face.Level(),
-		Types:      append([]string(nil), cardData.Types...),
-		MemoryCost: memoryCost(cardData),
+		ID:          identifier,
+		Owner:       player,
+		Definition:  entry.CardID,
+		Face:        entry.FaceID,
+		Level:       face.Level(),
+		Types:       append([]string(nil), cardData.Types...),
+		Subtypes:    append([]string(nil), cardData.Subtypes...),
+		Elements:    append([]string(nil), cardData.Elements...),
+		Classes:     append([]string(nil), cardData.Classes...),
+		MemoryCost:  memoryCost(cardData),
+		ReserveCost: reserveCost(cardData),
+		Fast:        cardData.Speed != nil && *cardData.Speed,
+		Power:       cardStat(cardData.Power),
+		Life:        cardStat(cardData.Life),
 	}
 	g.state.Entities[entityID(identifier)] = knowledgeEntity{
 		Name: definitions[entry.CardID].Name(),
@@ -206,8 +235,26 @@ func (g *Game) newCardInstance(player *model.Player, entry DeckEntry, definition
 	return identifier
 }
 
+func cardStat(stat *int64) int {
+	if stat == nil {
+		return 0
+	}
+	return int(*stat)
+}
+
 func memoryCost(card Card) int {
 	if card.Cost == nil || card.Cost.Type != "memory" {
+		return 0
+	}
+	cost, err := strconv.Atoi(card.Cost.Value)
+	if err != nil {
+		return 0
+	}
+	return cost
+}
+
+func reserveCost(card Card) int {
+	if card.Cost == nil || card.Cost.Type != "reserve" {
 		return 0
 	}
 	cost, err := strconv.Atoi(card.Cost.Value)

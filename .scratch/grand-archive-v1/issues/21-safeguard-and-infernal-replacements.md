@@ -2,7 +2,7 @@
 
 **What to build:** 讓非戰鬥傷害 prevention 與 recover replacement 在 action 或 event 提交前由獨立 Replacement Pipeline 判定、排序、套用並重新計算候選。
 
-**Blocked by:** 08: 以 Fiery Interference 支援 fast action 與恢復禁止; 11: 完成攻擊、Retaliation、傷害與死亡的戰鬥縱切; 12: 以 Arthur 與 Bulwark Sword 建立中央衍生特徵求值器.
+**Blocked by:** 08: 以 Fiery Interference 支援 fast action 與恢復禁止; 11: 完成攻擊、Retaliation、傷害與死亡的戰鬥縱切; 12: 以 Arthur 與 Bulwark Sword 建立中央衍生特徵求值器; 12.5: 建立統一 Ability 與 Effect Runtime.
 
 **Status:** ready-for-agent
 

@@ -13,9 +13,10 @@ import (
 )
 
 type Input struct {
-	Revision uint64     `json:"revision"`
-	Action   ViewHandle `json:"action"`
-	Choice   ViewHandle `json:"choice"`
+	Revision       uint64       `json:"revision"`
+	Action         ViewHandle   `json:"action"`
+	Choice         ViewHandle   `json:"choice"`
+	FloatingMemory []ViewHandle `json:"floating_memory,omitempty"`
 }
 
 type ViewHandle string
@@ -29,6 +30,8 @@ type LegalAction struct {
 type VisibleChampion struct {
 	Owner    *model.Player `json:"owner"`
 	CardName string        `json:"card_name"`
+	Power    int           `json:"power"`
+	Life     int           `json:"life"`
 	Rested   bool          `json:"rested"`
 	Taunt    bool          `json:"taunt"`
 }
@@ -45,12 +48,14 @@ type VisibleEvent struct {
 
 type PendingChoice struct {
 	Options []ViewHandle `json:"options"`
+	CanPass bool         `json:"can_pass,omitempty"`
 }
 
 type PlayerView struct {
 	Revision          uint64            `json:"revision"`
 	Finished          bool              `json:"finished"`
 	Winner            *model.Player     `json:"winner,omitempty"`
+	Diagnostic        string            `json:"diagnostic,omitempty"`
 	TurnPlayer        *model.Player     `json:"turn_player,omitempty"`
 	Phase             Phase             `json:"phase,omitempty"`
 	OpportunityHolder *model.Player     `json:"opportunity_holder,omitempty"`
@@ -69,21 +74,30 @@ type Game struct {
 }
 
 type gameState struct {
-	Revision      uint64
-	Finished      bool
-	Winner        *model.Player
-	PRNG          prngState
-	Knowledge     knowledgeState
-	Entities      map[entityID]knowledgeEntity
-	Cards         map[cardInstanceID]cardInstance
-	Zones         map[string]playerZones
-	Champions     map[string]championObject
-	EffectSources []cardInstanceID
-	EffectsStack  []effectStackItem
-	Scheduler     schedulerFrame
-	Events        []eventBatch
-	NextHandle    uint64
-	NextEvent     uint64
+	Revision           uint64
+	Finished           bool
+	Winner             *model.Player
+	Diagnostic         string
+	PRNG               prngState
+	Knowledge          knowledgeState
+	Entities           map[entityID]knowledgeEntity
+	Cards              map[cardInstanceID]cardInstance
+	Zones              map[string]playerZones
+	Champions          map[string]championObject
+	Objects            map[objectID]fieldObject
+	EffectSources      []cardInstanceID
+	EffectsStack       []effectStackItem
+	ContinuousEffects  []continuousEffect
+	AbilityChoice      *abilityChoice
+	CardistryUsed      map[objectID]bool
+	CardistryDiscounts map[string]int
+	Scheduler          schedulerFrame
+	Events             []eventBatch
+	NextHandle         uint64
+	NextEvent          uint64
+	NextEffect         uint64
+	NextAbility        uint64
+	NextObject         uint64
 }
 
 type prngState struct {
@@ -92,24 +106,33 @@ type prngState struct {
 }
 
 type canonicalState struct {
-	SchemaVersion int                             `json:"schema_version"`
-	Versions      Versions                        `json:"versions"`
-	Players       []*model.Player                 `json:"players"`
-	Revision      uint64                          `json:"revision"`
-	Finished      bool                            `json:"finished"`
-	Winner        *model.Player                   `json:"winner"`
-	PRNG          prngState                       `json:"prng"`
-	Knowledge     knowledgeState                  `json:"knowledge"`
-	Entities      map[entityID]knowledgeEntity    `json:"entities"`
-	Cards         map[cardInstanceID]cardInstance `json:"cards"`
-	Zones         map[string]playerZones          `json:"zones"`
-	Champions     map[string]championObject       `json:"champions"`
-	EffectSources []cardInstanceID                `json:"effect_sources,omitempty"`
-	EffectsStack  []effectStackItem               `json:"effects_stack,omitempty"`
-	Scheduler     schedulerFrame                  `json:"scheduler"`
-	Events        []eventBatch                    `json:"events"`
-	NextHandle    uint64                          `json:"next_handle"`
-	NextEvent     uint64                          `json:"next_event"`
+	SchemaVersion      int                             `json:"schema_version"`
+	Versions           Versions                        `json:"versions"`
+	Players            []*model.Player                 `json:"players"`
+	Revision           uint64                          `json:"revision"`
+	Finished           bool                            `json:"finished"`
+	Winner             *model.Player                   `json:"winner"`
+	Diagnostic         string                          `json:"diagnostic,omitempty"`
+	PRNG               prngState                       `json:"prng"`
+	Knowledge          knowledgeState                  `json:"knowledge"`
+	Entities           map[entityID]knowledgeEntity    `json:"entities"`
+	Cards              map[cardInstanceID]cardInstance `json:"cards"`
+	Zones              map[string]playerZones          `json:"zones"`
+	Champions          map[string]championObject       `json:"champions"`
+	Objects            map[objectID]fieldObject        `json:"objects"`
+	EffectSources      []cardInstanceID                `json:"effect_sources,omitempty"`
+	EffectsStack       []effectStackItem               `json:"effects_stack,omitempty"`
+	ContinuousEffects  []continuousEffect              `json:"continuous_effects,omitempty"`
+	AbilityChoice      *abilityChoice                  `json:"ability_choice,omitempty"`
+	CardistryUsed      map[objectID]bool               `json:"cardistry_used,omitempty"`
+	CardistryDiscounts map[string]int                  `json:"cardistry_discounts,omitempty"`
+	Scheduler          schedulerFrame                  `json:"scheduler"`
+	Events             []eventBatch                    `json:"events"`
+	NextHandle         uint64                          `json:"next_handle"`
+	NextEvent          uint64                          `json:"next_event"`
+	NextEffect         uint64                          `json:"next_effect"`
+	NextAbility        uint64                          `json:"next_ability"`
+	NextObject         uint64                          `json:"next_object"`
 }
 
 func NewGame(seed uint64) *Game {
@@ -121,12 +144,15 @@ func NewGame(seed uint64) *Game {
 			model.PlayerTwo,
 		},
 		state: gameState{
-			Revision:  1,
-			Entities:  make(map[entityID]knowledgeEntity),
-			Cards:     make(map[cardInstanceID]cardInstance),
-			Zones:     make(map[string]playerZones),
-			Champions: make(map[string]championObject),
-			Events:    []eventBatch{},
+			Revision:           1,
+			Entities:           make(map[entityID]knowledgeEntity),
+			Cards:              make(map[cardInstanceID]cardInstance),
+			Zones:              make(map[string]playerZones),
+			Champions:          make(map[string]championObject),
+			Objects:            make(map[objectID]fieldObject),
+			CardistryUsed:      make(map[objectID]bool),
+			CardistryDiscounts: make(map[string]int),
+			Events:             []eventBatch{},
 			PRNG: prngState{
 				Seed: seed,
 			},
@@ -162,7 +188,7 @@ func (g *Game) Submit(player *model.Player, input Input) error {
 	if input.Revision != g.state.Revision {
 		return fmt.Errorf("%w: got %d, current %d", tcgErrors.ErrStaleRevision, input.Revision, g.state.Revision)
 	}
-	if input.Action != "" && input.Choice != "" {
+	if (input.Action != "" && input.Choice != "") || (input.Choice != "" && len(input.FloatingMemory) > 0) {
 		return fmt.Errorf("%w: action and choice cannot be submitted together", tcgErrors.ErrInvalidViewHandle)
 	}
 	if input.Choice != "" {
@@ -180,19 +206,73 @@ func (g *Game) Submit(player *model.Player, input Input) error {
 		return nil
 	}
 	kind, exists := g.state.Knowledge.Actions[player.UID][input.Action]
+	if g.state.AbilityChoice != nil && g.state.AbilityChoice.CanPass && exists && kind == constants.ActionPass {
+		if g.state.AbilityChoice.Instance.RuntimeCopy {
+			g.destroyRuntimeCopy(g.state.AbilityChoice.Instance.Source)
+		}
+		g.state.AbilityChoice = nil
+		g.state.Knowledge.Choice = nil
+		g.advanceKnowledgeRevision()
+		g.recordReplayStep(player, input)
+		return nil
+	}
+	if len(input.FloatingMemory) > 0 {
+		if _, exists := g.state.Knowledge.Cardistries[player.UID][input.Action]; !exists {
+			return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, input.Action)
+		}
+	}
 	if g.state.Knowledge.Choice != nil && (!exists || kind != constants.ActionConcede) {
 		return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, input.Action)
 	}
 	if !exists {
 		card, materializeExists := g.state.Knowledge.Materializations[player.UID][input.Action]
-		if !materializeExists {
-			return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, input.Action)
-		}
-		if err := g.materializeChampion(
-			player,
-			card,
-		); err != nil {
-			return err
+		if materializeExists {
+			if err := g.materializeChampion(
+				player,
+				card,
+			); err != nil {
+				return err
+			}
+		} else {
+			card, activateExists := g.state.Knowledge.Activations[player.UID][input.Action]
+			if activateExists {
+				if err := g.beginActionDeclaration(player, card); err != nil {
+					return err
+				}
+			} else {
+				attacker, attackExists := g.state.Knowledge.Attacks[player.UID][input.Action]
+				if attackExists {
+					if err := g.beginAttack(player, attacker); err != nil {
+						return err
+					}
+				} else {
+					source, cardistryExists := g.state.Knowledge.Cardistries[player.UID][input.Action]
+					if cardistryExists {
+						if err := g.activateCardistry(
+							player,
+							source,
+							input.FloatingMemory,
+						); err != nil {
+							return err
+						}
+					} else {
+						object, objectAbilityExists := g.state.Knowledge.ObjectAbilities[player.UID][input.Action]
+						if objectAbilityExists {
+							if err := g.beginObjectAbility(player, object); err != nil {
+								return err
+							}
+						} else {
+							weapon, wieldExists := g.state.Knowledge.Wields[player.UID][input.Action]
+							if !wieldExists {
+								return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, input.Action)
+							}
+							if err := g.beginWield(player, weapon); err != nil {
+								return err
+							}
+						}
+					}
+				}
+			}
 		}
 		g.advanceKnowledgeRevision()
 		g.recordReplayStep(
@@ -246,6 +326,7 @@ func (g *Game) PlayerView(player *model.Player) (PlayerView, error) {
 		Revision:          g.state.Revision,
 		Finished:          g.state.Finished,
 		Winner:            g.state.Winner,
+		Diagnostic:        g.state.Diagnostic,
 		TurnPlayer:        g.state.Scheduler.TurnPlayer,
 		Phase:             g.state.Scheduler.Phase,
 		OpportunityHolder: g.state.Scheduler.OpportunityHolder,
@@ -269,18 +350,20 @@ func (g *Game) PlayerView(player *model.Player) (PlayerView, error) {
 
 func (g *Game) StateHash() string {
 	canonical := canonicalState{
-		SchemaVersion: 2,
+		SchemaVersion: 3,
 		Versions:      g.versions,
 		Players:       g.players,
 		Revision:      g.state.Revision,
 		Finished:      g.state.Finished,
 		Winner:        g.state.Winner,
+		Diagnostic:    g.state.Diagnostic,
 		PRNG:          g.state.PRNG,
 		Knowledge:     g.state.Knowledge,
 		Entities:      g.state.Entities,
 		Cards:         g.state.Cards,
 		Zones:         g.state.Zones,
 		Champions:     g.state.Champions,
+		Objects:       g.state.Objects,
 		EffectSources: g.state.EffectSources,
 		EffectsStack:  g.state.EffectsStack,
 		Scheduler:     g.state.Scheduler,

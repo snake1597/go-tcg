@@ -4,12 +4,12 @@
 
 **Blocked by:** 06: 以 Tonoris 完成 Champion Lineage 與 Materialization.
 
-**Status:** ready-for-agent
+**Status:** completed
 
-- [ ] Declaration Transaction 隔離保存選擇、候選 zone move、cost snapshot、events、triggers 與 PRNG cursor。
-- [ ] 取消、過期、非法目標、沒有可犧牲 Weapon 或最終非法皆完整 rollback。
-- [ ] 成功宣告才提交犧牲費用並建立分離的 Source Card、Stack Item、Source Ref 與必要 LKI。
-- [ ] 建立每位玩家的 Graveyard zone；Action 卡在結算、fizzle 或 negate 後依規則完成來源卡生命週期並移入 owner 的 Graveyard，而非 Outside Game Pool。
-- [ ] 結算前重驗目標；fizzle 或 negate 不退回已提交費用，且來源卡生命週期正確完成。
+- [x] Declaration Transaction 隔離保存選擇、候選 zone move、cost snapshot、events、triggers 與 PRNG cursor。
+- [x] 取消、過期、非法目標、沒有可犧牲 Weapon 或最終非法皆完整 rollback。
+- [x] 成功宣告才提交犧牲費用並建立分離的 Source Card、Stack Item、Source Ref 與必要 LKI。
+- [x] 建立每位玩家的 Graveyard zone；Action 卡在結算、fizzle 或 negate 後依規則完成來源卡生命週期並移入 owner 的 Graveyard，而非 Outside Game Pool。
+- [x] 結算前重驗目標；fizzle 或 negate 不退回已提交費用，且來源卡生命週期正確完成。
 
 **Zone boundary:** 本票只建立 Action 卡完成後所需的 Graveyard 與對應 zone move。destroy 的入墓由 11 處理；Floating Memory 從 Graveyard 支付 memory cost 由 13 處理；discard、墓地選擇與 sacrifice 的完整互動由後續相應卡牌票處理。

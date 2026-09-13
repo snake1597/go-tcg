@@ -7,6 +7,9 @@ const (
 	ActionMaterialize     ActionKind = "materialize"
 	ActionPass            ActionKind = "pass"
 	ActionSkipMaterialize ActionKind = "skip_materialize"
+	ActionActivate        ActionKind = "activate"
+	ActionAttack          ActionKind = "attack"
+	ActionWield           ActionKind = "wield"
 )
 
 const (
