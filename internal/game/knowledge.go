@@ -344,6 +344,17 @@ func (g *Game) submitChoice(player *model.Player, input Input) error {
 		g.advanceKnowledgeRevision()
 		return nil
 	}
+	if g.state.AbilityChoice != nil {
+		continuation := g.state.AbilityChoice
+		continuation.Instance.Target = objectID(subject)
+		continuation.Instance.Operations = continuation.Operations
+		g.state.AbilityChoice = nil
+		g.state.Knowledge.Choice = nil
+		g.pushAbility(continuation.Instance)
+		g.grantOpportunity(player)
+		g.advanceKnowledgeRevision()
+		return nil
+	}
 	g.state.Knowledge.Choice = nil
 	g.advanceKnowledgeRevision()
 	return nil

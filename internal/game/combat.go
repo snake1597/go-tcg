@@ -57,11 +57,7 @@ func (g *Game) canWield(player *model.Player, weapon objectID) bool {
 }
 
 func (g *Game) wieldReserveCost(weapon objectID) int {
-	object, exists := g.state.Objects[weapon]
-	if !exists || g.state.Cards[object.Card].Definition != bulwarkSwordCardID {
-		return 0
-	}
-	return 2
+	return g.characteristicsFor(weapon).ReserveCost
 }
 
 func (g *Game) beginWield(player *model.Player, weapon objectID) error {

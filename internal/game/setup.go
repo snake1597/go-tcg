@@ -39,26 +39,25 @@ type playerZones struct {
 }
 
 type championObject struct {
-	ID                         objectID         `json:"id"`
-	Card                       cardInstanceID   `json:"card"`
-	Owner                      *model.Player    `json:"owner"`
-	InnerLineage               []cardInstanceID `json:"inner_lineage"`
-	Rested                     bool             `json:"rested"`
-	Counters                   map[string]int   `json:"counters"`
-	CombatRole                 string           `json:"combat_role"`
-	TauntUntilTurn             uint64           `json:"taunt_until_turn"`
-	Damage                     int              `json:"damage"`
-	RecoverProhibitedUntilTurn uint64           `json:"recover_prohibited_until_turn"`
+	ID             objectID         `json:"id"`
+	Card           cardInstanceID   `json:"card"`
+	Owner          *model.Player    `json:"owner"`
+	InnerLineage   []cardInstanceID `json:"inner_lineage"`
+	Rested         bool             `json:"rested"`
+	Counters       map[string]int   `json:"counters"`
+	CombatRole     string           `json:"combat_role"`
+	TauntUntilTurn uint64           `json:"taunt_until_turn"`
+	Damage         int              `json:"damage"`
 }
 
 type fieldObject struct {
-	ID                objectID       `json:"id"`
-	Card              cardInstanceID `json:"card"`
-	Owner             *model.Player  `json:"owner"`
-	Types             []string       `json:"types"`
-	Rested            bool           `json:"rested"`
-	ImmortalUntilTurn uint64         `json:"immortal_until_turn"`
-	Damage            int            `json:"damage"`
+	ID       objectID       `json:"id"`
+	Card     cardInstanceID `json:"card"`
+	Owner    *model.Player  `json:"owner"`
+	Types    []string       `json:"types"`
+	Rested   bool           `json:"rested"`
+	Counters map[string]int `json:"counters,omitempty"`
+	Damage   int            `json:"damage"`
 }
 
 type schedulerKind string

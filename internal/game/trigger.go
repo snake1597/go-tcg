@@ -39,12 +39,24 @@ func (g *Game) wieldWeapons(player *model.Player, unit objectID, weapons []cardI
 			Card:     weapon,
 		})
 		if g.state.Cards[weapon].Definition == impactHammerCardID {
+			ability := g.newAbilityInstance(
+				player,
+				weapon,
+				unit,
+				[]effectOperation{
+					{
+						Kind:   effectOperationDamage,
+						Amount: 3,
+					},
+				},
+			)
 			triggers = append(triggers, effectStackItem{
-				Kind:       effectStackImpactHammer,
+				Kind:       effectStackAbility,
 				Controller: player,
 				Source:     weapon,
 				SourceLKI:  weapon,
 				Target:     unit,
+				Ability:    &ability,
 			})
 		}
 	}

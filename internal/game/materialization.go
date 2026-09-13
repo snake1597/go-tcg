@@ -19,9 +19,8 @@ type effectStackItemKind string
 const (
 	effectStackMaterialization effectStackItemKind = "materialization"
 	effectStackTonorisTaunt    effectStackItemKind = "tonoris_on_enter_taunt"
-	effectStackAction          effectStackItemKind = "action"
-	effectStackImpactHammer    effectStackItemKind = "impact_hammer_on_wield"
 	effectStackCombat          effectStackItemKind = "combat"
+	effectStackAbility         effectStackItemKind = "ability"
 )
 
 type effectStackItem struct {
@@ -30,6 +29,7 @@ type effectStackItem struct {
 	Source     cardInstanceID      `json:"source"`
 	Target     objectID            `json:"target,omitempty"`
 	SourceLKI  cardInstanceID      `json:"source_lki,omitempty"`
+	Ability    *abilityInstance    `json:"ability,omitempty"`
 }
 
 func (g *Game) legalChampionMaterializations(player *model.Player) []cardInstanceID {
@@ -64,7 +64,7 @@ func (g *Game) canMaterializeChampion(player *model.Player, card cardInstanceID)
 	if !exists || current.Definition != spiritOfFireCardID || candidate.Level != current.Level+1 {
 		return false
 	}
-	return len(g.state.Zones[player.UID].Memory) >= candidate.MemoryCost
+	return len(g.state.Zones[player.UID].Memory) >= g.characteristicsForCard(card).MemoryCost
 }
 
 func (g *Game) materializeChampion(player *model.Player, card cardInstanceID) error {
@@ -105,7 +105,7 @@ func (g *Game) payChampionMaterialization(player *model.Player, card cardInstanc
 		zones.MaterialDeck,
 		materialDeckIndex,
 	)
-	for paymentCount := 0; paymentCount < candidate.MemoryCost; paymentCount++ {
+	for paymentCount := 0; paymentCount < g.characteristicsForCard(card).MemoryCost; paymentCount++ {
 		memoryCount := len(zones.Memory)
 		randomValue := g.nextRandom()
 		paymentIndex := int(randomValue % uint64(memoryCount))
@@ -152,12 +152,10 @@ func (g *Game) resolveTopEffectStack() {
 		g.resolveChampionLevelUp(item)
 	case effectStackTonorisTaunt:
 		g.resolveTonorisTaunt(item)
-	case effectStackAction:
-		g.resolveAction(item)
-	case effectStackImpactHammer:
-		g.damageUnit(item.Target, 3)
 	case effectStackCombat:
 		g.resolveCombat(item)
+	case effectStackAbility:
+		g.resolveAbility(*item.Ability)
 	default:
 		panic(fmt.Sprintf("unknown effect stack item %q", item.Kind))
 	}
@@ -230,18 +228,9 @@ func (g *Game) resolveTonorisTaunt(item effectStackItem) {
 }
 
 func (g *Game) expireTimedChampionEffects() {
-	for id, object := range g.state.Objects {
-		if object.ImmortalUntilTurn > 0 && object.ImmortalUntilTurn <= g.state.Scheduler.TurnNumber {
-			object.ImmortalUntilTurn = 0
-			g.state.Objects[id] = object
-		}
-	}
+	g.expireContinuousEffects()
 	for _, player := range g.players {
 		champion := g.state.Champions[player.UID]
-		if champion.RecoverProhibitedUntilTurn > 0 && champion.RecoverProhibitedUntilTurn < g.state.Scheduler.TurnNumber {
-			champion.RecoverProhibitedUntilTurn = 0
-			g.state.Champions[player.UID] = champion
-		}
 		if champion.TauntUntilTurn > 0 && champion.TauntUntilTurn <= g.state.Scheduler.TurnNumber {
 			champion.TauntUntilTurn = 0
 			g.state.Champions[player.UID] = champion

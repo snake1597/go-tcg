@@ -26,6 +26,9 @@ func TestImpactHammerOnWieldUsesLastKnownInformationAfterSourceLeaves(t *testing
 	if err := game.wieldWeapon(model.PlayerOne, unit, weapon); err != nil {
 		t.Fatalf("wieldWeapon() error = %v", err)
 	}
+	if len(game.state.EffectsStack) != 1 || game.state.EffectsStack[0].Ability == nil || game.state.EffectsStack[0].Ability.SourceLKI != weaponCard {
+		t.Fatalf("trigger stack entry = %#v, want an Ability Instance with source LKI", game.state.EffectsStack)
+	}
 	delete(game.state.Objects, weapon)
 	passOpportunityRound(t, game, model.PlayerOne)
 	if got := game.state.Objects[unit].Damage; got != 3 {

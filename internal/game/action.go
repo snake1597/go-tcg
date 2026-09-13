@@ -47,7 +47,7 @@ func (g *Game) canActivateAction(player *model.Player, card cardInstanceID) bool
 	if !exists || !samePlayer(candidate.Owner, player) || !containsString(candidate.Types, "ACTION") {
 		return false
 	}
-	if !samePlayer(scheduler.OpportunityHolder, player) || len(g.state.Zones[player.UID].Memory) < candidate.ReserveCost {
+	if !samePlayer(scheduler.OpportunityHolder, player) || len(g.state.Zones[player.UID].Memory) < g.characteristicsForCard(card).ReserveCost {
 		return false
 	}
 	if !candidate.Fast && (!samePlayer(scheduler.TurnPlayer, player) || scheduler.Phase != PhaseMain || len(g.state.EffectsStack) != 0) {
@@ -138,22 +138,15 @@ func (g *Game) commitActionDeclaration() error {
 	if sourceIndex < 0 {
 		return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, declaration.Source)
 	}
-	candidate := g.state.Cards[declaration.Source]
 	zones.Hand = removeCardAt(zones.Hand, sourceIndex)
-	for paymentCount := 0; paymentCount < candidate.ReserveCost; paymentCount++ {
+	for paymentCount := 0; paymentCount < g.characteristicsForCard(declaration.Source).ReserveCost; paymentCount++ {
 		memoryIndex := int(g.nextRandom() % uint64(len(zones.Memory)))
 		payment := zones.Memory[memoryIndex]
 		zones.Memory = removeCardAt(zones.Memory, memoryIndex)
 		zones.Banishment = append(zones.Banishment, payment)
 	}
 	g.state.Zones[declaration.Controller.UID] = zones
-	g.state.EffectSources = append(g.state.EffectSources, declaration.Source)
-	g.state.EffectsStack = append(g.state.EffectsStack, effectStackItem{
-		Kind:       effectStackAction,
-		Controller: declaration.Controller,
-		Source:     declaration.Source,
-		Target:     declaration.Target,
-	})
+	g.pushAbility(g.actionAbilityInstance(declaration))
 	g.state.Knowledge.Choice = nil
 	g.state.Knowledge.Declaration = nil
 	g.grantOpportunity(declaration.Controller)
@@ -169,7 +162,7 @@ func (g *Game) canCommitActionDeclaration(declaration *actionDeclaration) bool {
 		return false
 	}
 	zones := g.state.Zones[declaration.Controller.UID]
-	return cardIndex(zones.Hand, declaration.Source) >= 0 && len(zones.Memory) >= candidate.ReserveCost
+	return cardIndex(zones.Hand, declaration.Source) >= 0 && len(zones.Memory) >= g.characteristicsForCard(declaration.Source).ReserveCost
 }
 
 func (g *Game) legalTargets() []objectID {
@@ -225,27 +218,48 @@ func (g *Game) isLegalWeapon(player *model.Player, id objectID) bool {
 	return exists && samePlayer(object.Owner, player) && containsString(object.Types, "WEAPON")
 }
 
-func (g *Game) resolveAction(item effectStackItem) {
-	g.removeEffectSource(item.Source)
-	defer g.putInGraveyard(item.Source)
-	if !g.isLegalTarget(item.Target) {
-		return
-	}
-	source := g.state.Cards[item.Source]
+func (g *Game) actionAbilityInstance(declaration *actionDeclaration) abilityInstance {
+	operations := []effectOperation{}
+	source := g.state.Cards[declaration.Source]
 	switch source.Definition {
 	case blazingThrowCardID:
-		g.damageUnit(item.Target, 4)
+		operations = append(operations, effectOperation{
+			Kind:   effectOperationDamage,
+			Amount: 4,
+		})
 	case fieryInterferenceCardID:
-		g.damageUnit(item.Target, 2)
-		if g.isChampion(item.Target) {
-			g.prohibitChampionRecover(item.Target)
-		}
+		operations = append(operations, effectOperation{
+			Kind:   effectOperationDamage,
+			Amount: 2,
+		})
+		operations = append(operations, effectOperation{
+			Kind: effectOperationContinuousModifier,
+			ContinuousEffect: continuousEffect{
+				Scope:         effectScopeObject,
+				Layer:         effectLayerAbility,
+				ExpiresAtTurn: g.state.Scheduler.TurnNumber + 1,
+				Modifier: continuousModifier{
+					ProhibitRecover: true,
+				},
+			},
+		})
 	case straightFlareCardID:
-		damage := 1 + g.distinctSuitedPrintedReserveCosts(item.Controller)
-		g.damageUnit(item.Target, damage)
-	default:
-		return
+		operations = append(operations, effectOperation{
+			Kind:                      effectOperationDamage,
+			Amount:                    1,
+			DistinctSuitedCostsDamage: true,
+		})
 	}
+	operations = append(operations, effectOperation{
+		Kind:                  effectOperationMove,
+		MoveSourceToGraveyard: true,
+	})
+	return g.newAbilityInstance(
+		declaration.Controller,
+		declaration.Source,
+		declaration.Target,
+		operations,
+	)
 }
 
 func (g *Game) removeEffectSource(source cardInstanceID) {
@@ -286,22 +300,12 @@ func (g *Game) isChampion(target objectID) bool {
 	return false
 }
 
-func (g *Game) prohibitChampionRecover(target objectID) {
-	for playerID, champion := range g.state.Champions {
-		if champion.ID == target {
-			champion.RecoverProhibitedUntilTurn = g.state.Scheduler.TurnNumber
-			g.state.Champions[playerID] = champion
-			return
-		}
-	}
-}
-
 func (g *Game) recoverChampion(target objectID, amount int) bool {
 	for playerID, champion := range g.state.Champions {
 		if champion.ID != target {
 			continue
 		}
-		if champion.RecoverProhibitedUntilTurn == g.state.Scheduler.TurnNumber {
+		if g.characteristicsFor(target).RecoverProhibited {
 			return false
 		}
 		champion.Damage -= amount

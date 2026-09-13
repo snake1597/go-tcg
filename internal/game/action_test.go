@@ -26,6 +26,13 @@ func TestActionCardsUsePlayerViewDeclarationAndResolveToGraveyard(t *testing.T) 
 	}
 	selectPendingChoiceSubject(t, game, player, entityID("champion:"+model.PlayerTwo.UID))
 	selectPendingChoice(t, game, player, 0)
+	if len(game.state.EffectsStack) != 1 || game.state.EffectsStack[0].Ability == nil {
+		t.Fatalf("EffectsStack = %#v, want one Ability Instance", game.state.EffectsStack)
+	}
+	ability := game.state.EffectsStack[0].Ability
+	if ability.Controller != player || ability.Source != ability.SourceLKI || ability.Target != objectID("champion:"+model.PlayerTwo.UID) {
+		t.Fatalf("Ability Instance = %#v, want controller, source LKI, and fixed target", ability)
+	}
 	passOpportunityRound(t, game, player)
 
 	if got := len(game.state.Zones[player.UID].Graveyard); got != 2 {
@@ -66,16 +73,16 @@ func TestFieryInterferenceCanBeActivatedByNonTurnPlayerAtFastTiming(t *testing.T
 	if champion.Damage != 2 {
 		t.Fatalf("target damage = %d, want 2", champion.Damage)
 	}
-	if champion.RecoverProhibitedUntilTurn != 1 {
-		t.Fatalf("recover prohibition turn = %d, want current turn 1", champion.RecoverProhibitedUntilTurn)
+	if !game.characteristicsFor(objectID("champion:" + model.PlayerOne.UID)).RecoverProhibited {
+		t.Fatal("derived characteristics did not prohibit recovery")
 	}
 	if game.recoverChampion(objectID("champion:"+model.PlayerOne.UID), 1) {
 		t.Fatal("recoverChampion() succeeded while Fiery Interference prohibition was active")
 	}
 	game.state.Scheduler.TurnNumber++
 	game.expireTimedChampionEffects()
-	if got := game.state.Champions[model.PlayerOne.UID].RecoverProhibitedUntilTurn; got != 0 {
-		t.Fatalf("recover prohibition after turn boundary = %d, want expired", got)
+	if game.characteristicsFor(objectID("champion:" + model.PlayerOne.UID)).RecoverProhibited {
+		t.Fatal("derived recovery prohibition remained after turn boundary")
 	}
 	if !game.recoverChampion(objectID("champion:"+model.PlayerOne.UID), 1) {
 		t.Fatal("recoverChampion() failed after Fiery Interference prohibition expired")

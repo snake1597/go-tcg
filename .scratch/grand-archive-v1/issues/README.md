@@ -26,4 +26,4 @@
 
 ## 目前可執行
 
-依目前狀態，issue 01 至 11 已完成，issue 12 進行中；其完成後下一張可執行工作是 [12.5：建立統一 Ability 與 Effect Runtime](./12.5-unified-ability-and-effect-runtime.md)。後續工作仍受各自的 `Blocked by` 限制。
+依目前狀態，issue 01 至 12.5 已完成；下一張可執行工作是 [13：Basic Cardistry cards](./13-basic-cardistry-cards.md)。後續工作仍受各自的 `Blocked by` 限制。

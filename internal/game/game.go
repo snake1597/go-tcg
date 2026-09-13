@@ -72,23 +72,27 @@ type Game struct {
 }
 
 type gameState struct {
-	Revision      uint64
-	Finished      bool
-	Winner        *model.Player
-	Diagnostic    string
-	PRNG          prngState
-	Knowledge     knowledgeState
-	Entities      map[entityID]knowledgeEntity
-	Cards         map[cardInstanceID]cardInstance
-	Zones         map[string]playerZones
-	Champions     map[string]championObject
-	Objects       map[objectID]fieldObject
-	EffectSources []cardInstanceID
-	EffectsStack  []effectStackItem
-	Scheduler     schedulerFrame
-	Events        []eventBatch
-	NextHandle    uint64
-	NextEvent     uint64
+	Revision          uint64
+	Finished          bool
+	Winner            *model.Player
+	Diagnostic        string
+	PRNG              prngState
+	Knowledge         knowledgeState
+	Entities          map[entityID]knowledgeEntity
+	Cards             map[cardInstanceID]cardInstance
+	Zones             map[string]playerZones
+	Champions         map[string]championObject
+	Objects           map[objectID]fieldObject
+	EffectSources     []cardInstanceID
+	EffectsStack      []effectStackItem
+	ContinuousEffects []continuousEffect
+	AbilityChoice     *abilityChoice
+	Scheduler         schedulerFrame
+	Events            []eventBatch
+	NextHandle        uint64
+	NextEvent         uint64
+	NextEffect        uint64
+	NextAbility       uint64
 }
 
 type prngState struct {
@@ -97,26 +101,30 @@ type prngState struct {
 }
 
 type canonicalState struct {
-	SchemaVersion int                             `json:"schema_version"`
-	Versions      Versions                        `json:"versions"`
-	Players       []*model.Player                 `json:"players"`
-	Revision      uint64                          `json:"revision"`
-	Finished      bool                            `json:"finished"`
-	Winner        *model.Player                   `json:"winner"`
-	Diagnostic    string                          `json:"diagnostic,omitempty"`
-	PRNG          prngState                       `json:"prng"`
-	Knowledge     knowledgeState                  `json:"knowledge"`
-	Entities      map[entityID]knowledgeEntity    `json:"entities"`
-	Cards         map[cardInstanceID]cardInstance `json:"cards"`
-	Zones         map[string]playerZones          `json:"zones"`
-	Champions     map[string]championObject       `json:"champions"`
-	Objects       map[objectID]fieldObject        `json:"objects"`
-	EffectSources []cardInstanceID                `json:"effect_sources,omitempty"`
-	EffectsStack  []effectStackItem               `json:"effects_stack,omitempty"`
-	Scheduler     schedulerFrame                  `json:"scheduler"`
-	Events        []eventBatch                    `json:"events"`
-	NextHandle    uint64                          `json:"next_handle"`
-	NextEvent     uint64                          `json:"next_event"`
+	SchemaVersion     int                             `json:"schema_version"`
+	Versions          Versions                        `json:"versions"`
+	Players           []*model.Player                 `json:"players"`
+	Revision          uint64                          `json:"revision"`
+	Finished          bool                            `json:"finished"`
+	Winner            *model.Player                   `json:"winner"`
+	Diagnostic        string                          `json:"diagnostic,omitempty"`
+	PRNG              prngState                       `json:"prng"`
+	Knowledge         knowledgeState                  `json:"knowledge"`
+	Entities          map[entityID]knowledgeEntity    `json:"entities"`
+	Cards             map[cardInstanceID]cardInstance `json:"cards"`
+	Zones             map[string]playerZones          `json:"zones"`
+	Champions         map[string]championObject       `json:"champions"`
+	Objects           map[objectID]fieldObject        `json:"objects"`
+	EffectSources     []cardInstanceID                `json:"effect_sources,omitempty"`
+	EffectsStack      []effectStackItem               `json:"effects_stack,omitempty"`
+	ContinuousEffects []continuousEffect              `json:"continuous_effects,omitempty"`
+	AbilityChoice     *abilityChoice                  `json:"ability_choice,omitempty"`
+	Scheduler         schedulerFrame                  `json:"scheduler"`
+	Events            []eventBatch                    `json:"events"`
+	NextHandle        uint64                          `json:"next_handle"`
+	NextEvent         uint64                          `json:"next_event"`
+	NextEffect        uint64                          `json:"next_effect"`
+	NextAbility       uint64                          `json:"next_ability"`
 }
 
 func NewGame(seed uint64) *Game {

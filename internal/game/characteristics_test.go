@@ -70,13 +70,21 @@ func TestImmortalityPreventsStateBasedDeathUntilExpiry(t *testing.T) {
 	game.state.Cards[card] = withCombatStats(game.state.Cards[card], 1, 1)
 	ally := objectID("immortal-ally")
 	game.state.Objects[ally] = fieldObject{
-		ID:                ally,
-		Card:              card,
-		Owner:             model.PlayerOne,
-		Types:             []string{"ALLY"},
-		Damage:            1,
-		ImmortalUntilTurn: game.state.Scheduler.TurnNumber,
+		ID:     ally,
+		Card:   card,
+		Owner:  model.PlayerOne,
+		Types:  []string{"ALLY"},
+		Damage: 1,
 	}
+	game.addContinuousEffect(continuousEffect{
+		Target:        ally,
+		Scope:         effectScopeObject,
+		Layer:         effectLayerAbility,
+		ExpiresAtTurn: game.state.Scheduler.TurnNumber + 1,
+		Modifier: continuousModifier{
+			GrantImmortality: true,
+		},
+	})
 	game.resolveCombatStateBased()
 	if _, exists := game.state.Objects[ally]; !exists {
 		t.Fatal("immortal ally was destroyed")
@@ -98,8 +106,59 @@ func TestArthurImmortalityRestsArthurForTheCurrentTurn(t *testing.T) {
 	game.state.Objects[id] = fieldObject{ID: id, Card: card, Owner: model.PlayerOne}
 	game.grantArthurImmortality(id)
 	object := game.state.Objects[id]
-	if !object.Rested || object.ImmortalUntilTurn != game.state.Scheduler.TurnNumber+uint64(len(game.players)) {
+	if !object.Rested || !game.isImmortal(id) {
 		t.Fatalf("Arthur state = %#v, want rested immortality through the owner's next turn", object)
+	}
+}
+
+func TestCharacteristicsApplyPowerLifeSubLayersThenTimestamp(t *testing.T) {
+	game := newActionGame(t)
+	card := findCard(t, game, model.PlayerOne, CardID("rufki4o41y"))
+	fixture := game.state.Cards[card]
+	fixture.Power = 2
+	game.state.Cards[card] = fixture
+	id := objectID("layered-ally")
+	game.state.Objects[id] = fieldObject{
+		ID:    id,
+		Card:  card,
+		Owner: model.PlayerOne,
+		Types: []string{"ALLY"},
+	}
+	setPower := 5
+	game.addContinuousEffect(continuousEffect{
+		Target:    id,
+		Scope:     effectScopeObject,
+		Layer:     effectLayerModifier,
+		PowerLife: powerLifeModify,
+		Modifier: continuousModifier{
+			PowerDelta: 2,
+		},
+	})
+	game.addContinuousEffect(continuousEffect{
+		Target:    id,
+		Scope:     effectScopeObject,
+		Layer:     effectLayerModifier,
+		PowerLife: powerLifeSet,
+		Modifier: continuousModifier{
+			SetPower: &setPower,
+		},
+	})
+	if got := game.characteristicsFor(id).Power; got != 7 {
+		t.Fatalf("derived layered power = %d, want 7", got)
+	}
+}
+
+func TestCharacteristicsResolveDependencyBeforeTimestampAndBreakLoopsByTimestamp(t *testing.T) {
+	game := newActionGame(t)
+	card := findCard(t, game, model.PlayerOne, CardID("rufki4o41y"))
+	id := objectID("dependency-ally")
+	game.state.Objects[id] = fieldObject{ID: id, Card: card, Owner: model.PlayerOne, Types: []string{"ALLY"}}
+	first := continuousEffect{ID: 2, Target: id, Scope: effectScopeObject, Layer: effectLayerModifier, PowerLife: powerLifeModify, Timestamp: 2, DependsOn: []uint64{1}, Modifier: continuousModifier{PowerDelta: 2}}
+	second := continuousEffect{ID: 1, Target: id, Scope: effectScopeObject, Layer: effectLayerModifier, PowerLife: powerLifeModify, Timestamp: 1, DependsOn: []uint64{2}, Modifier: continuousModifier{PowerDelta: 1}}
+	game.state.ContinuousEffects = []continuousEffect{first, second}
+	effects := game.orderedEffectsFor(id)
+	if len(effects) != 2 || effects[0].ID != 1 || effects[1].ID != 2 {
+		t.Fatalf("dependency loop order = %#v, want timestamp order", effects)
 	}
 }
 

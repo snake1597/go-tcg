@@ -32,18 +32,15 @@
 
 暫停檢查點：Issue 12 尚未開始；可從其第一項「中央 evaluator 的 Layer A 至 E 與 power/life sub-layer」著手。
 
-## 進行中：Issue 12
+## 已完成：Issue 12 與 12.5
 
-已新增 `internal/game/characteristics.go`，並將 attack legality、combat damage 與 state-based lethal checks 收斂到 `characteristicsFor`。Arthur rested-other-Allies +1 Power 與 Bulwark matching-class +1 Power 已透過此查詢實作且不回寫 printed stats。`go test ./internal/game` 已通過。
+已完成中央 evaluator 與 unified runtime：
 
-Arthur/Bulwark modifiers 目前：card class 資料、Arthur rested-Allies modifier、Bulwark class bonus 與可到期的 immortality state-based protection 已完成並有測試。
+- `continuousEffect` 支援 Layer A-E、power/life sub-layer、dependency、dependency loop timestamp fallback、duration、instanced target snapshot 與 static predicate；Arthur、Bulwark、immortality、recover prohibition、combat、state-based 與 Player View 皆透過它重算。
+- Action、Impact Hammer trigger 均建立有 controller、source LKI、fixed target 與 identity 的 `Ability Instance`，統一進 Effects Stack。
+- typed operation 支援 choose continuation、move、draw、counter、damage、continuous modifier；choice 僅向 actor 揭露 View Handle，並能把剩餘 operations 重新入 stack。
+- Action、wield 與 Materialization 費用均讀 central evaluator；完整 replay/hash 測試已更新並通過。
 
-Bulwark wield payment 已完成：合法性與提交時皆要求兩點 reserve，付款會 banish。
+完整驗證：`gofmt`、`go test ./...` 與 `git diff --check` 通過。
 
-尚未完成：Arthur On Enter 的 optional-rest transaction，以及完整 Layer A 至 E 排序與 duration。
-
-Arthur 的 rest + current-turn immortality state transition 已封裝並測試；仍缺將它接到尚未存在的 Ally deployment On Enter choice。
-
-Player View 的 Champion power/life 也已改由 `characteristicsFor` 顯示，並通過 `go test ./internal/game`。
-
-完整驗證：`go test ./...` 與 `git diff --check` 通過。
+下一步：Issue 13（Basic Cardistry cards）。

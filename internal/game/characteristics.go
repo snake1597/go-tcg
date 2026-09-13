@@ -7,47 +7,12 @@ const (
 	bulwarkSwordCardID    CardID = "8kmoi0a5uh"
 )
 
-type characteristics struct {
-	Power int
-	Life  int
-}
-
-// characteristicsFor is the sole source for a unit's derived combat values.
-// Later layer modifiers extend this query rather than mutating card instances.
-func (g *Game) characteristicsFor(id objectID) characteristics {
-	card, exists := g.cardForObject(id)
-	if !exists {
-		return characteristics{}
-	}
-	result := characteristics{
-		Power: card.Power,
-		Life:  card.Life,
-	}
-	if card.Definition == bulwarkSwordCardID && g.championHasClass(card.Owner, card.Classes) {
-		result.Power++
-	}
-	if containsString(card.Types, "ALLY") && g.hasRestedArthur(card.Owner, id) {
-		result.Power++
-	}
-	return result
-}
-
 func (g *Game) championHasClass(player *model.Player, classes []string) bool {
 	champion, exists := g.state.Champions[player.UID]
 	if !exists {
 		return false
 	}
 	return containsAny(g.state.Cards[champion.Card].Classes, classes)
-}
-
-func (g *Game) hasRestedArthur(player *model.Player, exclude objectID) bool {
-	for id, object := range g.state.Objects {
-		if id == exclude || !samePlayer(object.Owner, player) || !object.Rested || g.state.Cards[object.Card].Definition != arthurYoungHeirCardID {
-			continue
-		}
-		return true
-	}
-	return false
 }
 
 func containsAny(first, second []string) bool {
@@ -60,8 +25,7 @@ func containsAny(first, second []string) bool {
 }
 
 func (g *Game) isImmortal(id objectID) bool {
-	object, exists := g.state.Objects[id]
-	return exists && object.ImmortalUntilTurn > 0 && object.ImmortalUntilTurn >= g.state.Scheduler.TurnNumber
+	return g.characteristicsFor(id).Immortal
 }
 
 func (g *Game) grantArthurImmortality(id objectID) {
@@ -70,8 +34,18 @@ func (g *Game) grantArthurImmortality(id objectID) {
 		return
 	}
 	object.Rested = true
-	object.ImmortalUntilTurn = g.state.Scheduler.TurnNumber + uint64(len(g.players))
 	g.state.Objects[id] = object
+	g.addContinuousEffect(continuousEffect{
+		Source:        id,
+		Controller:    object.Owner,
+		Target:        id,
+		Scope:         effectScopeObject,
+		Layer:         effectLayerAbility,
+		ExpiresAtTurn: g.state.Scheduler.TurnNumber + uint64(len(g.players)),
+		Modifier: continuousModifier{
+			GrantImmortality: true,
+		},
+	})
 }
 
 func (g *Game) cardForObject(id objectID) (cardInstance, bool) {
