@@ -98,8 +98,33 @@ func TestArthurImmortalityRestsArthurForTheCurrentTurn(t *testing.T) {
 	game.state.Objects[id] = fieldObject{ID: id, Card: card, Owner: model.PlayerOne}
 	game.grantArthurImmortality(id)
 	object := game.state.Objects[id]
-	if !object.Rested || object.ImmortalUntilTurn != game.state.Scheduler.TurnNumber {
-		t.Fatalf("Arthur state = %#v, want rested current-turn immortality", object)
+	if !object.Rested || object.ImmortalUntilTurn != game.state.Scheduler.TurnNumber+uint64(len(game.players)) {
+		t.Fatalf("Arthur state = %#v, want rested immortality through the owner's next turn", object)
+	}
+}
+
+func TestArthurImmortalityExpiresAtBeginningOfOwnersNextTurn(t *testing.T) {
+	game := newActionGame(t)
+	card := findCard(t, game, model.PlayerOne, CardID("rufki4o41y"))
+	arthur := game.state.Cards[card]
+	arthur.Definition = arthurYoungHeirCardID
+	game.state.Cards[card] = arthur
+	id := objectID("arthur")
+	game.state.Objects[id] = fieldObject{
+		ID:    id,
+		Card:  card,
+		Owner: model.PlayerOne,
+	}
+	game.grantArthurImmortality(id)
+	game.state.Scheduler.TurnNumber++
+	game.expireTimedChampionEffects()
+	if !game.isImmortal(id) {
+		t.Fatal("Arthur lost immortality during the opponent's turn")
+	}
+	game.state.Scheduler.TurnNumber++
+	game.expireTimedChampionEffects()
+	if game.isImmortal(id) {
+		t.Fatal("Arthur retained immortality at the beginning of the owner's next turn")
 	}
 }
 

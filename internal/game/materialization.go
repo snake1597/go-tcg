@@ -230,6 +230,12 @@ func (g *Game) resolveTonorisTaunt(item effectStackItem) {
 }
 
 func (g *Game) expireTimedChampionEffects() {
+	for id, object := range g.state.Objects {
+		if object.ImmortalUntilTurn > 0 && object.ImmortalUntilTurn <= g.state.Scheduler.TurnNumber {
+			object.ImmortalUntilTurn = 0
+			g.state.Objects[id] = object
+		}
+	}
 	for _, player := range g.players {
 		champion := g.state.Champions[player.UID]
 		if champion.RecoverProhibitedUntilTurn > 0 && champion.RecoverProhibitedUntilTurn < g.state.Scheduler.TurnNumber {

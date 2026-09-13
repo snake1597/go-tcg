@@ -2,7 +2,7 @@
 
 **What to build:** 讓 Grand Crusader's Ring、Viridian Protective Trinket 及 Water／Wind Resonance Bauble 完成正式支援，包括牌組限制、自我 banish、抽牌、費用稅與固定鏡像條件下不可啟動的能力。
 
-**Blocked by:** 06: 以 Tonoris 完成 Champion Lineage 與 Materialization; 07: 以 Blazing Throw 建立第一條完整卡牌宣告與 Stack 路徑; 12: 以 Arthur 與 Bulwark Sword 建立中央衍生特徵求值器.
+**Blocked by:** 06: 以 Tonoris 完成 Champion Lineage 與 Materialization; 07: 以 Blazing Throw 建立第一條完整卡牌宣告與 Stack 路徑; 12: 以 Arthur 與 Bulwark Sword 建立中央衍生特徵求值器; 12.5: 建立統一 Ability 與 Effect Runtime.
 
 **Status:** ready-for-agent
 

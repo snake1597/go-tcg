@@ -2,7 +2,7 @@
 
 **What to build:** 讓玩家在戰鬥相關 Opportunity 中使用 Smoke Bombs 或 Trump Set，授予暫時 stealth、重定向 active attack，並套用對應的 power、life、true sight 與 cost modifier。
 
-**Blocked by:** 11: 完成攻擊、Retaliation、傷害與死亡的戰鬥縱切; 12: 以 Arthur 與 Bulwark Sword 建立中央衍生特徵求值器.
+**Blocked by:** 11: 完成攻擊、Retaliation、傷害與死亡的戰鬥縱切; 12: 以 Arthur 與 Bulwark Sword 建立中央衍生特徵求值器; 12.5: 建立統一 Ability 與 Effect Runtime.
 
 **Status:** ready-for-agent
 

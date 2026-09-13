@@ -19,11 +19,11 @@
 | 2. Standard 生命週期 | [04](./04-spirit-of-fire-standard-setup.md)～[06](./06-tonoris-lineage-materialization.md) | Standard 開局、回合、Opportunity、Lineage 與 Materialization 可運作 |
 | 3. 第一張可操作卡 | [07](./07-blazing-throw-declaration-stack.md)～[10](./10-impact-hammer-trigger-ordering.md) | declaration、Stack、fast action、動態查詢與 trigger ordering 形成完整路徑 |
 | 4. 戰鬥縱切 | [11](./11-combat-retaliation-and-death.md) | 攻擊、Retaliation、傷害、死亡與敗北完整串接 |
-| 5. 固定牌組擴充 | [12](./12-central-characteristics-with-arthur-and-bulwark.md)～[23](./23-enable-complete-fixed-deck.md) | 固定牌組所有內容通過 Support Set gate |
+| 5. 固定牌組擴充 | [12](./12-central-characteristics-with-arthur-and-bulwark.md)、[12.5](./12.5-unified-ability-and-effect-runtime.md)～[23](./23-enable-complete-fixed-deck.md) | 固定牌組所有內容通過 Support Set gate |
 | 6. 首版收尾 | [24](./24-player-view-only-heuristic-bot.md)～[27](./27-v1-release-quality-gate.md) | bot、production CLI、完整對戰與發布品質 gate 完成 |
 
 里程碑只用來描述產品完成度，不改變 issue 的實際依賴。工作選擇與解鎖仍以各 issue 的 `Blocked by` 和 `Status` 為準。
 
 ## 目前可執行
 
-依目前狀態，issue 01 至 09 已完成；下一張可執行工作是 [10：以 Impact Hammer 建立 trigger ordering](./10-impact-hammer-trigger-ordering.md)。後續工作仍受各自的 `Blocked by` 限制。
+依目前狀態，issue 01 至 11 已完成，issue 12 進行中；其完成後下一張可執行工作是 [12.5：建立統一 Ability 與 Effect Runtime](./12.5-unified-ability-and-effect-runtime.md)。後續工作仍受各自的 `Blocked by` 限制。

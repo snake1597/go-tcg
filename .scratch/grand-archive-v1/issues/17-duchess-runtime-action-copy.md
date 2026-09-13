@@ -2,7 +2,7 @@
 
 **What to build:** 讓 Duchess 的 Cardistry ability 從墓地選擇合格 fire action、banish 來源、建立獨立 runtime copy，並讓玩家決定是否免費 activation 該 copy。
 
-**Blocked by:** 07: 以 Blazing Throw 建立第一條完整卡牌宣告與 Stack 路徑; 08: 以 Fiery Interference 支援 fast action 與恢復禁止; 09: 以 Straight Flare 建立 Suited 查詢與動態傷害; 13: 建立 Cardistry 核心並支援基本 Cardistry 卡牌.
+**Blocked by:** 07: 以 Blazing Throw 建立第一條完整卡牌宣告與 Stack 路徑; 08: 以 Fiery Interference 支援 fast action 與恢復禁止; 09: 以 Straight Flare 建立 Suited 查詢與動態傷害; 12.5: 建立統一 Ability 與 Effect Runtime; 13: 建立 Cardistry 核心並支援基本 Cardistry 卡牌.
 
 **Status:** ready-for-agent
 

@@ -70,7 +70,7 @@ func (g *Game) grantArthurImmortality(id objectID) {
 		return
 	}
 	object.Rested = true
-	object.ImmortalUntilTurn = g.state.Scheduler.TurnNumber
+	object.ImmortalUntilTurn = g.state.Scheduler.TurnNumber + uint64(len(g.players))
 	g.state.Objects[id] = object
 }
 

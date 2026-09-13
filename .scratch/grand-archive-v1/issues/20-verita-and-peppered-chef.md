@@ -2,7 +2,7 @@
 
 **What to build:** 讓 Verita 與 Peppered Chef 透過逐步選擇完成精確總和 alternative cost、其他 Ally sacrifice、immortality、On Death 與跨回合 temporary power。
 
-**Blocked by:** 10: 以 Impact Hammer 完成觸發收集與排序; 12: 以 Arthur 與 Bulwark Sword 建立中央衍生特徵求值器; 14: 支援 Cardistry 的選擇、棄牌與部署互動.
+**Blocked by:** 10: 以 Impact Hammer 完成觸發收集與排序; 12: 以 Arthur 與 Bulwark Sword 建立中央衍生特徵求值器; 12.5: 建立統一 Ability 與 Effect Runtime; 14: 支援 Cardistry 的選擇、棄牌與部署互動.
 
 **Status:** ready-for-agent
 
