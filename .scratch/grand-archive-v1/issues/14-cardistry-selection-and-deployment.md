@@ -9,4 +9,4 @@
 - [x] 待選內容只以當前玩家可用的 View Handle 呈現，不暴露其他隱藏卡牌。
 - [x] Mandatory discard 與 deployment 使用 typed operation sequence 和可重播 Pending Choice continuation；沒有可合法完成的情況下依法處理，不能留下半完成效果。
 - [x] Four of Hearts 只提供符合 element、type 與 reserve cost 的 Memory 卡，入場後建立新的 Object lifetime。
-- [ ] 每個選擇、zone move、modifier 與 resulting trigger 都可由 events、replay 與 state hash 重現。
+- [x] 每個選擇、zone move、modifier 與 resulting trigger 都可由 events、replay 與 state hash 重現。

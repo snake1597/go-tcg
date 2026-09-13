@@ -44,7 +44,10 @@ func (g *Game) canActivateCardistry(player *model.Player, source objectID) bool 
 	if !fast && (!samePlayer(g.state.Scheduler.TurnPlayer, player) || g.state.Scheduler.Phase != PhaseMain || len(g.state.EffectsStack) != 0) {
 		return false
 	}
-	return len(g.state.Zones[player.UID].Memory) >= g.cardistryCost(player, baseCost)
+	return g.canPayCardistryCost(
+		player,
+		g.cardistryCost(player, baseCost),
+	)
 }
 
 func (g *Game) cardistryBaseCost(card cardInstanceID) (int, bool) {
@@ -84,13 +87,19 @@ func (g *Game) cardistryCost(player *model.Player, baseCost int) int {
 	return cost
 }
 
-func (g *Game) activateCardistry(player *model.Player, source objectID) error {
+func (g *Game) activateCardistry(player *model.Player, source objectID, floatingMemory []ViewHandle) error {
 	if !g.canActivateCardistry(player, source) {
 		return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, source)
 	}
 	object := g.state.Objects[source]
 	baseCost, _ := g.cardistryBaseCost(object.Card)
-	g.payCardistryCost(player, g.cardistryCost(player, baseCost))
+	if err := g.payCardistryCost(
+		player,
+		g.cardistryCost(player, baseCost),
+		floatingMemory,
+	); err != nil {
+		return err
+	}
 	g.state.CardistryUsed[source] = true
 	g.pushAbility(g.cardistryAbility(player, source, object.Card))
 	g.recordPublicEvent(player, "cardistry", "ability-activated", object.Card)
@@ -98,15 +107,67 @@ func (g *Game) activateCardistry(player *model.Player, source objectID) error {
 	return nil
 }
 
-func (g *Game) payCardistryCost(player *model.Player, cost int) {
+func (g *Game) canPayCardistryCost(player *model.Player, cost int) bool {
 	zones := g.state.Zones[player.UID]
-	for payment := 0; payment < cost; payment++ {
+	return len(zones.Memory)+len(g.floatingMemoryCards(player)) >= cost
+}
+
+func (g *Game) floatingMemoryCards(player *model.Player) []cardInstanceID {
+	zones := g.state.Zones[player.UID]
+	cards := make([]cardInstanceID, 0, len(zones.Graveyard))
+	for _, card := range zones.Graveyard {
+		instance := g.state.Cards[card]
+		if samePlayer(instance.Owner, player) && instance.Definition == fiveOfSpadesCardID {
+			cards = append(cards, card)
+		}
+	}
+	return cards
+}
+
+func (g *Game) payCardistryCost(player *model.Player, cost int, floatingMemory []ViewHandle) error {
+	zones := g.state.Zones[player.UID]
+	floatingCards := make(map[cardInstanceID]struct{}, len(floatingMemory))
+	for _, handle := range floatingMemory {
+		card, err := g.floatingMemoryCardForHandle(player, handle)
+		if err != nil {
+			return err
+		}
+		if _, exists := floatingCards[card]; exists {
+			return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, handle)
+		}
+		floatingCards[card] = struct{}{}
+	}
+	if len(floatingCards) > cost || len(zones.Memory)+len(floatingCards) < cost {
+		return fmt.Errorf("%w", tcgErrors.ErrInvalidViewHandle)
+	}
+	for card := range floatingCards {
+		index := cardIndex(zones.Graveyard, card)
+		zones.Graveyard = removeCardAt(zones.Graveyard, index)
+		zones.Banishment = append(zones.Banishment, card)
+		g.recordPublicEvent(player, "cost", "banish-floating-memory", card)
+	}
+	for payment := len(floatingCards); payment < cost; payment++ {
 		index := int(g.nextRandom() % uint64(len(zones.Memory)))
 		card := zones.Memory[index]
 		zones.Memory = removeCardAt(zones.Memory, index)
 		zones.Banishment = append(zones.Banishment, card)
+		g.recordPublicEvent(player, "cost", "banish-memory", card)
 	}
 	g.state.Zones[player.UID] = zones
+	return nil
+}
+
+func (g *Game) floatingMemoryCardForHandle(player *model.Player, handle ViewHandle) (cardInstanceID, error) {
+	for card, candidate := range g.state.Knowledge.Cards[player.UID] {
+		if candidate != handle {
+			continue
+		}
+		instance := cardInstanceID(card)
+		if cardIndex(g.state.Zones[player.UID].Graveyard, instance) >= 0 && g.state.Cards[instance].Definition == fiveOfSpadesCardID {
+			return instance, nil
+		}
+	}
+	return "", fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, handle)
 }
 
 func (g *Game) cardistryAbility(player *model.Player, source objectID, card cardInstanceID) abilityInstance {

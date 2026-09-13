@@ -186,6 +186,16 @@ func (g *Game) legalActions(player *model.Player) []LegalAction {
 			CardName: g.state.Entities[entityID(g.state.Objects[weapon].Card)].Name,
 		})
 	}
+	for handle, source := range g.state.Knowledge.Cardistries[player.UID] {
+		legalActions = append(
+			legalActions,
+			LegalAction{
+				Handle:   handle,
+				Kind:     constants.ActionActivate,
+				CardName: g.state.Entities[entityID(g.state.Objects[source].Card)].Name,
+			},
+		)
+	}
 	sort.Slice(
 		legalActions,
 		func(first, second int) bool {

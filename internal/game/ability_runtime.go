@@ -92,6 +92,9 @@ func (g *Game) resolveAbility(instance abilityInstance) {
 				g.recordPublicEvent(instance.Controller, "ability", "damage", instance.SourceLKI)
 			}
 		case effectOperationContinuousModifier:
+			if !g.isLegalTarget(target) {
+				continue
+			}
 			effect := operation.ContinuousEffect
 			effect.Controller = instance.Controller
 			effect.Source = objectID(instance.SourceLKI)
@@ -103,7 +106,9 @@ func (g *Game) resolveAbility(instance abilityInstance) {
 		case effectOperationDrawToMemory:
 			g.drawToMemory(instance.Controller, operation.Amount)
 		case effectOperationCounter:
-			g.addCounter(target, operation.Counter, operation.Amount)
+			if g.addCounter(target, operation.Counter, operation.Amount) {
+				g.recordPublicEvent(instance.Controller, "ability", "counter", instance.SourceLKI)
+			}
 		case effectOperationChooseHandCard:
 			g.beginAbilityCardChoice(instance, operationIndex, instance.Controller, g.state.Zones[instance.Controller.UID].Hand)
 			return
@@ -186,14 +191,15 @@ func (g *Game) drawCards(player *model.Player, amount int) {
 	g.state.Zones[player.UID] = zones
 }
 
-func (g *Game) addCounter(target objectID, counter string, amount int) {
+func (g *Game) addCounter(target objectID, counter string, amount int) bool {
 	object, exists := g.state.Objects[target]
 	if !exists {
-		return
+		return false
 	}
 	if object.Counters == nil {
 		object.Counters = make(map[string]int)
 	}
 	object.Counters[counter] += amount
 	g.state.Objects[target] = object
+	return true
 }

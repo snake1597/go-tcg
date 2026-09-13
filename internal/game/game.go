@@ -13,9 +13,10 @@ import (
 )
 
 type Input struct {
-	Revision uint64     `json:"revision"`
-	Action   ViewHandle `json:"action"`
-	Choice   ViewHandle `json:"choice"`
+	Revision       uint64       `json:"revision"`
+	Action         ViewHandle   `json:"action"`
+	Choice         ViewHandle   `json:"choice"`
+	FloatingMemory []ViewHandle `json:"floating_memory,omitempty"`
 }
 
 type ViewHandle string
@@ -183,7 +184,7 @@ func (g *Game) Submit(player *model.Player, input Input) error {
 	if input.Revision != g.state.Revision {
 		return fmt.Errorf("%w: got %d, current %d", tcgErrors.ErrStaleRevision, input.Revision, g.state.Revision)
 	}
-	if input.Action != "" && input.Choice != "" {
+	if (input.Action != "" && input.Choice != "") || (input.Choice != "" && len(input.FloatingMemory) > 0) {
 		return fmt.Errorf("%w: action and choice cannot be submitted together", tcgErrors.ErrInvalidViewHandle)
 	}
 	if input.Choice != "" {
@@ -199,6 +200,11 @@ func (g *Game) Submit(player *model.Player, input Input) error {
 			input,
 		)
 		return nil
+	}
+	if len(input.FloatingMemory) > 0 {
+		if _, exists := g.state.Knowledge.Cardistries[player.UID][input.Action]; !exists {
+			return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, input.Action)
+		}
 	}
 	kind, exists := g.state.Knowledge.Actions[player.UID][input.Action]
 	if g.state.Knowledge.Choice != nil && (!exists || kind != constants.ActionConcede) {
@@ -228,7 +234,11 @@ func (g *Game) Submit(player *model.Player, input Input) error {
 				} else {
 					source, cardistryExists := g.state.Knowledge.Cardistries[player.UID][input.Action]
 					if cardistryExists {
-						if err := g.activateCardistry(player, source); err != nil {
+						if err := g.activateCardistry(
+							player,
+							source,
+							input.FloatingMemory,
+						); err != nil {
 							return err
 						}
 					} else {
