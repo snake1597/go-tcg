@@ -9,12 +9,13 @@ import (
 type abilityInstanceID uint64
 
 type abilityInstance struct {
-	ID         abilityInstanceID `json:"id"`
-	Controller *model.Player     `json:"controller"`
-	Source     cardInstanceID    `json:"source"`
-	SourceLKI  cardInstanceID    `json:"source_lki"`
-	Target     objectID          `json:"target,omitempty"`
-	Operations []effectOperation `json:"operations"`
+	ID          abilityInstanceID `json:"id"`
+	Controller  *model.Player     `json:"controller"`
+	Source      cardInstanceID    `json:"source"`
+	SourceLKI   cardInstanceID    `json:"source_lki"`
+	Target      objectID          `json:"target,omitempty"`
+	RuntimeCopy bool              `json:"runtime_copy,omitempty"`
+	Operations  []effectOperation `json:"operations"`
 }
 
 type effectOperationKind string
@@ -55,6 +56,7 @@ type effectOperation struct {
 type abilityChoice struct {
 	Instance   abilityInstance   `json:"instance"`
 	Operations []effectOperation `json:"operations"`
+	CanPass    bool              `json:"can_pass,omitempty"`
 }
 
 func (g *Game) newAbilityInstance(controller *model.Player, source cardInstanceID, target objectID, operations []effectOperation) abilityInstance {
@@ -81,6 +83,12 @@ func (g *Game) pushAbility(instance abilityInstance) {
 }
 
 func (g *Game) resolveAbility(instance abilityInstance) {
+	completed := true
+	defer func() {
+		if completed && instance.RuntimeCopy {
+			g.destroyRuntimeCopy(instance.Source)
+		}
+	}()
 	for operationIndex, operation := range instance.Operations {
 		target := operation.Target
 		if target == "" {
@@ -189,16 +197,24 @@ func (g *Game) resolveAbility(instance abilityInstance) {
 			if len(operation.Options) == 0 {
 				return
 			}
+			completed = false
 			g.state.AbilityChoice = &abilityChoice{
 				Instance:   instance,
 				Operations: append([]effectOperation(nil), instance.Operations[operationIndex+1:]...),
+				CanPass:    instance.RuntimeCopy,
 			}
 			g.setDeclarationChoice(instance.Controller, operation.Options)
+			g.state.Knowledge.Choice.CanPass = instance.RuntimeCopy
 			return
 		default:
 			panic(fmt.Sprintf("unknown effect operation %q", operation.Kind))
 		}
 	}
+}
+
+func (g *Game) destroyRuntimeCopy(source cardInstanceID) {
+	delete(g.state.Cards, source)
+	delete(g.state.Entities, entityID(source))
 }
 
 func (g *Game) beginAbilityCardChoice(instance abilityInstance, operationIndex int, player *model.Player, cards []cardInstanceID) {

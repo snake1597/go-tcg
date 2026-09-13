@@ -37,6 +37,7 @@ type knowledgeState struct {
 type pendingChoice struct {
 	Actor   *model.Player           `json:"actor"`
 	Options map[ViewHandle]entityID `json:"options"`
+	CanPass bool                    `json:"can_pass,omitempty"`
 }
 
 func (g *Game) initializeKnowledgeState() {
@@ -141,6 +142,13 @@ func (g *Game) refreshLegalActions() {
 				)
 				actions[handle] = constants.ActionSkipMaterialize
 			}
+		}
+		if g.state.Knowledge.Choice != nil && g.state.AbilityChoice != nil && g.state.AbilityChoice.CanPass && samePlayer(g.state.AbilityChoice.Instance.Controller, player) {
+			handle := g.newViewHandle(
+				player,
+				"action:pass",
+			)
+			actions[handle] = constants.ActionPass
 		}
 	}
 }
@@ -339,6 +347,7 @@ func (g *Game) pendingChoice(player *model.Player) *PendingChoice {
 	)
 	return &PendingChoice{
 		Options: options,
+		CanPass: choice.CanPass,
 	}
 }
 
@@ -388,6 +397,9 @@ func (g *Game) submitChoice(player *model.Player, input Input) error {
 	}
 	if g.state.AbilityChoice != nil {
 		continuation := g.state.AbilityChoice
+		if continuation.CanPass && !g.isLegalTarget(objectID(subject)) {
+			return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, subject)
+		}
 		continuation.Instance.Target = objectID(subject)
 		continuation.Instance.Operations = continuation.Operations
 		g.state.AbilityChoice = nil

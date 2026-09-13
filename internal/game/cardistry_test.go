@@ -227,6 +227,145 @@ func TestCardistryOperationsRecordCountersAndModifiers(t *testing.T) {
 	}
 }
 
+func TestDuchessCopiesEveryQualifiedFireActionAndRejectsOtherCards(t *testing.T) {
+	game := newCardistryGame(t, duchessCardID)
+	player := model.PlayerOne
+	qualified := []CardID{
+		blazingThrowCardID,
+		fieryInterferenceCardID,
+		straightFlareCardID,
+	}
+	qualifiedCards := make([]cardInstanceID, 0, len(qualified))
+	for _, definition := range qualified {
+		card := findCard(t, game, player, definition)
+		moveCardToGraveyard(t, game, player, card)
+		qualifiedCards = append(qualifiedCards, card)
+	}
+	notQualified := findCard(t, game, player, duchessCardID)
+	moveCardToGraveyard(t, game, player, notQualified)
+
+	got := game.eligibleDuchessCopies(player)
+	for _, card := range qualifiedCards {
+		if !containsCard(got, card) {
+			t.Fatalf("eligible copies = %#v, missing %q", got, card)
+		}
+	}
+	if containsCard(got, notQualified) {
+		t.Fatalf("eligible copies = %#v, unexpectedly included %q", got, notQualified)
+	}
+}
+
+func TestDuchessCopyCanBeDeclinedAndRuntimeCopyIsDestroyed(t *testing.T) {
+	game := newCardistryGame(t, duchessCardID)
+	player := model.PlayerOne
+	source := findCard(t, game, player, blazingThrowCardID)
+	moveCardToGraveyard(t, game, player, source)
+	game.grantCardTracking(player, entityID(source))
+	fillMemory(t, game, player, 6, source)
+	game.advanceKnowledgeRevision()
+	game.captureReplayInitialState()
+
+	if err := game.Submit(
+		player,
+		Input{
+			Revision: game.state.Revision,
+			Action:   cardistryAction(t, game, player),
+		},
+	); err != nil {
+		t.Fatalf("Submit() Cardistry error = %v", err)
+	}
+	passOpportunityRound(t, game, player)
+	selectPendingChoiceSubject(t, game, player, entityID(source))
+	passOpportunityRound(t, game, player)
+	passOpportunityRound(t, game, player)
+
+	view, err := game.PlayerView(player)
+	if err != nil {
+		t.Fatalf("PlayerView() error = %v", err)
+	}
+	if view.PendingChoice == nil || !view.PendingChoice.CanPass {
+		t.Fatalf("PendingChoice = %#v, ability choice = %#v, stack = %#v, want optional copy activation", view.PendingChoice, game.state.AbilityChoice, game.state.EffectsStack)
+	}
+	var pass LegalAction
+	for _, action := range view.LegalActions {
+		if action.Kind == constants.ActionPass {
+			pass = action
+			break
+		}
+	}
+	if pass.Handle == "" {
+		t.Fatalf("LegalActions = %#v, want pass for declining copy", view.LegalActions)
+	}
+	if err := game.Submit(
+		player,
+		Input{
+			Revision: view.Revision,
+			Action:   pass.Handle,
+		},
+	); err != nil {
+		t.Fatalf("Submit() decline error = %v", err)
+	}
+	if len(game.state.EffectsStack) != 0 || game.state.AbilityChoice != nil {
+		t.Fatalf("copy state = stack %#v, choice %#v, want no pending copy", game.state.EffectsStack, game.state.AbilityChoice)
+	}
+	if cardIndex(game.state.Zones[player.UID].Banishment, source) < 0 {
+		t.Fatalf("source zones = %#v, want source banished", game.state.Zones[player.UID])
+	}
+	for card := range game.state.Cards {
+		if len(card) >= 5 && card[:5] == "copy:" {
+			t.Fatalf("runtime copy %q remains after decline", card)
+		}
+	}
+	if game.state.Champions[model.PlayerTwo.UID].Damage != 0 {
+		t.Fatalf("opponent damage = %d, want no damage after decline", game.state.Champions[model.PlayerTwo.UID].Damage)
+	}
+	if err := game.Replay().Verify(); err != nil {
+		t.Fatalf("Replay().Verify() error = %v", err)
+	}
+}
+
+func TestDuchessCopyActivatesForFreeAndResolvesItsCopiedFace(t *testing.T) {
+	game := newCardistryGame(t, duchessCardID)
+	player := model.PlayerOne
+	source := findCard(t, game, player, blazingThrowCardID)
+	moveCardToGraveyard(t, game, player, source)
+	game.grantCardTracking(player, entityID(source))
+	fillMemory(t, game, player, 6, source)
+	game.advanceKnowledgeRevision()
+	game.captureReplayInitialState()
+
+	if err := game.Submit(
+		player,
+		Input{
+			Revision: game.state.Revision,
+			Action:   cardistryAction(t, game, player),
+		},
+	); err != nil {
+		t.Fatalf("Submit() Cardistry error = %v", err)
+	}
+	passOpportunityRound(t, game, player)
+	selectPendingChoiceSubject(t, game, player, entityID(source))
+	passOpportunityRound(t, game, player)
+	passOpportunityRound(t, game, player)
+	selectPendingChoiceSubject(t, game, player, entityID("champion:"+model.PlayerTwo.UID))
+	passOpportunityRound(t, game, player)
+
+	if got := game.state.Champions[model.PlayerTwo.UID].Damage; got != 4 {
+		t.Fatalf("opponent damage = %d, want 4 from copied Blazing Throw", got)
+	}
+	for card := range game.state.Cards {
+		if len(card) >= 5 && card[:5] == "copy:" {
+			t.Fatalf("runtime copy %q remains after resolution", card)
+		}
+	}
+	if cardIndex(game.state.Zones[player.UID].Banishment, source) < 0 {
+		t.Fatalf("source zones = %#v, want source banished", game.state.Zones[player.UID])
+	}
+	if err := game.Replay().Verify(); err != nil {
+		t.Fatalf("Replay().Verify() error = %v", err)
+	}
+}
+
 func TestFourOfHeartsDeploymentAndTriggerAreEventedAndReplayed(t *testing.T) {
 	game := newCardistryGame(t, fourOfHeartsCardID)
 	player := model.PlayerOne

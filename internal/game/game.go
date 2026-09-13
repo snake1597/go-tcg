@@ -48,6 +48,7 @@ type VisibleEvent struct {
 
 type PendingChoice struct {
 	Options []ViewHandle `json:"options"`
+	CanPass bool         `json:"can_pass,omitempty"`
 }
 
 type PlayerView struct {
@@ -204,12 +205,22 @@ func (g *Game) Submit(player *model.Player, input Input) error {
 		)
 		return nil
 	}
+	kind, exists := g.state.Knowledge.Actions[player.UID][input.Action]
+	if g.state.AbilityChoice != nil && g.state.AbilityChoice.CanPass && exists && kind == constants.ActionPass {
+		if g.state.AbilityChoice.Instance.RuntimeCopy {
+			g.destroyRuntimeCopy(g.state.AbilityChoice.Instance.Source)
+		}
+		g.state.AbilityChoice = nil
+		g.state.Knowledge.Choice = nil
+		g.advanceKnowledgeRevision()
+		g.recordReplayStep(player, input)
+		return nil
+	}
 	if len(input.FloatingMemory) > 0 {
 		if _, exists := g.state.Knowledge.Cardistries[player.UID][input.Action]; !exists {
 			return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, input.Action)
 		}
 	}
-	kind, exists := g.state.Knowledge.Actions[player.UID][input.Action]
 	if g.state.Knowledge.Choice != nil && (!exists || kind != constants.ActionConcede) {
 		return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, input.Action)
 	}

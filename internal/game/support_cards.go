@@ -111,7 +111,7 @@ func (g *Game) eligibleDuchessCopies(player *model.Player) []cardInstanceID {
 	cards := []cardInstanceID{}
 	for _, card := range g.state.Zones[player.UID].Graveyard {
 		candidate := g.state.Cards[card]
-		if containsString(candidate.Types, "ACTION") && containsString(candidate.Elements, "FIRE") && candidate.ReserveCost <= 2 {
+		if samePlayer(candidate.Owner, player) && containsString(candidate.Types, "ACTION") && containsString(candidate.Elements, "FIRE") && candidate.ReserveCost <= 2 {
 			cards = append(cards, card)
 		}
 	}
@@ -138,6 +138,7 @@ func (g *Game) copyDuchessAction(player *model.Player, source cardInstanceID, ta
 	declaration := &actionDeclaration{Controller: player, Source: copyID, Target: target}
 	instance := g.actionAbilityInstance(declaration)
 	instance.Operations = instance.Operations[:len(instance.Operations)-1]
+	instance.RuntimeCopy = true
 	return instance, nil
 }
 
