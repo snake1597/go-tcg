@@ -68,6 +68,8 @@ func (g *Game) cardistryBaseCost(card cardInstanceID) (int, bool) {
 		return 2, true
 	case wonderlandsReignCardID:
 		return 10, false
+	case duchessCardID:
+		return 6, false
 	default:
 		return -1, false
 	}
@@ -80,7 +82,7 @@ func (g *Game) cardistryCost(player *model.Player, baseCost int) int {
 			costs[g.printedReserveCost(object.Card)] = struct{}{}
 		}
 	}
-	cost := baseCost - len(costs)
+	cost := baseCost - len(costs) - g.state.CardistryDiscounts[player.UID]
 	if cost < 0 {
 		return 0
 	}
@@ -101,8 +103,10 @@ func (g *Game) activateCardistry(player *model.Player, source objectID, floating
 		return err
 	}
 	g.state.CardistryUsed[source] = true
+	delete(g.state.CardistryDiscounts, player.UID)
 	g.pushAbility(g.cardistryAbility(player, source, object.Card))
 	g.recordPublicEvent(player, "cardistry", "ability-activated", object.Card)
+	g.flushTriggers(g.cardistryObserverTriggers(player, source))
 	g.grantOpportunity(player)
 	return nil
 }
@@ -194,6 +198,19 @@ func (g *Game) cardistryAbility(player *model.Player, source objectID, card card
 		operations = append(operations, g.temporaryModifierOperation(2, 0))
 	case twoOfSpadesCardID:
 		operations = append(operations, effectOperation{Kind: effectOperationCounter, Counter: "BUFF", Amount: 1})
+	case duchessCardID:
+		operations = append(
+			operations,
+			effectOperation{
+				Kind: effectOperationChooseDuchessCopy,
+			},
+		)
+		operations = append(
+			operations,
+			effectOperation{
+				Kind: effectOperationCopyDuchessAction,
+			},
+		)
 	}
 	return g.newAbilityInstance(player, card, source, operations)
 }
@@ -230,6 +247,10 @@ func (g *Game) deployAlly(player *model.Player, card cardInstanceID) {
 	}
 	zones.Memory = removeCardAt(zones.Memory, index)
 	g.state.Zones[player.UID] = zones
+	g.putAllyOnField(player, card)
+}
+
+func (g *Game) putAllyOnField(player *model.Player, card cardInstanceID) {
 	g.state.NextObject++
 	id := objectID(fmt.Sprintf("ally:%d", g.state.NextObject))
 	candidate := g.state.Cards[card]
@@ -271,6 +292,19 @@ func (g *Game) enqueueSuitedEnterAbility(player *model.Player, source objectID, 
 	case rougeCardID:
 		if suitedThresholdAmount(g.suitedReserveTotal(player)) > 0 {
 			g.pushAbility(g.newAbilityInstance(player, card, "", []effectOperation{{Kind: effectOperationChoose, Options: g.legalTargets()}, {Kind: effectOperationSuitedThresholdDamage}}))
+		}
+	case pepperedChefCardID:
+		options := []objectID{}
+		for id, object := range g.state.Objects {
+			if id != source && samePlayer(object.Owner, player) && containsString(object.Types, "ALLY") {
+				options = append(options, id)
+			}
+		}
+		if len(options) > 0 {
+			g.pushAbility(g.newAbilityInstance(player, card, source, []effectOperation{
+				{Kind: effectOperationChoose, Options: options},
+				{Kind: effectOperationSacrificeForChef, Source: source},
+			}))
 		}
 	}
 }

@@ -43,6 +43,7 @@ type continuousModifier struct {
 	ProhibitRecover  bool `json:"prohibit_recover,omitempty"`
 	SwitchPowerLife  bool `json:"switch_power_life,omitempty"`
 	GrantStealth     bool `json:"grant_stealth,omitempty"`
+	GrantTrueSight   bool `json:"grant_true_sight,omitempty"`
 }
 
 // continuousEffect is serialized game state: static effects are rebuilt from
@@ -69,6 +70,7 @@ type characteristics struct {
 	Immortal          bool
 	RecoverProhibited bool
 	Stealth           bool
+	TrueSight         bool
 }
 
 func (g *Game) characteristicsFor(id objectID) characteristics {
@@ -134,6 +136,7 @@ func applyContinuousModifier(result *characteristics, modifier continuousModifie
 	result.Immortal = result.Immortal || modifier.GrantImmortality
 	result.RecoverProhibited = result.RecoverProhibited || modifier.ProhibitRecover
 	result.Stealth = result.Stealth || modifier.GrantStealth
+	result.TrueSight = result.TrueSight || modifier.GrantTrueSight
 	if modifier.SwitchPowerLife {
 		result.Power, result.Life = result.Life, result.Power
 	}
@@ -251,8 +254,44 @@ func (g *Game) staticEffectsFor(target objectID) []continuousEffect {
 		if sourceID == target && card.Definition == noireCardID && g.controlsAnotherSuitedAlly(source.Owner, sourceID) {
 			effects = append(effects, continuousEffect{Source: sourceID, Controller: source.Owner, Scope: effectScopeObject, Layer: effectLayerAbility, Timestamp: uint64(len(effects)), Modifier: continuousModifier{GrantStealth: true}})
 		}
+		if sourceID == target && card.Definition == heatedVengeanceCardID && g.championDamagedThisTurn(source.Owner) {
+			effects = append(
+				effects,
+				continuousEffect{
+					Source:     sourceID,
+					Controller: source.Owner,
+					Scope:      effectScopeObject,
+					Layer:      effectLayerModifier,
+					PowerLife:  powerLifeModify,
+					Timestamp:  uint64(len(effects)),
+					Modifier: continuousModifier{
+						PowerDelta: 3,
+					},
+				},
+			)
+		}
+		if card.Definition == veritaCardID && sourceID != target && targetExists && samePlayer(source.Owner, targetObject.Owner) && containsString(targetObject.Types, "ALLY") && g.cardHasSubtype(targetObject.Card, "SUITED") {
+			effects = append(
+				effects,
+				continuousEffect{
+					Source:     sourceID,
+					Controller: source.Owner,
+					Scope:      effectScopeOtherControlledAllies,
+					Layer:      effectLayerAbility,
+					Timestamp:  uint64(len(effects)),
+					Modifier: continuousModifier{
+						GrantImmortality: true,
+					},
+				},
+			)
+		}
 	}
 	return effects
+}
+
+func (g *Game) championDamagedThisTurn(player *model.Player) bool {
+	champion, exists := g.state.Champions[player.UID]
+	return exists && champion.DamageTurn == g.state.Scheduler.TurnNumber
 }
 
 func (g *Game) controlsAnotherSuitedAlly(player *model.Player, exclude objectID) bool {

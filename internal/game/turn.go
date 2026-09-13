@@ -56,6 +56,7 @@ func (g *Game) advanceAfterOpportunity() {
 	case PhaseEnd:
 		scheduler.TurnPlayer = g.nextPlayer(scheduler.TurnPlayer)
 		scheduler.TurnNumber++
+		clear(g.state.CardistryDiscounts)
 		scheduler.Phase = PhaseWakeUp
 	default:
 		panic(fmt.Sprintf("cannot advance after opportunity in phase %q", scheduler.Phase))

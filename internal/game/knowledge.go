@@ -23,6 +23,7 @@ type knowledgeState struct {
 	Attacks          map[string]map[ViewHandle]objectID             `json:"attacks"`
 	Wields           map[string]map[ViewHandle]objectID             `json:"wields"`
 	Cardistries      map[string]map[ViewHandle]objectID             `json:"cardistries"`
+	ObjectAbilities  map[string]map[ViewHandle]objectID             `json:"object_abilities"`
 	Cards            map[string]map[entityID]ViewHandle             `json:"cards"`
 	Events           map[string][]VisibleEvent                      `json:"events"`
 	Choice           *pendingChoice                                 `json:"choice,omitempty"`
@@ -30,6 +31,7 @@ type knowledgeState struct {
 	TriggerOrder     *triggerOrder                                  `json:"trigger_order,omitempty"`
 	Attack           *attackDeclaration                             `json:"attack,omitempty"`
 	Wield            *wieldDeclaration                              `json:"wield,omitempty"`
+	ObjectAbility    *objectAbilityDeclaration                      `json:"object_ability,omitempty"`
 }
 
 type pendingChoice struct {
@@ -45,6 +47,7 @@ func (g *Game) initializeKnowledgeState() {
 		Attacks:          make(map[string]map[ViewHandle]objectID, len(g.players)),
 		Wields:           make(map[string]map[ViewHandle]objectID, len(g.players)),
 		Cardistries:      make(map[string]map[ViewHandle]objectID, len(g.players)),
+		ObjectAbilities:  make(map[string]map[ViewHandle]objectID, len(g.players)),
 		Cards:            make(map[string]map[entityID]ViewHandle, len(g.players)),
 		Events:           make(map[string][]VisibleEvent, len(g.players)),
 	}
@@ -55,6 +58,7 @@ func (g *Game) initializeKnowledgeState() {
 		knowledge.Attacks[player.UID] = make(map[ViewHandle]objectID)
 		knowledge.Wields[player.UID] = make(map[ViewHandle]objectID)
 		knowledge.Cardistries[player.UID] = make(map[ViewHandle]objectID)
+		knowledge.ObjectAbilities[player.UID] = make(map[ViewHandle]objectID)
 		knowledge.Cards[player.UID] = make(map[entityID]ViewHandle)
 		knowledge.Events[player.UID] = []VisibleEvent{}
 	}
@@ -70,12 +74,14 @@ func (g *Game) refreshLegalActions() {
 		attacks := g.state.Knowledge.Attacks[player.UID]
 		wields := g.state.Knowledge.Wields[player.UID]
 		cardistries := g.state.Knowledge.Cardistries[player.UID]
+		objectAbilities := g.state.Knowledge.ObjectAbilities[player.UID]
 		clear(actions)
 		clear(materializations)
 		clear(activations)
 		clear(attacks)
 		clear(wields)
 		clear(cardistries)
+		clear(objectAbilities)
 		if g.state.Finished {
 			continue
 		}
@@ -113,6 +119,13 @@ func (g *Game) refreshLegalActions() {
 				for _, source := range g.legalCardistries(player) {
 					handle := g.newViewHandle(player, "action:cardistry:"+string(source))
 					cardistries[handle] = source
+				}
+				for source, object := range g.state.Objects {
+					definition := g.state.Cards[object.Card].Definition
+					if samePlayer(object.Owner, player) && ((definition == duchessThornesCardID && !object.Rested) || definition == smokeBombsCardID) {
+						handle := g.newViewHandle(player, "action:ability:"+string(source))
+						objectAbilities[handle] = source
+					}
 				}
 			case samePlayer(player, g.state.Scheduler.TurnPlayer) && g.state.Scheduler.Phase == PhaseMaterialize:
 				for _, card := range g.legalChampionMaterializations(player) {
@@ -195,6 +208,9 @@ func (g *Game) legalActions(player *model.Player) []LegalAction {
 				CardName: g.state.Entities[entityID(g.state.Objects[source].Card)].Name,
 			},
 		)
+	}
+	for handle, source := range g.state.Knowledge.ObjectAbilities[player.UID] {
+		legalActions = append(legalActions, LegalAction{Handle: handle, Kind: constants.ActionActivate, CardName: g.state.Entities[entityID(g.state.Objects[source].Card)].Name})
 	}
 	sort.Slice(
 		legalActions,
@@ -358,6 +374,13 @@ func (g *Game) submitChoice(player *model.Player, input Input) error {
 	}
 	if g.state.Knowledge.Wield != nil {
 		if err := g.submitWieldChoice(player, subject); err != nil {
+			return err
+		}
+		g.advanceKnowledgeRevision()
+		return nil
+	}
+	if g.state.Knowledge.ObjectAbility != nil {
+		if err := g.submitObjectAbilityChoice(player, objectID(subject)); err != nil {
 			return err
 		}
 		g.advanceKnowledgeRevision()

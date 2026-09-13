@@ -28,6 +28,7 @@ type effectStackItem struct {
 	Controller *model.Player       `json:"controller"`
 	Source     cardInstanceID      `json:"source"`
 	Target     objectID            `json:"target,omitempty"`
+	Attacker   objectID            `json:"attacker,omitempty"`
 	SourceLKI  cardInstanceID      `json:"source_lki,omitempty"`
 	Ability    *abilityInstance    `json:"ability,omitempty"`
 }

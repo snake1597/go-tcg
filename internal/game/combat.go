@@ -26,11 +26,19 @@ func (g *Game) legalAttackers(player *model.Player) []objectID {
 	if !exists || champion.Rested || g.characteristicsFor(champion.ID).Power <= 0 || len(g.legalAttackTargets(player)) == 0 {
 		return nil
 	}
-	return []objectID{champion.ID}
+	attackers := []objectID{champion.ID}
+	for id, object := range g.state.Objects {
+		if samePlayer(object.Owner, player) && !object.Rested && g.state.Cards[object.Card].Definition == redHareCardID && g.redHareObeys(player, id) {
+			attackers = append(attackers, id)
+		}
+	}
+	return attackers
 }
 
 func (g *Game) legalAttackTargets(player *model.Player) []objectID {
 	targets := make([]objectID, 0, len(g.state.Champions))
+	champion, championExists := g.state.Champions[player.UID]
+	attackerHasTrueSight := championExists && g.characteristicsFor(champion.ID).TrueSight
 	for _, opponent := range g.players {
 		if samePlayer(opponent, player) {
 			continue
@@ -40,6 +48,18 @@ func (g *Game) legalAttackTargets(player *model.Player) []objectID {
 			targets = append(targets, champion.ID)
 		}
 	}
+	for id, object := range g.state.Objects {
+		if samePlayer(object.Owner, player) || !containsString(object.Types, "ALLY") || (!attackerHasTrueSight && g.characteristicsFor(id).Stealth) {
+			continue
+		}
+		targets = append(targets, id)
+	}
+	sort.Slice(
+		targets,
+		func(first, second int) bool {
+			return targets[first] < targets[second]
+		},
+	)
 	return targets
 }
 
@@ -78,16 +98,45 @@ func (g *Game) submitAttackChoice(player *model.Player, subject entityID) error 
 	if attack == nil || !samePlayer(attack.Controller, player) || !containsObject(g.legalAttackTargets(player), target) || !containsObject(g.legalAttackers(player), attack.Attacker) {
 		return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, subject)
 	}
-	champion := g.state.Champions[player.UID]
-	champion.Rested = true
-	champion.CombatRole = "attacker"
-	g.state.Champions[player.UID] = champion
+	attacker, exists := g.cardForObject(attack.Attacker)
+	if !exists {
+		return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, attack.Attacker)
+	}
+	if champion, championExists := g.state.Champions[player.UID]; championExists && champion.ID == attack.Attacker {
+		champion.Rested = true
+		champion.CombatRole = "attacker"
+		g.state.Champions[player.UID] = champion
+	} else {
+		object := g.state.Objects[attack.Attacker]
+		object.Rested = true
+		g.state.Objects[attack.Attacker] = object
+	}
 	g.state.EffectsStack = append(g.state.EffectsStack, effectStackItem{
 		Kind:       effectStackCombat,
 		Controller: player,
-		Source:     champion.Card,
+		Source:     attacker.ID,
 		Target:     target,
+		Attacker:   attack.Attacker,
 	})
+	if attacker.Definition == redHareCardID && len(g.state.Zones[player.UID].Hand) > 0 {
+		g.pushAbility(g.newAbilityInstance(
+			player,
+			attacker.ID,
+			"",
+			[]effectOperation{
+				{
+					Kind: effectOperationChooseHandCard,
+				},
+				{
+					Kind: effectOperationDiscard,
+				},
+				{
+					Kind:   effectOperationDraw,
+					Amount: 1,
+				},
+			},
+		))
+	}
 	g.state.Knowledge.Attack = nil
 	g.state.Knowledge.Choice = nil
 	g.grantOpportunity(player)
@@ -120,24 +169,21 @@ func (g *Game) payWieldReserve(player *model.Player, weapon objectID) {
 }
 
 func (g *Game) resolveCombat(item effectStackItem) {
-	attacker, exists := g.state.Champions[item.Controller.UID]
-	if !exists || attacker.ID == item.Target || !g.isChampion(item.Target) {
+	attackerID := item.Attacker
+	if attackerID == "" {
+		attackerID = g.state.Champions[item.Controller.UID].ID
+	}
+	attacker, attackerExists := g.cardForObject(attackerID)
+	target, targetExists := g.cardForObject(item.Target)
+	if !attackerExists || !targetExists || attackerID == item.Target {
 		return
 	}
-	attackerPower := g.characteristicsFor(attacker.ID).Power
-	for playerID, target := range g.state.Champions {
-		if target.ID != item.Target {
-			continue
-		}
-		targetPower := g.characteristicsFor(target.ID).Power
-		attacker.Damage += targetPower
-		target.Damage += attackerPower
-		g.state.Champions[item.Controller.UID] = attacker
-		g.state.Champions[playerID] = target
-		g.recordCombatDamage(item.Controller, attacker.Card, target.Card)
-		g.resolveCombatStateBasedWithCause("combat:on-kill", "combat:damage")
-		return
-	}
+	attackerPower := g.characteristicsFor(attackerID).Power
+	targetPower := g.characteristicsFor(item.Target).Power
+	g.damageUnit(attackerID, targetPower)
+	g.damageUnit(item.Target, attackerPower)
+	g.recordCombatDamage(item.Controller, attacker.ID, target.ID)
+	g.resolveCombatStateBasedWithCause("combat:on-kill", "combat:damage")
 }
 
 func (g *Game) recordCombatDamage(player *model.Player, attacker, target cardInstanceID) {
@@ -208,6 +254,7 @@ func (g *Game) resolveCombatStateBasedPass(cause, parentFlow string) bool {
 		}
 		delete(g.state.Objects, id)
 		g.putInGraveyard(object.Card)
+		g.enqueueVeritaDeath(object.Owner, object.Card)
 		g.recordCombatStateBasedEvent(cause, parentFlow, "destroy", object.Card)
 		changed = true
 	}

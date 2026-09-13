@@ -44,10 +44,11 @@ func (g *Game) legalActionCards(player *model.Player) []cardInstanceID {
 func (g *Game) canActivateAction(player *model.Player, card cardInstanceID) bool {
 	scheduler := g.state.Scheduler
 	candidate, exists := g.state.Cards[card]
-	if !exists || !samePlayer(candidate.Owner, player) || !containsString(candidate.Types, "ACTION") {
+	if !exists || !samePlayer(candidate.Owner, player) || (!containsString(candidate.Types, "ACTION") && candidate.Definition != veritaCardID) {
 		return false
 	}
-	if !samePlayer(scheduler.OpportunityHolder, player) || len(g.state.Zones[player.UID].Memory) < g.characteristicsForCard(card).ReserveCost {
+	canUseAlternativeCost := candidate.Definition == veritaCardID && len(g.veritaAlternativeCostCards(player)) > 0
+	if !samePlayer(scheduler.OpportunityHolder, player) || (!canUseAlternativeCost && len(g.state.Zones[player.UID].Memory) < g.actionReserveCost(player, card)) {
 		return false
 	}
 	if !candidate.Fast && (!samePlayer(scheduler.TurnPlayer, player) || scheduler.Phase != PhaseMain || len(g.state.EffectsStack) != 0) {
@@ -56,11 +57,24 @@ func (g *Game) canActivateAction(player *model.Player, card cardInstanceID) bool
 	if candidate.Definition == blazingThrowCardID && len(g.legalWeapons(player)) == 0 {
 		return false
 	}
+	if candidate.Definition == veritaCardID {
+		return true
+	}
+	if candidate.Definition == trumpSetCardID {
+		return g.hasActiveCombat() && len(g.controlledSuitedAllies(player)) > 0
+	}
 	return candidate.Definition == blazingThrowCardID || candidate.Definition == fieryInterferenceCardID || candidate.Definition == straightFlareCardID
 }
 
 func (g *Game) beginActionDeclaration(player *model.Player, card cardInstanceID) error {
-	if !g.canActivateAction(player, card) || len(g.legalTargets()) == 0 {
+	if g.state.Cards[card].Definition == veritaCardID {
+		return g.commitAllyActivation(player, card)
+	}
+	targets := g.legalTargets()
+	if g.state.Cards[card].Definition == trumpSetCardID {
+		targets = g.controlledSuitedAllies(player)
+	}
+	if !g.canActivateAction(player, card) || len(targets) == 0 {
 		return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, card)
 	}
 	g.state.Knowledge.Declaration = &actionDeclaration{
@@ -68,8 +82,43 @@ func (g *Game) beginActionDeclaration(player *model.Player, card cardInstanceID)
 		Source:     card,
 		Stage:      declarationTarget,
 	}
-	targets := g.legalTargets()
 	g.setDeclarationChoice(player, targets)
+	return nil
+}
+
+func (g *Game) commitAllyActivation(player *model.Player, card cardInstanceID) error {
+	if !g.canActivateAction(player, card) {
+		return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, card)
+	}
+	if g.state.Cards[card].Definition == veritaCardID {
+		if alternativeCost := g.veritaAlternativeCostCards(player); len(alternativeCost) > 0 {
+			if err := g.payVeritaAlternativeCost(player, alternativeCost); err != nil {
+				return err
+			}
+			zones := g.state.Zones[player.UID]
+			index := cardIndex(zones.Hand, card)
+			if index < 0 {
+				return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, card)
+			}
+			zones.Hand = removeCardAt(zones.Hand, index)
+			g.state.Zones[player.UID] = zones
+			g.putAllyOnField(player, card)
+			return nil
+		}
+	}
+	zones := g.state.Zones[player.UID]
+	index := cardIndex(zones.Hand, card)
+	if index < 0 {
+		return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, card)
+	}
+	zones.Hand = removeCardAt(zones.Hand, index)
+	for payment := 0; payment < g.actionReserveCost(player, card); payment++ {
+		memoryIndex := int(g.nextRandom() % uint64(len(zones.Memory)))
+		zones.Banishment = append(zones.Banishment, zones.Memory[memoryIndex])
+		zones.Memory = removeCardAt(zones.Memory, memoryIndex)
+	}
+	g.state.Zones[player.UID] = zones
+	g.putAllyOnField(player, card)
 	return nil
 }
 
@@ -81,7 +130,7 @@ func (g *Game) submitActionDeclarationChoice(player *model.Player, subject entit
 	switch declaration.Stage {
 	case declarationTarget:
 		target := objectID(subject)
-		if !g.isLegalTarget(target) {
+		if !g.isLegalTarget(target) || (g.state.Cards[declaration.Source].Definition == trumpSetCardID && !containsObject(g.controlledSuitedAllies(player), target)) {
 			return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, subject)
 		}
 		declaration.Target = target
@@ -139,7 +188,7 @@ func (g *Game) commitActionDeclaration() error {
 		return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, declaration.Source)
 	}
 	zones.Hand = removeCardAt(zones.Hand, sourceIndex)
-	for paymentCount := 0; paymentCount < g.characteristicsForCard(declaration.Source).ReserveCost; paymentCount++ {
+	for paymentCount := 0; paymentCount < g.actionReserveCost(declaration.Controller, declaration.Source); paymentCount++ {
 		memoryIndex := int(g.nextRandom() % uint64(len(zones.Memory)))
 		payment := zones.Memory[memoryIndex]
 		zones.Memory = removeCardAt(zones.Memory, memoryIndex)
@@ -162,7 +211,15 @@ func (g *Game) canCommitActionDeclaration(declaration *actionDeclaration) bool {
 		return false
 	}
 	zones := g.state.Zones[declaration.Controller.UID]
-	return cardIndex(zones.Hand, declaration.Source) >= 0 && len(zones.Memory) >= g.characteristicsForCard(declaration.Source).ReserveCost
+	return cardIndex(zones.Hand, declaration.Source) >= 0 && len(zones.Memory) >= g.actionReserveCost(declaration.Controller, declaration.Source)
+}
+
+func (g *Game) actionReserveCost(player *model.Player, card cardInstanceID) int {
+	cost := g.characteristicsForCard(card).ReserveCost
+	if g.state.Cards[card].Definition == trumpSetCardID && g.championHasClass(player, g.state.Cards[card].Classes) && cost > 0 {
+		return cost - 1
+	}
+	return cost
 }
 
 func (g *Game) legalTargets() []objectID {
@@ -249,6 +306,8 @@ func (g *Game) actionAbilityInstance(declaration *actionDeclaration) abilityInst
 			Amount:                    1,
 			DistinctSuitedCostsDamage: true,
 		})
+	case trumpSetCardID:
+		operations = append(operations, effectOperation{Kind: effectOperationRetargetAttack})
 	}
 	operations = append(operations, effectOperation{
 		Kind:                  effectOperationMove,
@@ -260,6 +319,15 @@ func (g *Game) actionAbilityInstance(declaration *actionDeclaration) abilityInst
 		declaration.Target,
 		operations,
 	)
+}
+
+func (g *Game) hasActiveCombat() bool {
+	for _, item := range g.state.EffectsStack {
+		if item.Kind == effectStackCombat {
+			return true
+		}
+	}
+	return false
 }
 
 func (g *Game) removeEffectSource(source cardInstanceID) {
@@ -280,6 +348,7 @@ func (g *Game) damageUnit(target objectID, amount int) {
 	for playerID, champion := range g.state.Champions {
 		if champion.ID == target {
 			champion.Damage += amount
+			champion.DamageTurn = g.state.Scheduler.TurnNumber
 			g.state.Champions[playerID] = champion
 			return
 		}

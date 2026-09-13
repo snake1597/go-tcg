@@ -49,6 +49,7 @@ type championObject struct {
 	CombatRole     string           `json:"combat_role"`
 	TauntUntilTurn uint64           `json:"taunt_until_turn"`
 	Damage         int              `json:"damage"`
+	DamageTurn     uint64           `json:"damage_turn,omitempty"`
 }
 
 type fieldObject struct {

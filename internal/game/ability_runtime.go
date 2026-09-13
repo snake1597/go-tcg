@@ -32,6 +32,10 @@ const (
 	effectOperationDiscard               effectOperationKind = "discard"
 	effectOperationDeploy                effectOperationKind = "deploy"
 	effectOperationSuitedThresholdDamage effectOperationKind = "suited_threshold_damage"
+	effectOperationChooseDuchessCopy     effectOperationKind = "choose_duchess_copy"
+	effectOperationCopyDuchessAction     effectOperationKind = "copy_duchess_action"
+	effectOperationSacrificeForChef      effectOperationKind = "sacrifice_for_chef"
+	effectOperationRetargetAttack        effectOperationKind = "retarget_attack"
 )
 
 // effectOperation contains only replayable values. A card ability is compiled
@@ -39,6 +43,7 @@ const (
 type effectOperation struct {
 	Kind                      effectOperationKind `json:"kind"`
 	Target                    objectID            `json:"target,omitempty"`
+	Source                    objectID            `json:"source,omitempty"`
 	Amount                    int                 `json:"amount,omitempty"`
 	Counter                   string              `json:"counter,omitempty"`
 	MoveSourceToGraveyard     bool                `json:"move_source_to_graveyard,omitempty"`
@@ -110,11 +115,62 @@ func (g *Game) resolveAbility(instance abilityInstance) {
 				g.recordPublicEvent(instance.Controller, "ability", "counter", instance.SourceLKI)
 			}
 		case effectOperationChooseHandCard:
-			g.beginAbilityCardChoice(instance, operationIndex, instance.Controller, g.state.Zones[instance.Controller.UID].Hand)
+			g.beginAbilityCardChoice(
+				instance,
+				operationIndex,
+				instance.Controller,
+				g.state.Zones[instance.Controller.UID].Hand,
+			)
 			return
 		case effectOperationChooseMemoryAlly:
-			g.beginAbilityCardChoice(instance, operationIndex, instance.Controller, g.qualifiedMemoryAllies(instance.Controller))
+			g.beginAbilityCardChoice(
+				instance,
+				operationIndex,
+				instance.Controller,
+				g.qualifiedMemoryAllies(instance.Controller),
+			)
 			return
+		case effectOperationChooseDuchessCopy:
+			g.beginAbilityCardChoice(
+				instance,
+				operationIndex,
+				instance.Controller,
+				g.eligibleDuchessCopies(instance.Controller),
+			)
+			return
+		case effectOperationCopyDuchessAction:
+			copied, err := g.copyDuchessAction(
+				instance.Controller,
+				cardInstanceID(target),
+				"",
+			)
+			if err != nil {
+				return
+			}
+			chooseTarget := effectOperation{
+				Kind:    effectOperationChoose,
+				Options: g.legalTargets(),
+			}
+			copied.Operations = append(
+				[]effectOperation{
+					chooseTarget,
+				},
+				copied.Operations...,
+			)
+			g.pushAbility(copied)
+			return
+		case effectOperationSacrificeForChef:
+			if err := g.sacrificeForPepperedChef(
+				instance.Controller,
+				operation.Source,
+				target,
+			); err != nil {
+				return
+			}
+		case effectOperationRetargetAttack:
+			if err := g.retargetAttackWithTrumpSet(instance.Controller, target); err != nil {
+				return
+			}
 		case effectOperationDiscard:
 			g.discardCard(instance.Controller, cardInstanceID(target))
 		case effectOperationDeploy:
