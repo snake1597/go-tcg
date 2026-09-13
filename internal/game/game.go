@@ -87,12 +87,14 @@ type gameState struct {
 	EffectsStack      []effectStackItem
 	ContinuousEffects []continuousEffect
 	AbilityChoice     *abilityChoice
+	CardistryUsed     map[objectID]bool
 	Scheduler         schedulerFrame
 	Events            []eventBatch
 	NextHandle        uint64
 	NextEvent         uint64
 	NextEffect        uint64
 	NextAbility       uint64
+	NextObject        uint64
 }
 
 type prngState struct {
@@ -119,12 +121,14 @@ type canonicalState struct {
 	EffectsStack      []effectStackItem               `json:"effects_stack,omitempty"`
 	ContinuousEffects []continuousEffect              `json:"continuous_effects,omitempty"`
 	AbilityChoice     *abilityChoice                  `json:"ability_choice,omitempty"`
+	CardistryUsed     map[objectID]bool               `json:"cardistry_used,omitempty"`
 	Scheduler         schedulerFrame                  `json:"scheduler"`
 	Events            []eventBatch                    `json:"events"`
 	NextHandle        uint64                          `json:"next_handle"`
 	NextEvent         uint64                          `json:"next_event"`
 	NextEffect        uint64                          `json:"next_effect"`
 	NextAbility       uint64                          `json:"next_ability"`
+	NextObject        uint64                          `json:"next_object"`
 }
 
 func NewGame(seed uint64) *Game {
@@ -136,13 +140,14 @@ func NewGame(seed uint64) *Game {
 			model.PlayerTwo,
 		},
 		state: gameState{
-			Revision:  1,
-			Entities:  make(map[entityID]knowledgeEntity),
-			Cards:     make(map[cardInstanceID]cardInstance),
-			Zones:     make(map[string]playerZones),
-			Champions: make(map[string]championObject),
-			Objects:   make(map[objectID]fieldObject),
-			Events:    []eventBatch{},
+			Revision:      1,
+			Entities:      make(map[entityID]knowledgeEntity),
+			Cards:         make(map[cardInstanceID]cardInstance),
+			Zones:         make(map[string]playerZones),
+			Champions:     make(map[string]championObject),
+			Objects:       make(map[objectID]fieldObject),
+			CardistryUsed: make(map[objectID]bool),
+			Events:        []eventBatch{},
 			PRNG: prngState{
 				Seed: seed,
 			},
@@ -221,12 +226,19 @@ func (g *Game) Submit(player *model.Player, input Input) error {
 						return err
 					}
 				} else {
-					weapon, wieldExists := g.state.Knowledge.Wields[player.UID][input.Action]
-					if !wieldExists {
-						return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, input.Action)
-					}
-					if err := g.beginWield(player, weapon); err != nil {
-						return err
+					source, cardistryExists := g.state.Knowledge.Cardistries[player.UID][input.Action]
+					if cardistryExists {
+						if err := g.activateCardistry(player, source); err != nil {
+							return err
+						}
+					} else {
+						weapon, wieldExists := g.state.Knowledge.Wields[player.UID][input.Action]
+						if !wieldExists {
+							return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, input.Action)
+						}
+						if err := g.beginWield(player, weapon); err != nil {
+							return err
+						}
 					}
 				}
 			}

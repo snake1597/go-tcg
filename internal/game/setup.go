@@ -20,6 +20,7 @@ type cardInstance struct {
 	Level       int64          `json:"level"`
 	Types       []string       `json:"types"`
 	Subtypes    []string       `json:"subtypes"`
+	Elements    []string       `json:"elements"`
 	Classes     []string       `json:"classes"`
 	MemoryCost  int            `json:"memory_cost"`
 	ReserveCost int            `json:"reserve_cost"`
@@ -219,6 +220,7 @@ func (g *Game) newCardInstance(player *model.Player, entry DeckEntry, definition
 		Level:       face.Level(),
 		Types:       append([]string(nil), cardData.Types...),
 		Subtypes:    append([]string(nil), cardData.Subtypes...),
+		Elements:    append([]string(nil), cardData.Elements...),
 		Classes:     append([]string(nil), cardData.Classes...),
 		MemoryCost:  memoryCost(cardData),
 		ReserveCost: reserveCost(cardData),

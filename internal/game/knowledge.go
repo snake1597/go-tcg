@@ -22,6 +22,7 @@ type knowledgeState struct {
 	Activations      map[string]map[ViewHandle]cardInstanceID       `json:"activations"`
 	Attacks          map[string]map[ViewHandle]objectID             `json:"attacks"`
 	Wields           map[string]map[ViewHandle]objectID             `json:"wields"`
+	Cardistries      map[string]map[ViewHandle]objectID             `json:"cardistries"`
 	Cards            map[string]map[entityID]ViewHandle             `json:"cards"`
 	Events           map[string][]VisibleEvent                      `json:"events"`
 	Choice           *pendingChoice                                 `json:"choice,omitempty"`
@@ -43,6 +44,7 @@ func (g *Game) initializeKnowledgeState() {
 		Activations:      make(map[string]map[ViewHandle]cardInstanceID, len(g.players)),
 		Attacks:          make(map[string]map[ViewHandle]objectID, len(g.players)),
 		Wields:           make(map[string]map[ViewHandle]objectID, len(g.players)),
+		Cardistries:      make(map[string]map[ViewHandle]objectID, len(g.players)),
 		Cards:            make(map[string]map[entityID]ViewHandle, len(g.players)),
 		Events:           make(map[string][]VisibleEvent, len(g.players)),
 	}
@@ -52,6 +54,7 @@ func (g *Game) initializeKnowledgeState() {
 		knowledge.Activations[player.UID] = make(map[ViewHandle]cardInstanceID)
 		knowledge.Attacks[player.UID] = make(map[ViewHandle]objectID)
 		knowledge.Wields[player.UID] = make(map[ViewHandle]objectID)
+		knowledge.Cardistries[player.UID] = make(map[ViewHandle]objectID)
 		knowledge.Cards[player.UID] = make(map[entityID]ViewHandle)
 		knowledge.Events[player.UID] = []VisibleEvent{}
 	}
@@ -66,11 +69,13 @@ func (g *Game) refreshLegalActions() {
 		activations := g.state.Knowledge.Activations[player.UID]
 		attacks := g.state.Knowledge.Attacks[player.UID]
 		wields := g.state.Knowledge.Wields[player.UID]
+		cardistries := g.state.Knowledge.Cardistries[player.UID]
 		clear(actions)
 		clear(materializations)
 		clear(activations)
 		clear(attacks)
 		clear(wields)
+		clear(cardistries)
 		if g.state.Finished {
 			continue
 		}
@@ -104,6 +109,10 @@ func (g *Game) refreshLegalActions() {
 					}
 					handle := g.newViewHandle(player, "action:wield:"+string(weapon))
 					wields[handle] = weapon
+				}
+				for _, source := range g.legalCardistries(player) {
+					handle := g.newViewHandle(player, "action:cardistry:"+string(source))
+					cardistries[handle] = source
 				}
 			case samePlayer(player, g.state.Scheduler.TurnPlayer) && g.state.Scheduler.Phase == PhaseMaterialize:
 				for _, card := range g.legalChampionMaterializations(player) {

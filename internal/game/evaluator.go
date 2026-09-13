@@ -42,6 +42,7 @@ type continuousModifier struct {
 	GrantImmortality bool `json:"grant_immortality,omitempty"`
 	ProhibitRecover  bool `json:"prohibit_recover,omitempty"`
 	SwitchPowerLife  bool `json:"switch_power_life,omitempty"`
+	GrantStealth     bool `json:"grant_stealth,omitempty"`
 }
 
 // continuousEffect is serialized game state: static effects are rebuilt from
@@ -67,6 +68,7 @@ type characteristics struct {
 	MemoryCost        int
 	Immortal          bool
 	RecoverProhibited bool
+	Stealth           bool
 }
 
 func (g *Game) characteristicsFor(id objectID) characteristics {
@@ -131,6 +133,7 @@ func applyContinuousModifier(result *characteristics, modifier continuousModifie
 	result.ReserveCost += modifier.ReserveCostDelta
 	result.Immortal = result.Immortal || modifier.GrantImmortality
 	result.RecoverProhibited = result.RecoverProhibited || modifier.ProhibitRecover
+	result.Stealth = result.Stealth || modifier.GrantStealth
 	if modifier.SwitchPowerLife {
 		result.Power, result.Life = result.Life, result.Power
 	}
@@ -245,8 +248,20 @@ func (g *Game) staticEffectsFor(target objectID) []continuousEffect {
 				},
 			})
 		}
+		if sourceID == target && card.Definition == noireCardID && g.controlsAnotherSuitedAlly(source.Owner, sourceID) {
+			effects = append(effects, continuousEffect{Source: sourceID, Controller: source.Owner, Scope: effectScopeObject, Layer: effectLayerAbility, Timestamp: uint64(len(effects)), Modifier: continuousModifier{GrantStealth: true}})
+		}
 	}
 	return effects
+}
+
+func (g *Game) controlsAnotherSuitedAlly(player *model.Player, exclude objectID) bool {
+	for id, object := range g.state.Objects {
+		if id != exclude && samePlayer(object.Owner, player) && containsString(object.Types, "ALLY") && g.cardHasSubtype(object.Card, "SUITED") {
+			return true
+		}
+	}
+	return false
 }
 
 func (g *Game) addContinuousEffect(effect continuousEffect) {
