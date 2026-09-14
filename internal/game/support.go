@@ -46,6 +46,9 @@ type supportClosure struct {
 	rulings    map[RulingID]bool
 }
 
+// NewStandardGame 驗證固定牌組、卡牌資料與 registry，並檢查牌組可達的 Support Set。
+// 有未支援或缺漏項目時回傳 GateError；通過後建立引擎並設定玩家。
+// 此入口目前不配置開局牌組或啟動排程，開局狀態建置由 NewStandardSetup 提供。
 func NewStandardGame(configuration StandardGameConfig) (*Game, error) {
 	decks, err := loadValidatedStandardDecks(configuration)
 	if err != nil {
@@ -78,6 +81,8 @@ type validatedStandardDecks struct {
 	Second      DeckManifest
 }
 
+// loadValidatedStandardDecks 要求兩名 UID 非空且不同的玩家，從 RepositoryRoot 載入固定卡牌資料。
+// 雙方各使用固定標準牌組，通過個別牌組及鏡像驗證後才回傳；不執行 runtime 支援檢查。
 func loadValidatedStandardDecks(configuration StandardGameConfig) (validatedStandardDecks, error) {
 	if configuration.Players[0] == nil ||
 		configuration.Players[1] == nil ||
@@ -144,6 +149,9 @@ func validateDefinitionsAgainstRegistry(definitions map[CardID]CardDefinition, r
 	return nil
 }
 
+// evaluateSupportSet 從牌組各區域出發，遞迴收集卡牌、牌面、能力、機制、操作與裁定的可達集合。
+// 先標記節點再巡訪相依關係，避免循環重複巡訪；未支援節點仍繼續展開，以收集完整診斷。
+// 缺少節點、Unsupported 狀態與 pending 裁定都產生診斷，依種類與 ID 去重；不修改 registry。
 func evaluateSupportSet(deck DeckManifest, registry contentRegistry) (supportClosure, []GateDiagnostic) {
 	closure := supportClosure{
 		cards:      make(map[CardID]bool),

@@ -67,6 +67,9 @@ func (g *Game) initializeKnowledgeState() {
 	g.refreshLegalActions()
 }
 
+// refreshLegalActions 清空並重建各玩家的行動 handle，反映目前行動機會、階段與待選狀態。
+// 等待選擇時不提供一般行動；投降與可略過能力的 pass 另行處理。
+// 遊戲結束時清空所有行動，但既有卡牌追蹤 handle 不由此函式重建。
 func (g *Game) refreshLegalActions() {
 	for _, player := range g.players {
 		actions := g.state.Knowledge.Actions[player.UID]
@@ -251,6 +254,8 @@ func (g *Game) visibleChampions(_ *model.Player) []VisibleChampion {
 	return champions
 }
 
+// grantCardTracking 為玩家首次追蹤到的卡牌配置 handle，後續追蹤保留同一 handle。
+// 是否應讓玩家追蹤此牌由呼叫端決定，此函式不檢查牌所在區域或可見性。
 func (g *Game) grantCardTracking(player *model.Player, card entityID) {
 	if _, exists := g.state.Knowledge.Cards[player.UID][card]; exists {
 		return
@@ -278,6 +283,8 @@ func (g *Game) revokeCardTracking(player *model.Player, card entityID) {
 	}
 }
 
+// visibleCards 回傳玩家已取得追蹤 handle 的卡牌，而非直接列出區域內的所有牌。
+// 結果按 handle 排序；隱藏或公開卡牌時，呼叫端須同步維護追蹤映射。
 func (g *Game) visibleCards(player *model.Player) []VisibleCard {
 	cards := g.state.Knowledge.Cards[player.UID]
 	visibleCards := make([]VisibleCard, 0, len(cards))
@@ -351,6 +358,8 @@ func (g *Game) pendingChoice(player *model.Player) *PendingChoice {
 	}
 }
 
+// submitChoice 先驗證選擇者與待選 handle，再依目前宣告、觸發排序或能力狀態分派。
+// 成功處理後更新 revision 與合法行動；replay 由外層 Submit 記錄。
 func (g *Game) submitChoice(player *model.Player, input Input) error {
 	choice := g.state.Knowledge.Choice
 	if choice == nil || !samePlayer(choice.Actor, player) {
@@ -414,11 +423,15 @@ func (g *Game) submitChoice(player *model.Player, input Input) error {
 	return nil
 }
 
+// advanceKnowledgeRevision 增加 revision 並重建合法行動，使舊視圖的輸入失效。
+// 此函式不記錄 replay，也不重新配置既有卡牌追蹤 handle。
 func (g *Game) advanceKnowledgeRevision() {
 	g.state.Revision++
 	g.refreshLegalActions()
 }
 
+// newViewHandle 以種子、遞增序號、玩家與 subject 產生可重播的 handle，並推進 NextHandle。
+// handle 的玩家歸屬與有效性由知識映射驗證，不以雜湊本身作為授權依據。
 func (g *Game) newViewHandle(player *model.Player, subject string) ViewHandle {
 	g.state.NextHandle++
 	value := fmt.Sprintf(

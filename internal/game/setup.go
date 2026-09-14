@@ -92,9 +92,8 @@ type eventBatch struct {
 	Events       []gameEvent   `json:"events"`
 }
 
-// NewStandardSetup builds the deterministic opening state for the fixed deck.
-// It deliberately omits the complete Support Set gate, which remains enforced
-// by NewStandardGame until every reachable card behavior is supported.
+// NewStandardSetup 驗證固定牌組與卡牌資料後，建立由 seed 決定的開局狀態。
+// 此入口略過完整 Support Set 檢查；runtime 支援驗證由 NewStandardGame 負責。
 func NewStandardSetup(configuration StandardGameConfig) (*Game, error) {
 	decks, err := loadValidatedStandardDecks(configuration)
 	if err != nil {
@@ -108,6 +107,9 @@ func NewStandardSetup(configuration StandardGameConfig) (*Game, error) {
 	)
 }
 
+// newStandardSetup 使用已驗證的雙方牌組建立卡牌實例，洗牌並處理 Spirit of Fire 開局抽牌。
+// 開局未導致對局結束時才啟動標準排程；最後更新 revision 並保存 replay 初始快照。
+// configuration、definitions 與牌組的一致性由呼叫端先行驗證。
 func newStandardSetup(
 	configuration StandardGameConfig,
 	definitions map[CardID]CardDefinition,
@@ -273,6 +275,8 @@ func (g *Game) shuffleMainDeck(player *model.Player) {
 	g.state.Zones[player.UID] = zones
 }
 
+// nextRandom 使用種子與遞增 cursor 產生固定亂數序列，每次呼叫都推進 cursor。
+// 重播必須保留種子、cursor 與呼叫順序。
 func (g *Game) nextRandom() uint64 {
 	g.state.PRNG.Cursor++
 	value := g.state.PRNG.Seed + 0x9e3779b97f4a7c15*g.state.PRNG.Cursor

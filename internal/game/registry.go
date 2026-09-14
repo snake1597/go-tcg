@@ -88,6 +88,9 @@ type contentRegistry struct {
 
 var semanticKeyPattern = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`)
 
+// buildRegistry 建立卡牌、牌面、能力與支援節點的索引，並驗證 ID、父節點及相依引用。
+// Supported 能力必須有 handler；重複 ID、缺少 behavior slot 或未知引用皆拒絕建立。
+// 任一驗證失敗回傳空 registry 與原因，避免呼叫端取得半成品。
 func buildRegistry(spec registrySpec) (contentRegistry, error) {
 	registry := contentRegistry{
 		cards:      make(map[CardID]cardRegistration, len(spec.cards)),
@@ -162,6 +165,7 @@ func buildRegistry(spec registrySpec) (contentRegistry, error) {
 	return registry, nil
 }
 
+// validateSupportStatus 僅接受 Supported 與 Unsupported；其他值回傳 error，合法值回傳 nil。
 func validateSupportStatus(status constants.SupportStatus) error {
 	if status != constants.Supported && status != constants.Unsupported {
 		return fmt.Errorf("invalid support status %q", status)

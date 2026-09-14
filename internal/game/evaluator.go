@@ -46,8 +46,8 @@ type continuousModifier struct {
 	GrantTrueSight   bool `json:"grant_true_sight,omitempty"`
 }
 
-// continuousEffect is serialized game state: static effects are rebuilt from
-// the Field for each evaluation, while instanced effects keep a target snapshot.
+// continuousEffect 保存可序列化的持續效果資料。
+// 靜態效果每次查詢時由場上物件重建；實例效果保留建立時的目標，不隨來源離場重新選取。
 type continuousEffect struct {
 	ID            uint64             `json:"id"`
 	Source        objectID           `json:"source,omitempty"`
@@ -73,6 +73,9 @@ type characteristics struct {
 	TrueSight         bool
 }
 
+// characteristicsFor 從物件對應牌的基礎值計算目前特性，不改寫牌本身。
+// 先套用排序後的一般效果，再加 POWER/LIFE 指示物，最後套用攻擊力與生命交換。
+// 找不到對應牌時回傳零值特性；counter 子層由物件指示物處理，不直接套用該子層 modifier。
 func (g *Game) characteristicsFor(id objectID) characteristics {
 	card, exists := g.cardForObject(id)
 	if !exists {
@@ -155,6 +158,8 @@ func (g *Game) countersFor(id objectID) map[string]int {
 	return object.Counters
 }
 
+// orderedEffectsFor 合併場上重建的靜態效果與尚未到期的實例效果。
+// 先依 layer、攻擊力生命子層及 timestamp 穩定排序，再依 DependsOn 調整順序。
 func (g *Game) orderedEffectsFor(target objectID) []continuousEffect {
 	effects := append(
 		g.staticEffectsFor(target),
@@ -175,6 +180,8 @@ func (g *Game) orderedEffectsFor(target objectID) []continuousEffect {
 	return dependencyOrdered(effects)
 }
 
+// dependencyOrdered 優先選出 DependsOn 已出現在結果中的效果，並保留可選效果的原始相對順序。
+// 若循環或缺失依賴使全部剩餘效果都無法選出，取剩餘首項繼續，不回傳錯誤。
 func dependencyOrdered(effects []continuousEffect) []continuousEffect {
 	ordered := make([]continuousEffect, 0, len(effects))
 	remaining := append([]continuousEffect(nil), effects...)
@@ -208,6 +215,8 @@ func dependenciesResolved(effect continuousEffect, ordered []continuousEffect) b
 	return true
 }
 
+// instancedEffectsFor 只回傳目標快照相符且尚未到期的實例效果。
+// 不要求來源仍在場上；ExpiresAtTurn=0 表示未設定回合期限。
 func (g *Game) instancedEffectsFor(target objectID) []continuousEffect {
 	effects := make([]continuousEffect, 0, len(g.state.ContinuousEffects))
 	for _, effect := range g.state.ContinuousEffects {

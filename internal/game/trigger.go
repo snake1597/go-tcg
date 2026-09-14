@@ -65,6 +65,9 @@ func (g *Game) wieldWeapons(player *model.Player, unit objectID, weapons []cardI
 	return nil
 }
 
+// flushTriggers 將本批觸發送入效果堆疊；空批次不改變狀態。
+// 單一觸發直接入堆疊並授予控制者行動機會；多個觸發建立排序選擇並暫停一般行動機會。
+// 控制者取自首項，此函式不驗證整批是否屬於同一控制者。
 func (g *Game) flushTriggers(triggers []effectStackItem) {
 	if len(triggers) == 0 {
 		return
@@ -97,6 +100,9 @@ func (g *Game) setTriggerOrderChoice() {
 	}
 }
 
+// submitTriggerOrderChoice 將玩家選中的觸發入堆疊，移出待排序集合後提供剩餘選項。
+// 選擇順序是入堆疊順序，後選的觸發會先結算；全數入堆疊後才清除選擇並授予行動機會。
+// 此函式依賴既有 TriggerOrder 對應的 Choice，呼叫端須維持兩者一致。
 func (g *Game) submitTriggerOrderChoice(player *model.Player, handle ViewHandle) error {
 	order := g.state.Knowledge.TriggerOrder
 	if order == nil || !samePlayer(order.Controller, player) {

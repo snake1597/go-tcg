@@ -39,8 +39,8 @@ const (
 	effectOperationRetargetAttack        effectOperationKind = "retarget_attack"
 )
 
-// effectOperation contains only replayable values. A card ability is compiled
-// into this sequence at declaration, after its legal target is fixed.
+// effectOperation 只保存可序列化的操作資料，讓能力與待選狀態可以重播。
+// 操作可使用宣告時的目標，也可透過 choose 在結算期間取得目標；不保存執行閉包。
 type effectOperation struct {
 	Kind                      effectOperationKind `json:"kind"`
 	Target                    objectID            `json:"target,omitempty"`
@@ -82,6 +82,11 @@ func (g *Game) pushAbility(instance abilityInstance) {
 	})
 }
 
+// resolveAbility 按宣告時建立的 operation 序列結算，個別 operation 未指定目標時使用 instance.Target。
+// 傷害與持續效果在結算時重新檢查目標；目標失效時略過該 operation，不退回費用。
+// 選牌分支與 effectOperationChoose 都會中斷結算；有選項時保存後續操作供選擇提交後繼續。
+// 只有 effectOperationChoose 設定 completed=false，讓 runtime copy 在等待期間保留。
+// 其他返回路徑會由 defer 銷毀 runtime copy；未知 operation 會 panic。
 func (g *Game) resolveAbility(instance abilityInstance) {
 	completed := true
 	defer func() {
@@ -217,6 +222,8 @@ func (g *Game) destroyRuntimeCopy(source cardInstanceID) {
 	delete(g.state.Entities, entityID(source))
 }
 
+// beginAbilityCardChoice 保存選牌後要繼續執行的 operation，並建立玩家專屬選項。
+// 沒有可選牌時不建立選擇；呼叫此函式的結算分支仍會直接返回，不繼續後續操作。
 func (g *Game) beginAbilityCardChoice(instance abilityInstance, operationIndex int, player *model.Player, cards []cardInstanceID) {
 	if len(cards) == 0 {
 		return
@@ -252,6 +259,8 @@ func (g *Game) drawToMemory(player *model.Player, amount int) {
 	g.state.Zones[player.UID] = zones
 }
 
+// drawCards 將最多 amount 張牌由主牌組頂移入手牌，逐張記錄公開抽牌事件。
+// 牌組不足時只抽剩餘牌；空牌組不產生事件，也不在此函式判定敗北。
 func (g *Game) drawCards(player *model.Player, amount int) {
 	zones := g.state.Zones[player.UID]
 	for draw := 0; draw < amount && len(zones.MainDeck) > 0; draw++ {

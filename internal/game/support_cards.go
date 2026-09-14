@@ -119,9 +119,9 @@ func (g *Game) eligibleDuchessCopies(player *model.Player) []cardInstanceID {
 	return cards
 }
 
-// copyDuchessAction creates a distinct ability instance from the copied face.
-// The source card remains banished, so copied actions never replay payment or
-// zone movement from their original card object.
+// copyDuchessAction 驗證墓地中的合格 Fire action，放逐原牌並建立獨立的 runtime copy 與能力。
+// 複製能力不支付原 action 費用，並移除最後的來源進墓地操作；原牌保留在放逐區。
+// runtime copy 完成結算或被略過時由能力流程銷毀，不作為一般牌移入墓地。
 func (g *Game) copyDuchessAction(player *model.Player, source cardInstanceID, target objectID) (abilityInstance, error) {
 	if cardIndex(g.state.Zones[player.UID].Graveyard, source) < 0 || !containsCard(g.eligibleDuchessCopies(player), source) {
 		return abilityInstance{}, fmt.Errorf("invalid Duchess copy source %q", source)
@@ -167,6 +167,8 @@ func (g *Game) canUseVeritaAlternativeCost(player *model.Player, cards []cardIns
 	return total == 10
 }
 
+// veritaAlternativeCostCards 依墓地順序搜尋第一組至少三張、印刷 reserve cost 總和為 10 的 Suited ally。
+// 沒有合格組合時回傳 nil；此函式只找付款組合，實際放逐由 payVeritaAlternativeCost 執行。
 func (g *Game) veritaAlternativeCostCards(player *model.Player) []cardInstanceID {
 	graveyard := g.state.Zones[player.UID].Graveyard
 	return g.findVeritaAlternativeCostCards(player, graveyard, nil, 0)

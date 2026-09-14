@@ -41,6 +41,9 @@ func (g *Game) legalActionCards(player *model.Player) []cardInstanceID {
 	return cards
 }
 
+// canActivateAction 檢查持有者、行動機會、費用與目前已實作的卡牌限制。
+// 非 Fast 行動只允許在自己的主階段且效果堆疊為空時使用；Verita 可採替代費用。
+// 此檢查不保證來源位於手牌，也不驗證最終目標；宣告與提交階段仍須檢查。
 func (g *Game) canActivateAction(player *model.Player, card cardInstanceID) bool {
 	scheduler := g.state.Scheduler
 	candidate, exists := g.state.Cards[card]
@@ -66,6 +69,9 @@ func (g *Game) canActivateAction(player *model.Player, card cardInstanceID) bool
 	return candidate.Definition == blazingThrowCardID || candidate.Definition == fieryInterferenceCardID || candidate.Definition == straightFlareCardID
 }
 
+// beginActionDeclaration 為行動建立選目標的宣告，尚不移走來源牌或支付費用。
+// Blazing Throw 選完目標後還須選擇犧牲武器；Trump Set 僅能選受控的 Suited ally。
+// Verita 直接交由 ally 啟動流程處理，不建立此宣告。
 func (g *Game) beginActionDeclaration(player *model.Player, card cardInstanceID) error {
 	if g.state.Cards[card].Definition == veritaCardID {
 		return g.commitAllyActivation(player, card)
@@ -164,6 +170,8 @@ func (g *Game) setDeclarationChoice(player *model.Player, subjects []objectID) {
 	}
 }
 
+// commitActionDeclarationWithWeapon 在重新驗證武器與宣告後，先犧牲武器，再提交行動。
+// 武器進入擁有者墓地；此函式沒有在後續提交失敗時還原武器的機制。
 func (g *Game) commitActionDeclarationWithWeapon(weapon objectID) error {
 	declaration := g.state.Knowledge.Declaration
 	if declaration == nil || !g.isLegalWeapon(declaration.Controller, weapon) || !g.canCommitActionDeclaration(declaration) {
@@ -177,6 +185,8 @@ func (g *Game) commitActionDeclarationWithWeapon(weapon objectID) error {
 	return g.commitActionDeclaration()
 }
 
+// commitActionDeclaration 在目標、來源手牌與費用仍有效時，移走來源並隨機放逐 Memory 付款。
+// 付款後將能力入堆疊、清除宣告與待選項目，並授予控制者行動機會；能力尚未結算。
 func (g *Game) commitActionDeclaration() error {
 	declaration := g.state.Knowledge.Declaration
 	if declaration == nil || !g.canCommitActionDeclaration(declaration) {

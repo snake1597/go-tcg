@@ -17,6 +17,9 @@ const (
 	PhaseEnd          Phase = "end"
 )
 
+// passOpportunity 僅接受穩定排程下的行動機會持有者 pass。
+// 所有玩家連續 pass 後只結算堆疊頂的一項；若仍有堆疊項目，重新授予回合玩家行動機會。
+// 堆疊清空後交由 advanceAfterOpportunity 推進階段，結算導致對局結束時直接返回。
 func (g *Game) passOpportunity(player *model.Player) error {
 	scheduler := &g.state.Scheduler
 	if scheduler.Kind != schedulerStable || !samePlayer(scheduler.OpportunityHolder, player) {
@@ -43,6 +46,9 @@ func (g *Game) passOpportunity(player *model.Player) error {
 	return nil
 }
 
+// advanceAfterOpportunity 在行動機會結束後推進階段，再執行標準排程。
+// 離開回憶階段時才回收 Memory；回合結束時換玩家、增加回合數並清除 Cardistry 折扣。
+// 僅允許從具行動機會的階段進入，其他階段呼叫會 panic。
 func (g *Game) advanceAfterOpportunity() {
 	scheduler := &g.state.Scheduler
 	switch scheduler.Phase {
@@ -74,6 +80,10 @@ func (g *Game) skipMaterialize(player *model.Player) error {
 	return nil
 }
 
+// runStandardScheduler 自動執行喚醒與抽牌等階段，直到需要玩家輸入或對局結束。
+// 首輪各玩家略過物質化與回憶階段，只有第 1 回合略過回合抽牌。
+// 物質化階段等待玩家選牌；回憶、主階段與結束階段授予行動機會後暫停。
+// 未知階段屬內部排程錯誤，會 panic。
 func (g *Game) runStandardScheduler() {
 	for !g.state.Finished {
 		scheduler := &g.state.Scheduler

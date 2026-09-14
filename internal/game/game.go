@@ -135,6 +135,8 @@ type canonicalState struct {
 	NextObject         uint64                          `json:"next_object"`
 }
 
+// NewGame 建立引擎的空白狀態並固定亂數種子與版本。
+// 玩家牌組、開局事件與標準回合排程由 setup 層配置。
 func NewGame(seed uint64) *Game {
 	versions := currentVersions()
 	game := &Game{
@@ -178,6 +180,10 @@ func currentVersions() Versions {
 	}
 }
 
+// Submit 以目前 revision 與玩家專屬 handle 驗證輸入，再交給對應行動或選擇流程。
+// 等待選擇時只接受該選擇、投降，以及可略過能力的 pass；Floating Memory 只供 Cardistry 付款。
+// 成功接受輸入後記錄 replay；驗證或子流程失敗時不記錄此步。
+// 此入口沒有統一回滾機制，子流程須自行維持失敗時的狀態契約。
 func (g *Game) Submit(player *model.Player, input Input) error {
 	if !g.hasPlayer(player) {
 		return fmt.Errorf("%w %q", tcgErrors.ErrUnknownPlayer, player)
@@ -318,6 +324,8 @@ func (g *Game) recordReplayStep(player *model.Player, input Input) {
 	g.replay.Steps[len(g.replay.Steps)-1].StateHash = g.StateHash()
 }
 
+// PlayerView 投影指定玩家可見的牌、事件、合法行動與待選項目。
+// 提交行動須使用此視圖的 revision 與 handle；未知玩家回傳 ErrUnknownPlayer。
 func (g *Game) PlayerView(player *model.Player) (PlayerView, error) {
 	if !g.hasPlayer(player) {
 		return PlayerView{}, fmt.Errorf("%w %q", tcgErrors.ErrUnknownPlayer, player)
@@ -348,6 +356,8 @@ func (g *Game) PlayerView(player *model.Player) (PlayerView, error) {
 	}, nil
 }
 
+// StateHash 對 canonicalState 明列的版本、亂數進度、知識與對局欄位計算 SHA-256，供 replay 逐步比對。
+// JSON 編碼失敗代表內部狀態無法序列化，會 panic。
 func (g *Game) StateHash() string {
 	canonical := canonicalState{
 		SchemaVersion: 3,
@@ -379,6 +389,8 @@ func (g *Game) StateHash() string {
 	return hex.EncodeToString(sum[:])
 }
 
+// Replay 複製初始狀態與頂層玩家、步驟切片後回傳。
+// 玩家指標與步驟內的參考資料仍為淺拷貝，呼叫端不應修改其內容。
 func (g *Game) Replay() Replay {
 	replay := g.replay
 	if replay.InitialState != nil {

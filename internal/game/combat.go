@@ -168,6 +168,9 @@ func (g *Game) payWieldReserve(player *model.Player, weapon objectID) {
 	g.state.Zones[player.UID] = zones
 }
 
+// resolveCombat 先取得雙方目前攻擊力，再施加雙向傷害並記錄同時發生的戰鬥事件。
+// 雙方傷害完成後才執行狀態檢查，避免先受傷的一方死亡而失去反擊。
+// 任一單位不存在或雙方為同一物件時不結算；未指定攻擊者時使用控制者的 champion。
 func (g *Game) resolveCombat(item effectStackItem) {
 	attackerID := item.Attacker
 	if attackerID == "" {
@@ -219,6 +222,9 @@ func (g *Game) resolveCombatStateBased() {
 	g.resolveCombatStateBasedWithCause("", "")
 }
 
+// resolveCombatStateBasedWithCause 重複執行死亡與勝負檢查，直到狀態不再改變或對局結束。
+// 移除單位可能使其他單位失去靜態加成，因此需要再次檢查。
+// 超過 32 輪仍未穩定時結束對局並設定 Diagnostic，供 replay 與狀態雜湊追查。
 func (g *Game) resolveCombatStateBasedWithCause(cause, parentFlow string) {
 	for pass := 0; pass < 32; pass++ {
 		if !g.resolveCombatStateBasedPass(cause, parentFlow) {

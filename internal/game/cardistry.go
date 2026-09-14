@@ -50,6 +50,8 @@ func (g *Game) canActivateCardistry(player *model.Player, source objectID) bool 
 	)
 }
 
+// cardistryBaseCost 回傳已實作卡牌的 Cardistry 基礎費用與 Fast 屬性。
+// 未實作或找不到定義時以費用 -1 表示不可啟動。
 func (g *Game) cardistryBaseCost(card cardInstanceID) (int, bool) {
 	switch g.state.Cards[card].Definition {
 	case fiveOfSpadesCardID:
@@ -75,6 +77,8 @@ func (g *Game) cardistryBaseCost(card cardInstanceID) (int, bool) {
 	}
 }
 
+// cardistryCost 按受控 Suited 物件的不同印刷 reserve cost 數量與玩家折扣減費，最低為 0。
+// 相同印刷費用的多個物件只貢獻一次減費。
 func (g *Game) cardistryCost(player *model.Player, baseCost int) int {
 	costs := make(map[int]struct{})
 	for _, object := range g.state.Objects {
@@ -128,6 +132,9 @@ func (g *Game) floatingMemoryCards(player *model.Player) []cardInstanceID {
 	return cards
 }
 
+// payCardistryCost 先驗證所有指定 Floating Memory handle、重複牌與付款總額，再修改區域。
+// 指定墓地牌先放逐，剩餘費用以對局亂數從 Memory 選牌支付，並逐張記錄付款事件。
+// 指定牌超過費用或總額不足時回傳 ErrInvalidViewHandle，尚不付款或推進亂數。
 func (g *Game) payCardistryCost(player *model.Player, cost int, floatingMemory []ViewHandle) error {
 	zones := g.state.Zones[player.UID]
 	floatingCards := make(map[cardInstanceID]struct{}, len(floatingMemory))

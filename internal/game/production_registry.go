@@ -8,6 +8,9 @@ type faceInventory struct {
 	Mechanisms []MechanismID
 }
 
+// productionRegistry 從固定牌組與牌面清單建立支援檢查所需的節點及相依關係。
+// 登錄存在不代表可執行：目前卡牌、牌面、能力與 operation 仍標記 Unsupported。
+// 最後由 buildRegistry 驗證結構一致性；是否允許對局由 Support Set 檢查決定。
 func productionRegistry() (contentRegistry, error) {
 	spec := registrySpec{
 		contents: []contentRegistration{

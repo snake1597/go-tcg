@@ -188,6 +188,8 @@ func deckEntry(cardID string, count int) DeckEntry {
 	}
 }
 
+// loadCardDefinitions 先驗證 manifest 版本與卡牌檔案，再建立固定 front 牌面的定義索引。
+// 檔案內 UUID 必須與 manifest 相符；任一資料錯誤都拒絕載入，不回傳部分定義。
 func loadCardDefinitions(cardDirectory, manifestPath string) (map[CardID]CardDefinition, error) {
 	manifest, err := carddata.ReadManifest(manifestPath)
 	if err != nil {
@@ -226,6 +228,8 @@ func loadCardDefinitions(cardDirectory, manifestPath string) (map[CardID]CardDef
 	return definitions, nil
 }
 
+// readCard 要求檔案恰有一個 JSON 值；第二個值或尾端非空白資料都回傳 error。
+// 此函式只處理解碼，資料版本、檔案完整性與 UUID 對照由載入層驗證。
 func readCard(path string) (Card, error) {
 	contents, err := os.ReadFile(path)
 	if err != nil {
@@ -246,6 +250,8 @@ func readCard(path string) (Card, error) {
 	return card, nil
 }
 
+// validateFixedStandardDeck 除了張數、版本與卡牌引用，也要求各區域條目及順序完全符合固定 manifest。
+// OutsideGamePool 必須明確提供，空集合可接受而 nil 不可；物質牌組須包含至少一張 level 0 champion。
 func validateFixedStandardDeck(deck DeckManifest, definitions map[CardID]CardDefinition) error {
 	if deck.Version != constants.FixedDeckVersion {
 		return fmt.Errorf("deck version %q does not match %q", deck.Version, constants.FixedDeckVersion)

@@ -86,6 +86,8 @@ func (g *Game) materializeChampion(player *model.Player, card cardInstanceID) er
 	return g.payChampionMaterialization(player, card)
 }
 
+// payChampionMaterialization 重新檢查升級與付款條件，再移走物質牌並隨機放逐 Memory。
+// 來源保留在 EffectSources，升級效果入堆疊後授予玩家行動機會；此時尚未替換 champion。
 func (g *Game) payChampionMaterialization(player *model.Player, card cardInstanceID) error {
 	if !g.canMaterializeChampion(
 		player,
@@ -137,6 +139,8 @@ func cardIndex(cards []cardInstanceID, want cardInstanceID) int {
 	return -1
 }
 
+// removeCardAt 保留其餘牌的順序，並可能改寫原切片的底層陣列。
+// 呼叫端須保證 index 在範圍內；找不到牌時不可直接傳入 cardIndex 回傳的 -1。
 func removeCardAt(cards []cardInstanceID, index int) []cardInstanceID {
 	return append(
 		cards[:index],
@@ -144,6 +148,8 @@ func removeCardAt(cards []cardInstanceID, index int) []cardInstanceID {
 	)
 }
 
+// resolveTopEffectStack 先移除堆疊頂項目，再依種類結算，因此結算中加入的新項目會留在堆疊。
+// 呼叫端須保證堆疊非空，能力項目須有 Ability；未知種類會 panic。
 func (g *Game) resolveTopEffectStack() {
 	lastIndex := len(g.state.EffectsStack) - 1
 	item := g.state.EffectsStack[lastIndex]
@@ -162,6 +168,9 @@ func (g *Game) resolveTopEffectStack() {
 	}
 }
 
+// resolveChampionLevelUp 消耗 EffectSources 中的來源並重新檢查升級條件。
+// 來源已消失時不處理；條件失效時將來源放逐，不退回已付費用。
+// 成功時保留原 champion 物件，把舊牌納入 InnerLineage，公開新牌並加入 Tonoris 入場觸發。
 func (g *Game) resolveChampionLevelUp(item effectStackItem) {
 	sourceIndex := cardIndex(g.state.EffectSources, item.Source)
 	if sourceIndex < 0 {

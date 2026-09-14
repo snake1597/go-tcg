@@ -62,7 +62,8 @@ type ReplayStep struct {
 	StateHash string        `json:"state_hash"`
 }
 
-// Verify replays the canonical input sequence against a fresh game instance.
+// Verify 先檢查格式與各資料版本，再由初始快照逐步 Submit 並比對狀態雜湊。
+// 遇到第一個輸入拒絕或雜湊不符即停止；標頭不相容或缺少初始狀態以 InputIndex=-1 回報。
 func (r Replay) Verify() error {
 	if r.FormatVersion != constants.ReplayFormatVersion {
 		return newReplayVersionMismatch(
@@ -106,6 +107,8 @@ func (r Replay) Verify() error {
 	return nil
 }
 
+// captureReplayInitialState 將目前狀態設為 replay 起點，複製玩家切片並清除先前步驟。
+// 標準開局在配置完成後呼叫，讓重播從開局事件處理後的狀態開始。
 func (g *Game) captureReplayInitialState() {
 	state := cloneGameState(g.state)
 	g.replay.InitialState = &state
@@ -116,6 +119,8 @@ func (g *Game) captureReplayInitialState() {
 	g.replay.Steps = nil
 }
 
+// cloneGameState 透過 JSON 往返複製 gameState 中可序列化的資料，避免初始快照共用可變狀態。
+// 編碼或解碼失敗視為內部狀態錯誤並 panic，不回傳零值或可恢復的 error。
 func cloneGameState(state gameState) gameState {
 	encoded, err := json.Marshal(state)
 	if err != nil {
