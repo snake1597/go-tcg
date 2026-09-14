@@ -27,6 +27,14 @@ type actionDeclaration struct {
 	Stage      declarationStage `json:"stage"`
 }
 
+// veritaAlternativeCostDeclaration 保存尚未提交的墓地付款選擇。
+// Source 是手牌中的 Verita，Selected 是玩家逐張選取的墓地牌；建立與取消都不移動任何牌。
+type veritaAlternativeCostDeclaration struct {
+	Controller *model.Player    `json:"controller"`
+	Source     cardInstanceID   `json:"source"`
+	Selected   []cardInstanceID `json:"selected"`
+}
+
 func (g *Game) legalActionCards(player *model.Player) []cardInstanceID {
 	if g.state.Knowledge.Declaration != nil {
 		return nil
@@ -71,10 +79,10 @@ func (g *Game) canActivateAction(player *model.Player, card cardInstanceID) bool
 
 // beginActionDeclaration 為行動建立選目標的宣告，尚不移走來源牌或支付費用。
 // Blazing Throw 選完目標後還須選擇犧牲武器；Trump Set 僅能選受控的 Suited ally。
-// Verita 直接交由 ally 啟動流程處理，不建立此宣告。
+// Verita 會先建立可取消的替代費用選擇；其他 action 才建立目標宣告。
 func (g *Game) beginActionDeclaration(player *model.Player, card cardInstanceID) error {
 	if g.state.Cards[card].Definition == veritaCardID {
-		return g.commitAllyActivation(player, card)
+		return g.beginVeritaAlternativeCostDeclaration(player, card)
 	}
 	targets := g.legalTargets()
 	if g.state.Cards[card].Definition == trumpSetCardID {
@@ -97,19 +105,8 @@ func (g *Game) commitAllyActivation(player *model.Player, card cardInstanceID) e
 		return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, card)
 	}
 	if g.state.Cards[card].Definition == veritaCardID {
-		if alternativeCost := g.veritaAlternativeCostCards(player); len(alternativeCost) > 0 {
-			if err := g.payVeritaAlternativeCost(player, alternativeCost); err != nil {
-				return err
-			}
-			zones := g.state.Zones[player.UID]
-			index := cardIndex(zones.Hand, card)
-			if index < 0 {
-				return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, card)
-			}
-			zones.Hand = removeCardAt(zones.Hand, index)
-			g.state.Zones[player.UID] = zones
-			g.putAllyOnField(player, card)
-			return nil
+		if len(g.veritaAlternativeCostCards(player)) > 0 {
+			return g.beginVeritaAlternativeCostDeclaration(player, card)
 		}
 	}
 	zones := g.state.Zones[player.UID]
@@ -125,6 +122,99 @@ func (g *Game) commitAllyActivation(player *model.Player, card cardInstanceID) e
 	}
 	g.state.Zones[player.UID] = zones
 	g.putAllyOnField(player, card)
+	return nil
+}
+
+// beginVeritaAlternativeCostDeclaration 開始 Verita 的逐張替代費用選擇。
+// 輸入為控制者與手牌中的 Verita；輸出為待選 handle，副作用僅建立可取消的宣告狀態。
+func (g *Game) beginVeritaAlternativeCostDeclaration(player *model.Player, card cardInstanceID) error {
+	if !g.canActivateAction(player, card) || cardIndex(g.state.Zones[player.UID].Hand, card) < 0 {
+		return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, card)
+	}
+	if len(g.veritaAlternativeCostCards(player)) == 0 {
+		return g.commitAllyActivation(player, card)
+	}
+	declaration := &veritaAlternativeCostDeclaration{
+		Controller: player,
+		Source:     card,
+	}
+	if len(g.veritaAlternativeCostChoiceCards(declaration)) == 0 {
+		return fmt.Errorf("invalid Verita alternative cost")
+	}
+	g.state.Knowledge.VeritaCost = declaration
+	g.setVeritaAlternativeCostChoice(declaration)
+	return nil
+}
+
+// submitVeritaAlternativeCostChoice 接受一張仍可完成精確總和的墓地牌。
+// 當選到至少三張且總和十時，原子地放逐付款並部署 Verita；否則只更新宣告，無區域副作用。
+func (g *Game) submitVeritaAlternativeCostChoice(player *model.Player, card cardInstanceID) error {
+	declaration := g.state.Knowledge.VeritaCost
+	if declaration == nil || !samePlayer(declaration.Controller, player) || !containsCard(g.veritaAlternativeCostChoiceCards(declaration), card) {
+		return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, card)
+	}
+	declaration.Selected = append(declaration.Selected, card)
+	if g.canUseVeritaAlternativeCost(player, declaration.Selected) {
+		if err := g.commitVeritaAlternativeCost(declaration); err != nil {
+			return err
+		}
+		g.state.Knowledge.VeritaCost = nil
+		g.state.Knowledge.Choice = nil
+		return nil
+	}
+	g.setVeritaAlternativeCostChoice(declaration)
+	return nil
+}
+
+// setVeritaAlternativeCostChoice 以仍存在完整付款組合的墓地牌重建選擇 handle。
+// 輸入為暫存宣告；輸出寫入 pending choice，副作用不移動卡牌且允許玩家取消。
+func (g *Game) setVeritaAlternativeCostChoice(declaration *veritaAlternativeCostDeclaration) {
+	options := make([]objectID, 0)
+	for _, card := range g.veritaAlternativeCostChoiceCards(declaration) {
+		options = append(options, objectID(card))
+	}
+	g.setDeclarationChoice(declaration.Controller, options)
+	g.state.Knowledge.Choice.CanPass = true
+}
+
+// veritaAlternativeCostChoiceCards 回傳下一張可選且保證仍有精確付款組合的墓地牌。
+// 輸入為暫存選擇；輸出依墓地順序排列，副作用為零。
+func (g *Game) veritaAlternativeCostChoiceCards(declaration *veritaAlternativeCostDeclaration) []cardInstanceID {
+	candidates := []cardInstanceID{}
+	for _, card := range g.state.Zones[declaration.Controller.UID].Graveyard {
+		if containsCard(declaration.Selected, card) {
+			continue
+		}
+		selected := append(append([]cardInstanceID(nil), declaration.Selected...), card)
+		if len(g.findVeritaAlternativeCostCards(declaration.Controller, g.state.Zones[declaration.Controller.UID].Graveyard, selected, 0)) > 0 {
+			candidates = append(candidates, card)
+		}
+	}
+	return candidates
+}
+
+// commitVeritaAlternativeCost 驗證來源與完整付款後一次提交所有區域異動。
+// 輸入為已完成的宣告；成功時將付款放逐並部署 Verita，失敗時完全不改變遊戲狀態。
+func (g *Game) commitVeritaAlternativeCost(declaration *veritaAlternativeCostDeclaration) error {
+	if !g.canUseVeritaAlternativeCost(declaration.Controller, declaration.Selected) {
+		return fmt.Errorf("invalid Verita alternative cost")
+	}
+	zones := g.state.Zones[declaration.Controller.UID]
+	index := cardIndex(zones.Hand, declaration.Source)
+	if index < 0 {
+		return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, declaration.Source)
+	}
+	for _, card := range declaration.Selected {
+		graveyardIndex := cardIndex(zones.Graveyard, card)
+		if graveyardIndex < 0 {
+			return fmt.Errorf("invalid Verita alternative cost")
+		}
+		zones.Graveyard = removeCardAt(zones.Graveyard, graveyardIndex)
+		zones.Banishment = append(zones.Banishment, card)
+	}
+	zones.Hand = removeCardAt(zones.Hand, index)
+	g.state.Zones[declaration.Controller.UID] = zones
+	g.putAllyOnField(declaration.Controller, declaration.Source)
 	return nil
 }
 

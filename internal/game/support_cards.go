@@ -291,9 +291,52 @@ func (g *Game) enqueueVeritaDeath(player *model.Player, card cardInstanceID) {
 	if g.state.Cards[card].Definition != veritaCardID {
 		return
 	}
-	for target, object := range g.state.Objects {
-		if samePlayer(object.Owner, player) && containsString(object.Types, "ALLY") && g.cardHasSubtype(object.Card, "SUITED") {
-			g.addContinuousEffect(continuousEffect{Controller: player, Target: target, Scope: effectScopeObject, Layer: effectLayerModifier, PowerLife: powerLifeModify, ExpiresAtTurn: g.state.Scheduler.TurnNumber + uint64(len(g.players)), Modifier: continuousModifier{PowerDelta: 1}})
+	operations := make([]effectOperation, 0)
+	for _, target := range g.controlledSuitedAllies(player) {
+		operations = append(operations, effectOperation{
+			Kind:   effectOperationContinuousModifier,
+			Target: target,
+			ContinuousEffect: continuousEffect{
+				Scope:         effectScopeObject,
+				Layer:         effectLayerModifier,
+				PowerLife:     powerLifeModify,
+				ExpiresAtTurn: g.endOfNextTurn(player),
+				Modifier: continuousModifier{
+					PowerDelta: 1,
+				},
+			},
+		})
+	}
+	if len(operations) == 0 {
+		return
+	}
+	ability := g.newAbilityInstance(
+		player,
+		card,
+		"",
+		operations,
+	)
+	g.flushTriggers([]effectStackItem{
+		{
+			Kind:       effectStackAbility,
+			Controller: player,
+			Source:     card,
+			SourceLKI:  card,
+			Ability:    &ability,
+		},
+	})
+}
+
+// endOfNextTurn 回傳指定玩家下個回合結束後的過期回合編號。
+// 輸入為效果控制者；輸出供 evaluator 的 ExpiresAtTurn 使用，副作用為零。
+func (g *Game) endOfNextTurn(player *model.Player) uint64 {
+	turns := uint64(0)
+	current := g.state.Scheduler.TurnPlayer
+	for {
+		turns++
+		current = g.nextPlayer(current)
+		if samePlayer(current, player) {
+			return g.state.Scheduler.TurnNumber + turns
 		}
 	}
 }

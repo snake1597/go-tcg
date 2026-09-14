@@ -32,6 +32,7 @@ type knowledgeState struct {
 	Attack           *attackDeclaration                             `json:"attack,omitempty"`
 	Wield            *wieldDeclaration                              `json:"wield,omitempty"`
 	ObjectAbility    *objectAbilityDeclaration                      `json:"object_ability,omitempty"`
+	VeritaCost       *veritaAlternativeCostDeclaration              `json:"verita_cost,omitempty"`
 }
 
 type pendingChoice struct {
@@ -146,7 +147,7 @@ func (g *Game) refreshLegalActions() {
 				actions[handle] = constants.ActionSkipMaterialize
 			}
 		}
-		if g.state.Knowledge.Choice != nil && g.state.AbilityChoice != nil && g.state.AbilityChoice.CanPass && samePlayer(g.state.AbilityChoice.Instance.Controller, player) {
+		if g.state.Knowledge.Choice != nil && ((g.state.AbilityChoice != nil && g.state.AbilityChoice.CanPass && samePlayer(g.state.AbilityChoice.Instance.Controller, player)) || (g.state.Knowledge.VeritaCost != nil && g.state.Knowledge.Choice.CanPass && samePlayer(g.state.Knowledge.VeritaCost.Controller, player))) {
 			handle := g.newViewHandle(
 				player,
 				"action:pass",
@@ -399,6 +400,16 @@ func (g *Game) submitChoice(player *model.Player, input Input) error {
 	}
 	if g.state.Knowledge.ObjectAbility != nil {
 		if err := g.submitObjectAbilityChoice(player, objectID(subject)); err != nil {
+			return err
+		}
+		g.advanceKnowledgeRevision()
+		return nil
+	}
+	if g.state.Knowledge.VeritaCost != nil {
+		if err := g.submitVeritaAlternativeCostChoice(
+			player,
+			cardInstanceID(subject),
+		); err != nil {
 			return err
 		}
 		g.advanceKnowledgeRevision()

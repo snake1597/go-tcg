@@ -150,6 +150,133 @@ func TestDuchessCopyAndVeritaAlternativeCostUseZonesAtomically(t *testing.T) {
 	}
 }
 
+// TestVeritaAlternativeCostSelectsCardsBeforeAtomicallyCommitting 驗證逐張付款與取消均不留下部分區域異動。
+func TestVeritaAlternativeCostSelectsCardsBeforeAtomicallyCommitting(t *testing.T) {
+	game := newActionGame(t)
+	player := model.PlayerOne
+	verita := findCard(t, game, player, veritaCardID)
+	zones := game.state.Zones[player.UID]
+	zones.MainDeck = removeCardAt(zones.MainDeck, cardIndex(zones.MainDeck, verita))
+	zones.Hand = append(zones.Hand, verita)
+	game.state.Zones[player.UID] = zones
+	cards := []cardInstanceID{}
+	for _, card := range game.state.Zones[player.UID].MainDeck {
+		candidate := game.state.Cards[card]
+		if !containsString(candidate.Types, "ALLY") || candidate.ReserveCost == 0 {
+			continue
+		}
+		zones := game.state.Zones[player.UID]
+		zones.MainDeck = removeCardAt(zones.MainDeck, cardIndex(zones.MainDeck, card))
+		zones.Graveyard = append(zones.Graveyard, card)
+		game.state.Zones[player.UID] = zones
+		candidate.Subtypes = append(candidate.Subtypes, "SUITED")
+		game.state.Cards[card] = candidate
+		cards = append(cards, card)
+		if len(cards) == 3 {
+			break
+		}
+	}
+	if len(cards) != 3 {
+		t.Fatal("fixture did not contain three ally cards")
+	}
+	for index, cost := range []int{3, 3, 4} {
+		card := game.state.Cards[cards[index]]
+		card.ReserveCost = cost
+		game.state.Cards[cards[index]] = card
+	}
+	if err := game.beginVeritaAlternativeCostDeclaration(player, verita); err != nil {
+		t.Fatalf("beginVeritaAlternativeCostDeclaration() error = %v", err)
+	}
+	if cardIndex(game.state.Zones[player.UID].Hand, verita) < 0 || cardIndex(game.state.Zones[player.UID].Graveyard, cards[0]) < 0 {
+		t.Fatal("starting Verita choice moved a card")
+	}
+	game.advanceKnowledgeRevision()
+	view, err := game.PlayerView(player)
+	if err != nil {
+		t.Fatalf("PlayerView() error = %v", err)
+	}
+	var pass ViewHandle
+	for _, action := range view.LegalActions {
+		if action.Kind == constants.ActionPass {
+			pass = action.Handle
+			break
+		}
+	}
+	if pass == "" {
+		t.Fatal("Verita alternative cost did not expose cancellation")
+	}
+	if err := game.Submit(
+		player,
+		Input{
+			Revision: view.Revision,
+			Action:   pass,
+		},
+	); err != nil {
+		t.Fatalf("Submit() cancel Verita alternative cost error = %v", err)
+	}
+	if game.state.Knowledge.VeritaCost != nil || cardIndex(game.state.Zones[player.UID].Hand, verita) < 0 || cardIndex(game.state.Zones[player.UID].Graveyard, cards[0]) < 0 {
+		t.Fatal("cancelled Verita choice left a partial modification")
+	}
+	if err := game.beginVeritaAlternativeCostDeclaration(player, verita); err != nil {
+		t.Fatalf("beginVeritaAlternativeCostDeclaration() after cancellation error = %v", err)
+	}
+	for _, card := range cards {
+		if err := game.submitVeritaAlternativeCostChoice(player, card); err != nil {
+			t.Fatalf("submitVeritaAlternativeCostChoice() error = %v", err)
+		}
+	}
+	if game.state.Knowledge.VeritaCost != nil || cardIndex(game.state.Zones[player.UID].Hand, verita) >= 0 {
+		t.Fatal("completed Verita selection was not committed")
+	}
+	for _, card := range cards {
+		if cardIndex(game.state.Zones[player.UID].Banishment, card) < 0 {
+			t.Fatalf("Verita payment %q was not banished", card)
+		}
+	}
+}
+
+// TestVeritaAlternativeCostRejectsInexactCardsWithoutMovingThem 驗證找不到精確組合時不會產生部分放逐。
+func TestVeritaAlternativeCostRejectsInexactCardsWithoutMovingThem(t *testing.T) {
+	game := newActionGame(t)
+	player := model.PlayerOne
+	cards := []cardInstanceID{}
+	for _, card := range game.state.Zones[player.UID].MainDeck {
+		candidate := game.state.Cards[card]
+		if !containsString(candidate.Types, "ALLY") || candidate.ReserveCost == 0 {
+			continue
+		}
+		zones := game.state.Zones[player.UID]
+		zones.MainDeck = removeCardAt(zones.MainDeck, cardIndex(zones.MainDeck, card))
+		zones.Graveyard = append(zones.Graveyard, card)
+		game.state.Zones[player.UID] = zones
+		candidate.Subtypes = append(candidate.Subtypes, "SUITED")
+		game.state.Cards[card] = candidate
+		cards = append(cards, card)
+		if len(cards) == 3 {
+			break
+		}
+	}
+	if len(cards) != 3 {
+		t.Fatal("fixture did not contain three ally cards")
+	}
+	for index, cost := range []int{3, 3, 5} {
+		card := game.state.Cards[cards[index]]
+		card.ReserveCost = cost
+		game.state.Cards[cards[index]] = card
+	}
+	if got := game.veritaAlternativeCostCards(player); len(got) != 0 {
+		t.Fatalf("veritaAlternativeCostCards() = %#v, want no exact combination", got)
+	}
+	if err := game.payVeritaAlternativeCost(player, cards); err == nil {
+		t.Fatal("payVeritaAlternativeCost() error = nil, want inexact cost rejection")
+	}
+	for _, card := range cards {
+		if cardIndex(game.state.Zones[player.UID].Graveyard, card) < 0 || cardIndex(game.state.Zones[player.UID].Banishment, card) >= 0 {
+			t.Fatalf("inexact Verita payment %q moved zones", card)
+		}
+	}
+}
+
 func TestSmokeBombsTrumpSetAndPepperedChefApplyTemporaryEffects(t *testing.T) {
 	game := newActionGame(t)
 	player := model.PlayerOne
@@ -226,6 +353,47 @@ func TestSmokeBombsTrumpSetAndPepperedChefApplyTemporaryEffects(t *testing.T) {
 	}
 	if got := game.characteristicsFor(chef).Life; got != game.state.Cards[chefCard].Life+3 {
 		t.Fatalf("Trump Set life = %d, want +3", got)
+	}
+}
+
+// TestPepperedChefOffersOnlyOtherControlledAlliesAndCanBeSkipped 驗證可略過選擇只暴露合法犧牲目標。
+func TestPepperedChefOffersOnlyOtherControlledAlliesAndCanBeSkipped(t *testing.T) {
+	game := newActionGame(t)
+	player := model.PlayerOne
+	chefCard := findCard(t, game, player, pepperedChefCardID)
+	chef := objectID("ally:chef-choice")
+	legalCard := findCard(t, game, player, twoOfHeartsCardID)
+	legal := objectID("ally:chef-legal")
+	enemyCard := findCard(t, game, model.PlayerTwo, twoOfHeartsCardID)
+	enemy := objectID("ally:chef-enemy")
+	game.state.Objects[chef] = fieldObject{
+		ID:    chef,
+		Card:  chefCard,
+		Owner: player,
+		Types: []string{"ALLY"},
+	}
+	game.state.Objects[legal] = fieldObject{
+		ID:    legal,
+		Card:  legalCard,
+		Owner: player,
+		Types: []string{"ALLY"},
+	}
+	game.state.Objects[enemy] = fieldObject{
+		ID:    enemy,
+		Card:  enemyCard,
+		Owner: model.PlayerTwo,
+		Types: []string{"ALLY"},
+	}
+	game.enqueueSuitedEnterAbility(player, chef, chefCard)
+	game.resolveTopEffectStack()
+	choice := game.state.Knowledge.Choice
+	if choice == nil || !choice.CanPass || len(choice.Options) != 1 {
+		t.Fatalf("Peppered Chef choice = %#v, want one optional legal target", choice)
+	}
+	for _, target := range choice.Options {
+		if target != entityID(legal) {
+			t.Fatalf("Peppered Chef target = %q, want %q", target, legal)
+		}
 	}
 }
 
@@ -400,8 +568,20 @@ func TestRedHareAndVeritaContinuousEffects(t *testing.T) {
 	}
 	delete(game.state.Objects, verita)
 	game.enqueueVeritaDeath(player, veritaCard)
+	if len(game.state.EffectsStack) != 1 || game.state.EffectsStack[0].Ability == nil {
+		t.Fatalf("Verita On Death stack = %#v, want one Ability Instance", game.state.EffectsStack)
+	}
+	game.resolveAbility(*game.state.EffectsStack[0].Ability)
 	if got := game.characteristicsFor(duchess).Power; got != game.state.Cards[duchessCard].Power+1 {
 		t.Fatalf("Verita On Death power = %d, want +1", got)
+	}
+	if len(game.state.ContinuousEffects) != 1 || game.state.ContinuousEffects[0].ExpiresAtTurn != game.state.Scheduler.TurnNumber+uint64(len(game.players)) {
+		t.Fatalf("Verita On Death duration = %#v, want end of owner's next turn", game.state.ContinuousEffects)
+	}
+	game.state.Scheduler.TurnNumber = game.state.ContinuousEffects[0].ExpiresAtTurn
+	game.expireContinuousEffects()
+	if got := game.characteristicsFor(duchess).Power; got != game.state.Cards[duchessCard].Power {
+		t.Fatalf("expired Verita On Death power = %d, want base power", got)
 	}
 }
 

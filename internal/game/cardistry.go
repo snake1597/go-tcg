@@ -307,11 +307,24 @@ func (g *Game) enqueueSuitedEnterAbility(player *model.Player, source objectID, 
 				options = append(options, id)
 			}
 		}
+		sort.Slice(options, func(first, second int) bool { return options[first] < options[second] })
 		if len(options) > 0 {
-			g.pushAbility(g.newAbilityInstance(player, card, source, []effectOperation{
-				{Kind: effectOperationChoose, Options: options},
-				{Kind: effectOperationSacrificeForChef, Source: source},
-			}))
+			g.pushAbility(g.newAbilityInstance(
+				player,
+				card,
+				source,
+				[]effectOperation{
+					{
+						Kind:    effectOperationChoose,
+						Options: options,
+						CanPass: true,
+					},
+					{
+						Kind:   effectOperationSacrificeForChef,
+						Source: source,
+					},
+				},
+			))
 		}
 	}
 }

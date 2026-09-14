@@ -212,6 +212,13 @@ func (g *Game) Submit(player *model.Player, input Input) error {
 		return nil
 	}
 	kind, exists := g.state.Knowledge.Actions[player.UID][input.Action]
+	if g.state.Knowledge.VeritaCost != nil && g.state.Knowledge.Choice != nil && g.state.Knowledge.Choice.CanPass && exists && kind == constants.ActionPass {
+		g.state.Knowledge.VeritaCost = nil
+		g.state.Knowledge.Choice = nil
+		g.advanceKnowledgeRevision()
+		g.recordReplayStep(player, input)
+		return nil
+	}
 	if g.state.AbilityChoice != nil && g.state.AbilityChoice.CanPass && exists && kind == constants.ActionPass {
 		if g.state.AbilityChoice.Instance.RuntimeCopy {
 			g.destroyRuntimeCopy(g.state.AbilityChoice.Instance.Source)
