@@ -4,9 +4,9 @@
 
 **Blocked by:** 10: 以 Impact Hammer 完成觸發收集與排序; 11: 完成攻擊、Retaliation、傷害與死亡的戰鬥縱切; 12: 以 Arthur 與 Bulwark Sword 建立中央衍生特徵求值器; 12.5: 建立統一 Ability 與 Effect Runtime; 14: 支援 Cardistry 的選擇、棄牌與部署互動.
 
-**Status:** ready-for-agent
+**Status:** completed
 
-- [ ] Heated Vengeance 只在本回合 Champion 已受傷時取得正確 power，On Attack optional self-damage 使用觸發流程。
-- [ ] Red Hare 的 Pride restriction 及 Unique Human 條件由中央 permission/characteristic query 決定。
-- [ ] Granted ability 建立獨立 Ability Instance，optional discard-then-draw 不由卡牌直接修改 zones。
-- [ ] 回合切換、來源離場、重新進場及沒有可棄牌選項時的 lifetime 與合法性均正確。
+- [x] Heated Vengeance 只在本回合 Champion 已受傷時取得正確 power，On Attack optional self-damage 使用觸發流程。
+- [x] Red Hare 的 Pride restriction 及 Unique Human 條件由中央 permission/characteristic query 決定。
+- [x] Granted ability 建立獨立 Ability Instance，optional discard-then-draw 不由卡牌直接修改 zones。
+- [x] 回合切換、來源離場、重新進場及沒有可棄牌選項時的 lifetime 與合法性均正確。

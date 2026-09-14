@@ -406,9 +406,6 @@ func (g *Game) submitChoice(player *model.Player, input Input) error {
 	}
 	if g.state.AbilityChoice != nil {
 		continuation := g.state.AbilityChoice
-		if continuation.CanPass && !g.isLegalTarget(objectID(subject)) {
-			return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, subject)
-		}
 		continuation.Instance.Target = objectID(subject)
 		continuation.Instance.Operations = continuation.Operations
 		g.state.AbilityChoice = nil

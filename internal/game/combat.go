@@ -28,11 +28,30 @@ func (g *Game) legalAttackers(player *model.Player) []objectID {
 	}
 	attackers := []objectID{champion.ID}
 	for id, object := range g.state.Objects {
-		if samePlayer(object.Owner, player) && !object.Rested && g.state.Cards[object.Card].Definition == redHareCardID && g.redHareObeys(player, id) {
+		if samePlayer(object.Owner, player) && !object.Rested && g.state.Cards[object.Card].Definition == redHareCardID && g.canAttackWith(player, id) {
 			attackers = append(attackers, id)
 		}
 	}
 	return attackers
+}
+
+// canAttackWith 是 Ally 攻擊的中央 permission query；Pride 只透過 derived
+// characteristics 表示，讓移除 Pride 的 static effect 立即影響合法攻擊。
+func (g *Game) canAttackWith(player *model.Player, attacker objectID) bool {
+	object, exists := g.state.Objects[attacker]
+	if !exists || !samePlayer(object.Owner, player) || object.Rested || !containsString(object.Types, "ALLY") {
+		return false
+	}
+	return g.obeys(player, attacker)
+}
+
+func (g *Game) obeys(player *model.Player, ally objectID) bool {
+	pride := g.characteristicsFor(ally).Pride
+	if pride == 0 {
+		return true
+	}
+	champion, exists := g.state.Champions[player.UID]
+	return exists && g.state.Cards[champion.Card].Level >= int64(pride)
 }
 
 func (g *Game) legalAttackTargets(player *model.Player) []objectID {
@@ -118,29 +137,82 @@ func (g *Game) submitAttackChoice(player *model.Player, subject entityID) error 
 		Target:     target,
 		Attacker:   attack.Attacker,
 	})
-	if attacker.Definition == redHareCardID && len(g.state.Zones[player.UID].Hand) > 0 {
-		g.pushAbility(g.newAbilityInstance(
-			player,
-			attacker.ID,
-			"",
-			[]effectOperation{
-				{
-					Kind: effectOperationChooseHandCard,
-				},
-				{
-					Kind: effectOperationDiscard,
-				},
-				{
-					Kind:   effectOperationDraw,
-					Amount: 1,
-				},
-			},
-		))
-	}
 	g.state.Knowledge.Attack = nil
 	g.state.Knowledge.Choice = nil
-	g.grantOpportunity(player)
+	g.flushTriggers(g.onAttackTriggers(player, attack.Attacker))
+	if len(g.state.EffectsStack) == 1 {
+		g.grantOpportunity(player)
+	}
 	return nil
+}
+
+func (g *Game) onAttackTriggers(player *model.Player, attacker objectID) []effectStackItem {
+	card, exists := g.cardForObject(attacker)
+	if !exists {
+		return nil
+	}
+	if card.Definition == heatedVengeanceCardID && g.championHasClass(player, card.Classes) {
+		champion, championExists := g.state.Champions[player.UID]
+		if !championExists {
+			return nil
+		}
+		ability := g.newAbilityInstance(
+			player,
+			card.ID,
+			champion.ID,
+			[]effectOperation{
+				{
+					Kind:    effectOperationChoose,
+					Options: []objectID{champion.ID},
+					CanPass: true,
+				},
+				{
+					Kind:   effectOperationDamage,
+					Amount: 3,
+				},
+			},
+		)
+		return []effectStackItem{
+			{
+				Kind:       effectStackAbility,
+				Controller: player,
+				Source:     card.ID,
+				SourceLKI:  card.ID,
+				Target:     champion.ID,
+				Ability:    &ability,
+			},
+		}
+	}
+	if card.Definition != redHareCardID || !g.characteristicsFor(attacker).GrantedOnAttack || len(g.state.Zones[player.UID].Hand) == 0 {
+		return nil
+	}
+	ability := g.newAbilityInstance(
+		player,
+		card.ID,
+		"",
+		[]effectOperation{
+			{
+				Kind:    effectOperationChooseHandCard,
+				CanPass: true,
+			},
+			{
+				Kind: effectOperationDiscard,
+			},
+			{
+				Kind:   effectOperationDraw,
+				Amount: 1,
+			},
+		},
+	)
+	return []effectStackItem{
+		{
+			Kind:       effectStackAbility,
+			Controller: player,
+			Source:     card.ID,
+			SourceLKI:  card.ID,
+			Ability:    &ability,
+		},
+	}
 }
 
 func (g *Game) submitWieldChoice(player *model.Player, subject entityID) error {

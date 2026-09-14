@@ -3,6 +3,7 @@ package game
 import (
 	"testing"
 
+	"go-tcg/internal/constants"
 	"go-tcg/internal/model"
 )
 
@@ -234,13 +235,13 @@ func TestRedHareAndVeritaContinuousEffects(t *testing.T) {
 	redHareCard := findCard(t, game, player, redHareCardID)
 	redHare := objectID("ally:red-hare")
 	game.state.Objects[redHare] = fieldObject{ID: redHare, Card: redHareCard, Owner: player, Types: []string{"ALLY"}}
-	if game.redHareObeys(player, redHare) {
+	if game.canAttackWith(player, redHare) {
 		t.Fatal("Red Hare obeyed without a level-three champion or qualifying ally")
 	}
 	duchessCard := findCard(t, game, player, duchessCardID)
 	duchess := objectID("ally:duchess")
 	game.state.Objects[duchess] = fieldObject{ID: duchess, Card: duchessCard, Owner: player, Types: []string{"ALLY", "UNIQUE"}}
-	if !game.redHareObeys(player, redHare) {
+	if !game.canAttackWith(player, redHare) {
 		t.Fatal("Red Hare did not obey with a fire unique Human ally")
 	}
 	veritaCard := findCard(t, game, player, veritaCardID)
@@ -253,5 +254,143 @@ func TestRedHareAndVeritaContinuousEffects(t *testing.T) {
 	game.enqueueVeritaDeath(player, veritaCard)
 	if got := game.characteristicsFor(duchess).Power; got != game.state.Cards[duchessCard].Power+1 {
 		t.Fatalf("Verita On Death power = %d, want +1", got)
+	}
+}
+
+func TestHeatedVengeanceTracksChampionDamageAndResolvesOptionalOnAttack(t *testing.T) {
+	game := newActionGame(t)
+	player := model.PlayerOne
+	heatedCard := findCard(t, game, player, heatedVengeanceCardID)
+	heated := objectID("attack:heated-vengeance")
+	game.state.Objects[heated] = fieldObject{
+		ID:    heated,
+		Card:  heatedCard,
+		Owner: player,
+		Types: []string{
+			"ALLY",
+		},
+	}
+	champion := game.state.Champions[player.UID]
+	championCard := game.state.Cards[champion.Card]
+	championCard.Classes = []string{
+		"WARRIOR",
+	}
+	game.state.Cards[champion.Card] = championCard
+	if got := game.characteristicsFor(heated).Power; got != 2 {
+		t.Fatalf("Heated Vengeance power = %d, want 2 before champion damage", got)
+	}
+	game.damageUnit(champion.ID, 1)
+	if got := game.characteristicsFor(heated).Power; got != 5 {
+		t.Fatalf("Heated Vengeance power = %d, want 5 after champion damage", got)
+	}
+	game.state.Scheduler.TurnNumber++
+	if got := game.characteristicsFor(heated).Power; got != 2 {
+		t.Fatalf("Heated Vengeance power = %d, want 2 after turn change", got)
+	}
+	triggers := game.onAttackTriggers(player, heated)
+	if len(triggers) != 1 || triggers[0].Ability == nil {
+		t.Fatalf("On Attack triggers = %#v, want one Ability Instance", triggers)
+	}
+	game.flushTriggers(triggers)
+	game.resolveTopEffectStack()
+	if game.state.AbilityChoice == nil || !game.state.AbilityChoice.CanPass {
+		t.Fatalf("Heated Vengeance choice = %#v, want optional self-damage choice", game.state.AbilityChoice)
+	}
+	delete(game.state.Objects, heated)
+	selectPendingChoice(t, game, player, 0)
+	game.resolveTopEffectStack()
+	if got := game.state.Champions[player.UID].Damage; got != 4 {
+		t.Fatalf("champion damage = %d, want prior 1 plus 3 from LKI trigger", got)
+	}
+	game.state.Objects[heated] = fieldObject{
+		ID:    heated,
+		Card:  heatedCard,
+		Owner: player,
+		Types: []string{
+			"ALLY",
+		},
+	}
+	game.flushTriggers(game.onAttackTriggers(player, heated))
+	game.resolveTopEffectStack()
+	view, err := game.PlayerView(player)
+	if err != nil {
+		t.Fatalf("PlayerView() error = %v", err)
+	}
+	if err := game.Submit(
+		player,
+		Input{
+			Revision: view.Revision,
+			Action:   actionByKind(t, view, constants.ActionPass).Handle,
+		},
+	); err != nil {
+		t.Fatalf("Submit() optional self-damage pass error = %v", err)
+	}
+	if got := game.state.Champions[player.UID].Damage; got != 4 {
+		t.Fatalf("champion damage = %d, want unchanged after optional pass", got)
+	}
+}
+
+func TestRedHarePermissionAndGrantedAttackAbilityUseDerivedCharacteristics(t *testing.T) {
+	game := newActionGame(t)
+	player := model.PlayerOne
+	redHareCard := findCard(t, game, player, redHareCardID)
+	redHare := objectID("ally:red-hare")
+	game.state.Objects[redHare] = fieldObject{
+		ID:    redHare,
+		Card:  redHareCard,
+		Owner: player,
+		Types: []string{
+			"ALLY",
+		},
+	}
+	if game.canAttackWith(player, redHare) || game.characteristicsFor(redHare).GrantedOnAttack {
+		t.Fatal("Red Hare gained permission or its granted ability without a qualifying Human ally")
+	}
+	duchessCard := findCard(t, game, player, duchessCardID)
+	duchess := objectID("ally:duchess")
+	game.state.Objects[duchess] = fieldObject{
+		ID:    duchess,
+		Card:  duchessCard,
+		Owner: player,
+		Types: []string{
+			"ALLY",
+			"UNIQUE",
+		},
+	}
+	if !game.canAttackWith(player, redHare) || game.characteristicsFor(redHare).Pride != 0 || !game.characteristicsFor(redHare).GrantedOnAttack {
+		t.Fatalf("Red Hare characteristics = %#v, want removed Pride and granted On Attack", game.characteristicsFor(redHare))
+	}
+	triggers := game.onAttackTriggers(player, redHare)
+	if len(triggers) != 1 || triggers[0].Ability == nil || !triggers[0].Ability.Operations[0].CanPass {
+		t.Fatalf("granted On Attack triggers = %#v, want optional Ability Instance", triggers)
+	}
+	game.state.Zones[player.UID] = playerZones{}
+	if got := game.onAttackTriggers(player, redHare); got != nil {
+		t.Fatalf("On Attack triggers without discard options = %#v, want none", got)
+	}
+	delete(game.state.Objects, duchess)
+	if game.canAttackWith(player, redHare) || game.characteristicsFor(redHare).GrantedOnAttack {
+		t.Fatal("Red Hare retained removed Pride or granted ability after source left")
+	}
+	game.state.Objects[duchess] = fieldObject{
+		ID:    duchess,
+		Card:  duchessCard,
+		Owner: player,
+		Types: []string{
+			"ALLY",
+			"UNIQUE",
+		},
+	}
+	delete(game.state.Objects, redHare)
+	game.state.Objects[redHare] = fieldObject{
+		ID:    redHare,
+		Card:  redHareCard,
+		Owner: player,
+		Types: []string{
+			"ALLY",
+		},
+	}
+	if !game.canAttackWith(player, redHare) || !game.characteristicsFor(redHare).GrantedOnAttack {
+		t.Fatal("re-entered Red Hare did not receive fresh derived permission and ability")
 	}
 }

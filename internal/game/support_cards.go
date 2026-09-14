@@ -201,20 +201,6 @@ func (g *Game) payVeritaAlternativeCost(player *model.Player, cards []cardInstan
 	return nil
 }
 
-func (g *Game) redHareObeys(player *model.Player, redHare objectID) bool {
-	champion, exists := g.state.Champions[player.UID]
-	if !exists || g.state.Cards[champion.Card].Level >= 3 {
-		return true
-	}
-	for id, object := range g.state.Objects {
-		card := g.state.Cards[object.Card]
-		if id != redHare && samePlayer(object.Owner, player) && containsString(card.Types, "UNIQUE") && containsString(card.Types, "ALLY") && containsString(card.Subtypes, "HUMAN") && (containsString(card.Elements, "FIRE") || containsString(card.Elements, "TERA")) {
-			return true
-		}
-	}
-	return false
-}
-
 func (g *Game) activateSmokeBombs(player *model.Player, source, target objectID) error {
 	object, exists := g.state.Objects[source]
 	targetObject, targetExists := g.state.Objects[target]

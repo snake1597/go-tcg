@@ -49,6 +49,7 @@ type effectOperation struct {
 	Counter                   string              `json:"counter,omitempty"`
 	MoveSourceToGraveyard     bool                `json:"move_source_to_graveyard,omitempty"`
 	DistinctSuitedCostsDamage bool                `json:"distinct_suited_costs_damage,omitempty"`
+	CanPass                   bool                `json:"can_pass,omitempty"`
 	ContinuousEffect          continuousEffect    `json:"continuous_effect,omitempty"`
 	Options                   []objectID          `json:"options,omitempty"`
 }
@@ -133,7 +134,11 @@ func (g *Game) resolveAbility(instance abilityInstance) {
 				operationIndex,
 				instance.Controller,
 				g.state.Zones[instance.Controller.UID].Hand,
+				operation.CanPass,
 			)
+			if g.state.AbilityChoice != nil {
+				g.advanceKnowledgeRevision()
+			}
 			return
 		case effectOperationChooseMemoryAlly:
 			g.beginAbilityCardChoice(
@@ -141,7 +146,11 @@ func (g *Game) resolveAbility(instance abilityInstance) {
 				operationIndex,
 				instance.Controller,
 				g.qualifiedMemoryAllies(instance.Controller),
+				operation.CanPass,
 			)
+			if g.state.AbilityChoice != nil {
+				g.advanceKnowledgeRevision()
+			}
 			return
 		case effectOperationChooseDuchessCopy:
 			g.beginAbilityCardChoice(
@@ -149,7 +158,11 @@ func (g *Game) resolveAbility(instance abilityInstance) {
 				operationIndex,
 				instance.Controller,
 				g.eligibleDuchessCopies(instance.Controller),
+				operation.CanPass,
 			)
+			if g.state.AbilityChoice != nil {
+				g.advanceKnowledgeRevision()
+			}
 			return
 		case effectOperationCopyDuchessAction:
 			copied, err := g.copyDuchessAction(
@@ -203,13 +216,15 @@ func (g *Game) resolveAbility(instance abilityInstance) {
 				return
 			}
 			completed = false
+			canPass := operation.CanPass || instance.RuntimeCopy
 			g.state.AbilityChoice = &abilityChoice{
 				Instance:   instance,
 				Operations: append([]effectOperation(nil), instance.Operations[operationIndex+1:]...),
-				CanPass:    instance.RuntimeCopy,
+				CanPass:    canPass,
 			}
 			g.setDeclarationChoice(instance.Controller, operation.Options)
-			g.state.Knowledge.Choice.CanPass = instance.RuntimeCopy
+			g.state.Knowledge.Choice.CanPass = canPass
+			g.advanceKnowledgeRevision()
 			return
 		default:
 			panic(fmt.Sprintf("unknown effect operation %q", operation.Kind))
@@ -224,7 +239,7 @@ func (g *Game) destroyRuntimeCopy(source cardInstanceID) {
 
 // beginAbilityCardChoice 保存選牌後要繼續執行的 operation，並建立玩家專屬選項。
 // 沒有可選牌時不建立選擇；呼叫此函式的結算分支仍會直接返回，不繼續後續操作。
-func (g *Game) beginAbilityCardChoice(instance abilityInstance, operationIndex int, player *model.Player, cards []cardInstanceID) {
+func (g *Game) beginAbilityCardChoice(instance abilityInstance, operationIndex int, player *model.Player, cards []cardInstanceID, canPass bool) {
 	if len(cards) == 0 {
 		return
 	}
@@ -232,8 +247,13 @@ func (g *Game) beginAbilityCardChoice(instance abilityInstance, operationIndex i
 	for _, card := range cards {
 		options = append(options, objectID(card))
 	}
-	g.state.AbilityChoice = &abilityChoice{Instance: instance, Operations: append([]effectOperation(nil), instance.Operations[operationIndex+1:]...)}
+	g.state.AbilityChoice = &abilityChoice{
+		Instance:   instance,
+		Operations: append([]effectOperation(nil), instance.Operations[operationIndex+1:]...),
+		CanPass:    canPass,
+	}
 	g.setDeclarationChoice(player, options)
+	g.state.Knowledge.Choice.CanPass = canPass
 }
 
 func (g *Game) discardCard(player *model.Player, card cardInstanceID) {
