@@ -286,7 +286,7 @@ func (g *Game) nextRandom() uint64 {
 }
 
 func (g *Game) resolveSpiritOfFireOnEnter(player *model.Player) bool {
-	return g.drawCards(
+	return g.drawCardsWithDeckOut(
 		player,
 		7,
 		spiritOfFireOnEnterCause,

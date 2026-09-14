@@ -183,14 +183,16 @@ func (g *Game) nextPlayer(player *model.Player) *model.Player {
 }
 
 func (g *Game) drawTurnCard(player *model.Player) bool {
-	return g.drawCards(
+	return g.drawCardsWithDeckOut(
 		player,
 		1,
 		"turn:draw",
 	)
 }
 
-func (g *Game) drawCards(player *model.Player, count int, cause string) bool {
+// drawCardsWithDeckOut 將指定張數由主牌組頂移入手牌，並在牌組抽空時結束對局。
+// 此行為僅適用於標準回合與開局抽牌；能力抽牌使用 drawCards，且不會造成敗北。
+func (g *Game) drawCardsWithDeckOut(player *model.Player, count int, cause string) bool {
 	batch := eventBatch{
 		Player: player,
 		Cause:  cause,
