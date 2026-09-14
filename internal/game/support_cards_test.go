@@ -215,7 +215,7 @@ func TestSmokeBombsTrumpSetAndPepperedChefApplyTemporaryEffects(t *testing.T) {
 	}
 	game.state.EffectsStack = append(game.state.EffectsStack, effectStackItem{
 		Kind:       effectStackCombat,
-		Controller: player,
+		Controller: model.PlayerTwo,
 		Target:     objectID("champion:" + model.PlayerTwo.UID),
 	})
 	if err := game.retargetAttackWithTrumpSet(player, chef); err != nil {
@@ -226,6 +226,154 @@ func TestSmokeBombsTrumpSetAndPepperedChefApplyTemporaryEffects(t *testing.T) {
 	}
 	if got := game.characteristicsFor(chef).Life; got != game.state.Cards[chefCard].Life+3 {
 		t.Fatalf("Trump Set life = %d, want +3", got)
+	}
+}
+
+func TestSmokeBombsRevalidatesAttackTargetsForStealthAndTrueSight(t *testing.T) {
+	game := newActionGame(t)
+	defender := model.PlayerOne
+	attacker := model.PlayerTwo
+	targetCard := findCard(t, game, defender, duchessCardID)
+	target := objectID("ally:smoke-target")
+	game.state.Objects[target] = fieldObject{
+		ID:    target,
+		Card:  targetCard,
+		Owner: defender,
+		Types: []string{
+			"ALLY",
+		},
+	}
+	smokeCard := findCard(t, game, defender, smokeBombsCardID)
+	smoke := objectID("regalia:smoke")
+	game.state.Objects[smoke] = fieldObject{
+		ID:    smoke,
+		Card:  smokeCard,
+		Owner: defender,
+		Types: []string{
+			"ITEM",
+		},
+	}
+	if err := game.activateSmokeBombs(defender, smoke, target); err != nil {
+		t.Fatalf("activateSmokeBombs() error = %v", err)
+	}
+	attackingChampion := game.state.Champions[attacker.UID]
+	defendingChampion := game.state.Champions[defender.UID]
+	defendingChampion.TauntUntilTurn = 0
+	game.state.Champions[defender.UID] = defendingChampion
+	game.resolveCombat(effectStackItem{
+		Kind:       effectStackCombat,
+		Controller: attacker,
+		Target:     target,
+		Attacker:   attackingChampion.ID,
+	})
+	if got := game.state.Objects[target].Damage; got != 0 {
+		t.Fatalf("stealthed target damage = %d, want 0", got)
+	}
+	if _, exists := game.state.Objects[target]; !exists {
+		t.Fatal("stealthed target left the field")
+	}
+	game.addContinuousEffect(continuousEffect{
+		Target: attackingChampion.ID,
+		Scope:  effectScopeObject,
+		Layer:  effectLayerAbility,
+		Modifier: continuousModifier{
+			GrantTrueSight: true,
+			PowerDelta:     1,
+		},
+	})
+	game.resolveCombat(effectStackItem{
+		Kind:       effectStackCombat,
+		Controller: attacker,
+		Target:     target,
+		Attacker:   attackingChampion.ID,
+	})
+	if got := game.state.Objects[target].Damage; got == 0 {
+		t.Fatalf("true sight attack did not damage the stealthed target; attacker characteristics = %#v, attack targets = %#v", game.characteristicsFor(attackingChampion.ID), game.attackTargets(attacker, attackingChampion.ID))
+	}
+	damageBeforeTaunt := game.state.Objects[target].Damage
+	defendingChampion = game.state.Champions[defender.UID]
+	defendingChampion.TauntUntilTurn = game.state.Scheduler.TurnNumber + 1
+	game.state.Champions[defender.UID] = defendingChampion
+	game.resolveCombat(effectStackItem{
+		Kind:       effectStackCombat,
+		Controller: attacker,
+		Target:     target,
+		Attacker:   attackingChampion.ID,
+	})
+	if got := game.state.Objects[target].Damage; got != damageBeforeTaunt {
+		t.Fatalf("taunt-restricted target damage = %d, want %d", got, damageBeforeTaunt)
+	}
+}
+
+func TestTrumpSetRequiresDifferentLegalSuitedAllyAndFizzlesDeterministically(t *testing.T) {
+	game := newActionGameWithSource(t, trumpSetCardID)
+	defender := model.PlayerOne
+	attacker := model.PlayerTwo
+	firstCard := findCard(t, game, defender, twoOfHeartsCardID)
+	first := objectID("ally:first-suited")
+	game.state.Objects[first] = fieldObject{
+		ID:    first,
+		Card:  firstCard,
+		Owner: defender,
+		Types: []string{
+			"ALLY",
+		},
+	}
+	secondCard := findCard(t, game, defender, threeOfSpadesCardID)
+	second := objectID("ally:second-suited")
+	game.state.Objects[second] = fieldObject{
+		ID:    second,
+		Card:  secondCard,
+		Owner: defender,
+		Types: []string{
+			"ALLY",
+		},
+	}
+	attackingChampion := game.state.Champions[attacker.UID]
+	game.state.EffectsStack = append(game.state.EffectsStack, effectStackItem{
+		Kind:       effectStackCombat,
+		Controller: attacker,
+		Target:     first,
+		Attacker:   attackingChampion.ID,
+	})
+	if got := game.trumpSetTargets(defender); len(got) != 1 || got[0] != second {
+		t.Fatalf("trumpSetTargets() = %#v, want only %q", got, second)
+	}
+	if !game.canActivateAction(defender, findCard(t, game, defender, trumpSetCardID)) {
+		t.Fatal("Trump Set was not legal with a distinct suited ally")
+	}
+	if err := game.retargetAttackWithTrumpSet(defender, second); err != nil {
+		t.Fatalf("retargetAttackWithTrumpSet() error = %v", err)
+	}
+	if got := game.state.EffectsStack[0].Target; got != second {
+		t.Fatalf("retargeted attack target = %q, want %q", got, second)
+	}
+	if got := game.characteristicsFor(second).Power; got != game.state.Cards[secondCard].Power+3 {
+		t.Fatalf("Trump Set power = %d, want +3", got)
+	}
+	game.state.Scheduler.TurnNumber++
+	if got := game.characteristicsFor(second).Power; got != game.state.Cards[secondCard].Power {
+		t.Fatalf("expired Trump Set power = %d, want %d", got, game.state.Cards[secondCard].Power)
+	}
+	delete(game.state.Champions, attacker.UID)
+	trumpCard := findCard(t, game, defender, trumpSetCardID)
+	ability := game.newAbilityInstance(
+		defender,
+		trumpCard,
+		second,
+		[]effectOperation{
+			{
+				Kind: effectOperationRetargetAttack,
+			},
+			{
+				Kind:                  effectOperationMove,
+				MoveSourceToGraveyard: true,
+			},
+		},
+	)
+	game.resolveAbility(ability)
+	if cardIndex(game.state.Zones[defender.UID].Graveyard, trumpCard) < 0 {
+		t.Fatal("Trump Set did not move to the graveyard after its attack source became invalid")
 	}
 }
 

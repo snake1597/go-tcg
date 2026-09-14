@@ -23,12 +23,12 @@ func (g *Game) legalAttackers(player *model.Player) []objectID {
 		return nil
 	}
 	champion, exists := g.state.Champions[player.UID]
-	if !exists || champion.Rested || g.characteristicsFor(champion.ID).Power <= 0 || len(g.legalAttackTargets(player)) == 0 {
+	if !exists || champion.Rested || g.characteristicsFor(champion.ID).Power <= 0 || len(g.attackTargets(player, champion.ID)) == 0 {
 		return nil
 	}
 	attackers := []objectID{champion.ID}
 	for id, object := range g.state.Objects {
-		if samePlayer(object.Owner, player) && !object.Rested && g.state.Cards[object.Card].Definition == redHareCardID && g.canAttackWith(player, id) {
+		if samePlayer(object.Owner, player) && !object.Rested && g.state.Cards[object.Card].Definition == redHareCardID && g.canAttackWith(player, id) && len(g.attackTargets(player, id)) > 0 {
 			attackers = append(attackers, id)
 		}
 	}
@@ -55,9 +55,22 @@ func (g *Game) obeys(player *model.Player, ally objectID) bool {
 }
 
 func (g *Game) legalAttackTargets(player *model.Player) []objectID {
+	champion, exists := g.state.Champions[player.UID]
+	if !exists {
+		return nil
+	}
+	return g.attackTargets(player, champion.ID)
+}
+
+// attackTargets 以 attacker 的目前特性計算 player 可宣告或保留的攻擊目標。
+// 回傳值已套用 stealth、true sight 與醒著 Taunt 的限制；查詢本身不改變遊戲狀態。
+func (g *Game) attackTargets(player *model.Player, attacker objectID) []objectID {
 	targets := make([]objectID, 0, len(g.state.Champions))
-	champion, championExists := g.state.Champions[player.UID]
-	attackerHasTrueSight := championExists && g.characteristicsFor(champion.ID).TrueSight
+	if _, exists := g.cardForObject(attacker); !exists {
+		return nil
+	}
+	attackerHasTrueSight := g.characteristicsFor(attacker).TrueSight
+	tauntTargets := make([]objectID, 0, len(g.players))
 	for _, opponent := range g.players {
 		if samePlayer(opponent, player) {
 			continue
@@ -65,6 +78,9 @@ func (g *Game) legalAttackTargets(player *model.Player) []objectID {
 		champion, exists := g.state.Champions[opponent.UID]
 		if exists {
 			targets = append(targets, champion.ID)
+			if !champion.Rested && champion.TauntUntilTurn > g.state.Scheduler.TurnNumber {
+				tauntTargets = append(tauntTargets, champion.ID)
+			}
 		}
 	}
 	for id, object := range g.state.Objects {
@@ -79,7 +95,22 @@ func (g *Game) legalAttackTargets(player *model.Player) []objectID {
 			return targets[first] < targets[second]
 		},
 	)
+	if len(tauntTargets) > 0 {
+		sort.Slice(
+			tauntTargets,
+			func(first, second int) bool {
+				return tauntTargets[first] < tauntTargets[second]
+			},
+		)
+		return tauntTargets
+	}
 	return targets
+}
+
+// isLegalAttackTarget 回傳 target 是否仍在 attacker 的目前合法攻擊目標集合中。
+// 它不改變遊戲狀態，供宣告、重導與 combat resolution 共用相同規則。
+func (g *Game) isLegalAttackTarget(player *model.Player, attacker, target objectID) bool {
+	return containsObject(g.attackTargets(player, attacker), target)
 }
 
 func (g *Game) beginAttack(player *model.Player, attacker objectID) error {
@@ -87,7 +118,7 @@ func (g *Game) beginAttack(player *model.Player, attacker objectID) error {
 		return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, attacker)
 	}
 	g.state.Knowledge.Attack = &attackDeclaration{Controller: player, Attacker: attacker}
-	g.setDeclarationChoice(player, g.legalAttackTargets(player))
+	g.setDeclarationChoice(player, g.attackTargets(player, attacker))
 	return nil
 }
 
@@ -114,7 +145,7 @@ func (g *Game) beginWield(player *model.Player, weapon objectID) error {
 func (g *Game) submitAttackChoice(player *model.Player, subject entityID) error {
 	attack := g.state.Knowledge.Attack
 	target := objectID(subject)
-	if attack == nil || !samePlayer(attack.Controller, player) || !containsObject(g.legalAttackTargets(player), target) || !containsObject(g.legalAttackers(player), attack.Attacker) {
+	if attack == nil || !samePlayer(attack.Controller, player) || !g.isLegalAttackTarget(player, attack.Attacker, target) || !containsObject(g.legalAttackers(player), attack.Attacker) {
 		return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, subject)
 	}
 	attacker, exists := g.cardForObject(attack.Attacker)
@@ -250,7 +281,7 @@ func (g *Game) resolveCombat(item effectStackItem) {
 	}
 	attacker, attackerExists := g.cardForObject(attackerID)
 	target, targetExists := g.cardForObject(item.Target)
-	if !attackerExists || !targetExists || attackerID == item.Target {
+	if !attackerExists || !targetExists || attackerID == item.Target || !g.isLegalAttackTarget(item.Controller, attackerID, item.Target) {
 		return
 	}
 	attackerPower := g.characteristicsFor(attackerID).Power

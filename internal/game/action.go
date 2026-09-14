@@ -64,7 +64,7 @@ func (g *Game) canActivateAction(player *model.Player, card cardInstanceID) bool
 		return true
 	}
 	if candidate.Definition == trumpSetCardID {
-		return g.hasActiveCombat() && len(g.controlledSuitedAllies(player)) > 0
+		return len(g.trumpSetTargets(player)) > 0
 	}
 	return candidate.Definition == blazingThrowCardID || candidate.Definition == fieryInterferenceCardID || candidate.Definition == straightFlareCardID
 }
@@ -78,7 +78,7 @@ func (g *Game) beginActionDeclaration(player *model.Player, card cardInstanceID)
 	}
 	targets := g.legalTargets()
 	if g.state.Cards[card].Definition == trumpSetCardID {
-		targets = g.controlledSuitedAllies(player)
+		targets = g.trumpSetTargets(player)
 	}
 	if !g.canActivateAction(player, card) || len(targets) == 0 {
 		return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, card)
@@ -136,7 +136,7 @@ func (g *Game) submitActionDeclarationChoice(player *model.Player, subject entit
 	switch declaration.Stage {
 	case declarationTarget:
 		target := objectID(subject)
-		if !g.isLegalTarget(target) || (g.state.Cards[declaration.Source].Definition == trumpSetCardID && !containsObject(g.controlledSuitedAllies(player), target)) {
+		if !g.isLegalTarget(target) || (g.state.Cards[declaration.Source].Definition == trumpSetCardID && !containsObject(g.trumpSetTargets(player), target)) {
 			return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, subject)
 		}
 		declaration.Target = target
@@ -329,15 +329,6 @@ func (g *Game) actionAbilityInstance(declaration *actionDeclaration) abilityInst
 		declaration.Target,
 		operations,
 	)
-}
-
-func (g *Game) hasActiveCombat() bool {
-	for _, item := range g.state.EffectsStack {
-		if item.Kind == effectStackCombat {
-			return true
-		}
-	}
-	return false
 }
 
 func (g *Game) removeEffectSource(source cardInstanceID) {

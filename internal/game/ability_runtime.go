@@ -194,9 +194,8 @@ func (g *Game) resolveAbility(instance abilityInstance) {
 				return
 			}
 		case effectOperationRetargetAttack:
-			if err := g.retargetAttackWithTrumpSet(instance.Controller, target); err != nil {
-				return
-			}
+			// 重導失敗時此牌照常結算後續移動；已支付的費用不會退回。
+			_ = g.retargetAttackWithTrumpSet(instance.Controller, target)
 		case effectOperationDiscard:
 			g.discardCard(instance.Controller, cardInstanceID(target))
 		case effectOperationDeploy:

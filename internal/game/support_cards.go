@@ -34,12 +34,7 @@ func (g *Game) beginObjectAbility(player *model.Player, source objectID) error {
 	if g.state.Cards[object.Card].Definition != smokeBombsCardID {
 		return fmt.Errorf("unsupported object ability")
 	}
-	options := []objectID{}
-	for id, target := range g.state.Objects {
-		if containsString(target.Types, "ALLY") {
-			options = append(options, id)
-		}
-	}
+	options := g.smokeBombsTargets()
 	if len(options) == 0 {
 		return fmt.Errorf("Smoke Bombs has no ally target")
 	}
@@ -204,7 +199,7 @@ func (g *Game) payVeritaAlternativeCost(player *model.Player, cards []cardInstan
 func (g *Game) activateSmokeBombs(player *model.Player, source, target objectID) error {
 	object, exists := g.state.Objects[source]
 	targetObject, targetExists := g.state.Objects[target]
-	if !exists || !targetExists || !samePlayer(object.Owner, player) || g.state.Cards[object.Card].Definition != smokeBombsCardID || !containsString(targetObject.Types, "ALLY") {
+	if !exists || !targetExists || !samePlayer(object.Owner, player) || g.state.Cards[object.Card].Definition != smokeBombsCardID || !containsObject(g.smokeBombsTargets(), target) || !containsString(targetObject.Types, "ALLY") {
 		return fmt.Errorf("invalid Smoke Bombs activation")
 	}
 	delete(g.state.Objects, source)
@@ -216,14 +211,60 @@ func (g *Game) activateSmokeBombs(player *model.Player, source, target objectID)
 	return nil
 }
 
-func (g *Game) retargetAttackWithTrumpSet(player *model.Player, target objectID) error {
-	if !g.isLegalTarget(target) || !samePlayer(g.state.Objects[target].Owner, player) || !g.cardHasSubtype(g.state.Objects[target].Card, "SUITED") {
-		return fmt.Errorf("invalid Trump Set target")
+// smokeBombsTargets 回傳場上全部可作為 Smoke Bombs 目標的 Ally，依物件 ID 排序。
+// 此查詢不改變遊戲狀態，並排除 Champion 與非 Ally 物件。
+func (g *Game) smokeBombsTargets() []objectID {
+	targets := make([]objectID, 0, len(g.state.Objects))
+	for id, object := range g.state.Objects {
+		if containsString(object.Types, "ALLY") {
+			targets = append(targets, id)
+		}
 	}
+	sort.Slice(
+		targets,
+		func(first, second int) bool {
+			return targets[first] < targets[second]
+		},
+	)
+	return targets
+}
+
+// trumpSetTargets 將目前 attack 的可重導目標限制為控制者的 Suited ally，且不得維持原目標。
+// 此查詢同時使用攻擊目標的共用合法性規則，避免在 stealth、taunt 或 true sight 改變後提供過期選項。
+func (g *Game) trumpSetTargets(player *model.Player) []objectID {
+	for _, item := range g.state.EffectsStack {
+		if item.Kind != effectStackCombat {
+			continue
+		}
+		attacker := item.Attacker
+		if attacker == "" {
+			champion, exists := g.state.Champions[item.Controller.UID]
+			if !exists {
+				return nil
+			}
+			attacker = champion.ID
+		}
+		targets := make([]objectID, 0)
+		for _, target := range g.controlledSuitedAllies(player) {
+			if target != item.Target && g.isLegalAttackTarget(item.Controller, attacker, target) {
+				targets = append(targets, target)
+			}
+		}
+		return targets
+	}
+	return nil
+}
+
+// retargetAttackWithTrumpSet 將 active attack 的目標改為 player 控制的合格 Suited Ally。
+// 成功時為新目標加入到回合結束的 +3 power／+3 life；目標、攻擊或攻擊來源失效時回傳錯誤且不改變狀態。
+func (g *Game) retargetAttackWithTrumpSet(player *model.Player, target objectID) error {
 	for index := len(g.state.EffectsStack) - 1; index >= 0; index-- {
 		item := &g.state.EffectsStack[index]
-		if item.Kind != effectStackCombat || item.Target == target {
+		if item.Kind != effectStackCombat {
 			continue
+		}
+		if !containsObject(g.trumpSetTargets(player), target) {
+			return fmt.Errorf("invalid Trump Set target")
 		}
 		item.Target = target
 		g.addContinuousEffect(continuousEffect{Controller: player, Target: target, Scope: effectScopeObject, Layer: effectLayerModifier, PowerLife: powerLifeModify, ExpiresAtTurn: g.state.Scheduler.TurnNumber + 1, Modifier: continuousModifier{PowerDelta: 3, LifeDelta: 3}})
