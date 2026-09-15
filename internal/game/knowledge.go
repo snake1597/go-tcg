@@ -7,6 +7,7 @@ import (
 	"go-tcg/internal/constants"
 	"go-tcg/internal/model"
 	tcgErrors "go-tcg/internal/tcg_errors"
+	"maps"
 	"sort"
 )
 
@@ -212,9 +213,10 @@ func (g *Game) legalActions(player *model.Player) []LegalAction {
 		legalActions = append(
 			legalActions,
 			LegalAction{
-				Handle:   handle,
-				Kind:     constants.ActionActivate,
-				CardName: g.state.Entities[entityID(g.state.Objects[source].Card)].Name,
+				Handle:                handle,
+				Kind:                  constants.ActionActivate,
+				CardName:              g.cardName(g.state.Objects[source].Card),
+				FloatingMemoryOptions: g.visibleFloatingMemory(player),
 			},
 		)
 	}
@@ -234,6 +236,33 @@ func (g *Game) legalActions(player *model.Player) []LegalAction {
 		},
 	)
 	return legalActions
+}
+
+// visibleFloatingMemory 投影目前可作為 Cardistry Floating Memory 的已追蹤墓地卡牌。
+// 輸入為付款玩家；輸出為引擎已驗證可選的卡牌 handle，無副作用且不重新判定 Cardistry 成本。
+func (g *Game) visibleFloatingMemory(player *model.Player) []VisibleCard {
+	cards := g.floatingMemoryCards(player)
+	options := make([]VisibleCard, 0, len(cards))
+	for _, card := range cards {
+		handle, exists := g.state.Knowledge.Cards[player.UID][entityID(card)]
+		if !exists {
+			continue
+		}
+		options = append(
+			options,
+			VisibleCard{
+				Handle: handle,
+				Name:   g.cardName(card),
+			},
+		)
+	}
+	sort.Slice(
+		options,
+		func(first, second int) bool {
+			return options[first].Handle < options[second].Handle
+		},
+	)
+	return options
 }
 
 // heuristicRank 依公開 Champion 狀態與已合法的 action 建立 bot 可消費的固定戰術優先級。
@@ -357,6 +386,83 @@ func (g *Game) visibleCards(player *model.Player) []VisibleCard {
 		},
 	)
 	return visibleCards
+}
+
+// visibleHand 投影指定玩家目前在 Hand zone 且仍具追蹤權的卡牌。
+// 輸入為玩家；輸出為該玩家可見的手牌與既有不透明 handle，無副作用且不讀取對手手牌。
+func (g *Game) visibleHand(player *model.Player) []VisibleCard {
+	zones := g.state.Zones[player.UID]
+	hand := make([]VisibleCard, 0, len(zones.Hand))
+	for _, card := range zones.Hand {
+		handle, exists := g.state.Knowledge.Cards[player.UID][entityID(card)]
+		if !exists {
+			continue
+		}
+		hand = append(
+			hand,
+			VisibleCard{
+				Handle: handle,
+				Name:   g.cardName(card),
+			},
+		)
+	}
+	return hand
+}
+
+// visibleField 投影所有公開場上物件，並複製可變欄位以隔離呼叫端修改。
+// 輸入不含外部參數；輸出為依名稱與擁有者排序的公開物件，無副作用且不暴露 object ID。
+func (g *Game) visibleField() []VisibleFieldObject {
+	field := make([]VisibleFieldObject, 0, len(g.state.Objects))
+	for _, object := range g.state.Objects {
+		field = append(
+			field,
+			VisibleFieldObject{
+				Owner:    object.Owner,
+				CardName: g.cardName(object.Card),
+				Types:    append([]string(nil), object.Types...),
+				Rested:   object.Rested,
+				Damage:   object.Damage,
+				Counters: maps.Clone(object.Counters),
+			},
+		)
+	}
+	sort.Slice(
+		field,
+		func(first, second int) bool {
+			if field[first].CardName == field[second].CardName {
+				return field[first].Owner.UID < field[second].Owner.UID
+			}
+			return field[first].CardName < field[second].CardName
+		},
+	)
+	return field
+}
+
+// visibleEffectsStack 投影公開效果堆疊，保留由底到頂的引擎順序。
+// 輸入不含外部參數；輸出為每個 StackItem 的種類、控制者與公開來源名稱，無副作用且不暴露內部 ID。
+func (g *Game) visibleEffectsStack() []VisibleEffectStackItem {
+	stack := make([]VisibleEffectStackItem, 0, len(g.state.EffectsStack))
+	for _, item := range g.state.EffectsStack {
+		source := item.Source
+		if source == "" {
+			source = item.SourceLKI
+		}
+		stack = append(
+			stack,
+			VisibleEffectStackItem{
+				Kind:       string(item.Kind),
+				Controller: item.Controller,
+				SourceName: g.cardName(source),
+			},
+		)
+	}
+	return stack
+}
+
+// cardName 取得卡牌實例對應的公開名稱，缺少實例時回傳空字串。
+// 輸入為內部卡牌識別；輸出為僅供既有可見投影使用的名稱，無副作用且不將識別本身交給呼叫端。
+func (g *Game) cardName(card cardInstanceID) string {
+	return g.state.Entities[entityID(card)].Name
 }
 
 func (g *Game) recordVisibleEvent(player *model.Player, kind string, card entityID) {

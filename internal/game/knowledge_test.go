@@ -2,6 +2,7 @@ package game
 
 import (
 	"go-tcg/internal/model"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -40,6 +41,71 @@ func TestPlayerViewProjectsOnlyTrackedCardsAndVisibleHistory(t *testing.T) {
 	}
 	if strings.Contains(string(firstView.Cards[0].Handle), string(secretCard)) {
 		t.Fatalf("card handle %q exposed internal card identity %q", firstView.Cards[0].Handle, secretCard)
+	}
+}
+
+// TestPlayerViewProjectsOwnHandPublicFieldAndEffectStack 驗證玩家視圖會分別投影自己的手牌、公開場上物件與公開效果堆疊。
+// 輸入為含手牌、場上物件及效果項目的標準單局；輸出為不含內部識別的可見資料，副作用為零。
+func TestPlayerViewProjectsOwnHandPublicFieldAndEffectStack(t *testing.T) {
+	game, err := NewStandardGame(StandardGameConfig{
+		Players: [2]*model.Player{
+			model.PlayerOne,
+			model.PlayerTwo,
+		},
+		RepositoryRoot: filepath.Clean("../.."),
+		Seed:           42,
+	})
+	if err != nil {
+		t.Fatalf("NewStandardGame() error = %v", err)
+	}
+	firstView, err := game.PlayerView(model.PlayerOne)
+	if err != nil {
+		t.Fatalf("first PlayerView() error = %v", err)
+	}
+	if len(firstView.Hand) != 7 {
+		t.Fatalf("first PlayerView().Hand count = %d, want 7", len(firstView.Hand))
+	}
+	if len(firstView.Field) != 0 {
+		t.Fatalf("first PlayerView().Field = %#v, want no field objects", firstView.Field)
+	}
+	if len(firstView.EffectsStack) != 0 {
+		t.Fatalf("first PlayerView().EffectsStack = %#v, want empty stack", firstView.EffectsStack)
+	}
+
+	card := game.state.Zones[model.PlayerOne.UID].Hand[0]
+	object := objectID("fixture-field")
+	game.state.Objects[object] = fieldObject{
+		ID:    object,
+		Card:  card,
+		Owner: model.PlayerOne,
+		Types: []string{
+			"ALLY",
+		},
+	}
+	game.state.EffectsStack = append(
+		game.state.EffectsStack,
+		effectStackItem{
+			Kind:       effectStackAbility,
+			Controller: model.PlayerOne,
+			Source:     card,
+		},
+	)
+
+	secondView, err := game.PlayerView(model.PlayerTwo)
+	if err != nil {
+		t.Fatalf("second PlayerView() error = %v", err)
+	}
+	if len(secondView.Hand) != 7 {
+		t.Fatalf("second PlayerView().Hand count = %d, want 7", len(secondView.Hand))
+	}
+	if len(secondView.Field) != 1 || secondView.Field[0].CardName == "" {
+		t.Fatalf("second PlayerView().Field = %#v, want one named public object", secondView.Field)
+	}
+	if len(secondView.EffectsStack) != 1 || secondView.EffectsStack[0].SourceName == "" {
+		t.Fatalf("second PlayerView().EffectsStack = %#v, want one named public stack item", secondView.EffectsStack)
+	}
+	if strings.Contains(string(secondView.Field[0].CardName), string(object)) {
+		t.Fatalf("field card name %q exposed internal object identity %q", secondView.Field[0].CardName, object)
 	}
 }
 

@@ -22,10 +22,11 @@ type Input struct {
 type ViewHandle string
 
 type LegalAction struct {
-	Handle        ViewHandle           `json:"handle"`
-	Kind          constants.ActionKind `json:"kind"`
-	CardName      string               `json:"card_name,omitempty"`
-	HeuristicRank int                  `json:"heuristic_rank"`
+	Handle                ViewHandle           `json:"handle"`
+	Kind                  constants.ActionKind `json:"kind"`
+	CardName              string               `json:"card_name,omitempty"`
+	FloatingMemoryOptions []VisibleCard        `json:"floating_memory_options,omitempty"`
+	HeuristicRank         int                  `json:"heuristic_rank"`
 }
 
 // VisibleChoice 提供 PendingChoice 選項的玩家可見描述與啟發式優先級。
@@ -51,6 +52,21 @@ type VisibleCard struct {
 	Name   string     `json:"name"`
 }
 
+type VisibleFieldObject struct {
+	Owner    *model.Player  `json:"owner"`
+	CardName string         `json:"card_name"`
+	Types    []string       `json:"types"`
+	Rested   bool           `json:"rested"`
+	Damage   int            `json:"damage"`
+	Counters map[string]int `json:"counters,omitempty"`
+}
+
+type VisibleEffectStackItem struct {
+	Kind       string        `json:"kind"`
+	Controller *model.Player `json:"controller"`
+	SourceName string        `json:"source_name"`
+}
+
 type VisibleEvent struct {
 	Kind     string `json:"kind"`
 	CardName string `json:"card_name"`
@@ -63,18 +79,23 @@ type PendingChoice struct {
 }
 
 type PlayerView struct {
-	Revision          uint64            `json:"revision"`
-	Finished          bool              `json:"finished"`
-	Winner            *model.Player     `json:"winner,omitempty"`
-	Diagnostic        string            `json:"diagnostic,omitempty"`
-	TurnPlayer        *model.Player     `json:"turn_player,omitempty"`
-	Phase             Phase             `json:"phase,omitempty"`
-	OpportunityHolder *model.Player     `json:"opportunity_holder,omitempty"`
-	Champions         []VisibleChampion `json:"champions,omitempty"`
-	Cards             []VisibleCard     `json:"cards"`
-	VisibleEvents     []VisibleEvent    `json:"visible_events"`
-	LegalActions      []LegalAction     `json:"legal_actions"`
-	PendingChoice     *PendingChoice    `json:"pending_choice,omitempty"`
+	Revision          uint64                   `json:"revision"`
+	Finished          bool                     `json:"finished"`
+	Winner            *model.Player            `json:"winner,omitempty"`
+	Diagnostic        string                   `json:"diagnostic,omitempty"`
+	TurnPlayer        *model.Player            `json:"turn_player,omitempty"`
+	TurnNumber        uint64                   `json:"turn_number,omitempty"`
+	Phase             Phase                    `json:"phase,omitempty"`
+	OpportunityHolder *model.Player            `json:"opportunity_holder,omitempty"`
+	DecisionPlayer    *model.Player            `json:"decision_player,omitempty"`
+	Champions         []VisibleChampion        `json:"champions,omitempty"`
+	Hand              []VisibleCard            `json:"hand"`
+	Field             []VisibleFieldObject     `json:"field"`
+	EffectsStack      []VisibleEffectStackItem `json:"effects_stack"`
+	Cards             []VisibleCard            `json:"cards"`
+	VisibleEvents     []VisibleEvent           `json:"visible_events"`
+	LegalActions      []LegalAction            `json:"legal_actions"`
+	PendingChoice     *PendingChoice           `json:"pending_choice,omitempty"`
 }
 
 type Game struct {
@@ -358,11 +379,18 @@ func (g *Game) PlayerView(player *model.Player) (PlayerView, error) {
 		Winner:            g.state.Winner,
 		Diagnostic:        g.state.Diagnostic,
 		TurnPlayer:        g.state.Scheduler.TurnPlayer,
+		TurnNumber:        g.state.Scheduler.TurnNumber,
 		Phase:             g.state.Scheduler.Phase,
 		OpportunityHolder: g.state.Scheduler.OpportunityHolder,
+		DecisionPlayer:    g.decisionPlayer(),
 		Champions: g.visibleChampions(
 			player,
 		),
+		Hand: g.visibleHand(
+			player,
+		),
+		Field:        g.visibleField(),
+		EffectsStack: g.visibleEffectsStack(),
 		Cards: g.visibleCards(
 			player,
 		),
@@ -376,6 +404,24 @@ func (g *Game) PlayerView(player *model.Player) (PlayerView, error) {
 			player,
 		),
 	}, nil
+}
+
+// decisionPlayer 回傳目前依 scheduler 或 PendingChoice 應取得輸入的玩家。
+// 輸入為目前單局狀態；輸出為待決玩家或 nil，無副作用且不透露任何私人卡牌資訊。
+func (g *Game) decisionPlayer() *model.Player {
+	if g.state.Knowledge.Choice != nil {
+		return g.state.Knowledge.Choice.Actor
+	}
+	if g.state.Finished {
+		return nil
+	}
+	if g.state.Scheduler.OpportunityHolder != nil {
+		return g.state.Scheduler.OpportunityHolder
+	}
+	if g.state.Scheduler.Phase == PhaseMaterialize {
+		return g.state.Scheduler.TurnPlayer
+	}
+	return nil
 }
 
 // StateHash 對 canonicalState 明列的版本、亂數進度、知識與對局欄位計算 SHA-256，供 replay 逐步比對。
