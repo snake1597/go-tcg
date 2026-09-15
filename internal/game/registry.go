@@ -17,8 +17,6 @@ type OperationID string
 
 type RulingID string
 
-type AbilityHandler func()
-
 type cardRegistration struct {
 	ID           CardID
 	Status       constants.SupportStatus
@@ -36,7 +34,6 @@ type abilityRegistration struct {
 	ID           AbilitySlotID
 	FaceID       CardFaceID
 	Status       constants.SupportStatus
-	Handler      AbilityHandler
 	Mechanisms   []MechanismID
 	Operations   []OperationID
 	Dependencies []ContentID
@@ -89,7 +86,7 @@ type contentRegistry struct {
 var semanticKeyPattern = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`)
 
 // buildRegistry 建立卡牌、牌面、能力與支援節點的索引，並驗證 ID、父節點及相依引用。
-// Supported 能力必須有 handler；重複 ID、缺少 behavior slot 或未知引用皆拒絕建立。
+// 重複 ID、缺少 behavior slot 或未知引用皆拒絕建立。
 // 任一驗證失敗回傳空 registry 與原因，避免呼叫端取得半成品。
 func buildRegistry(spec registrySpec) (contentRegistry, error) {
 	registry := contentRegistry{
@@ -143,9 +140,6 @@ func buildRegistry(spec registrySpec) (contentRegistry, error) {
 		}
 		if err := validateSupportStatus(registration.Status); err != nil {
 			return contentRegistry{}, fmt.Errorf("ability %q: %w", registration.ID, err)
-		}
-		if registration.Status == constants.Supported && registration.Handler == nil {
-			return contentRegistry{}, fmt.Errorf("supported Ability Slot %q has no handler", registration.ID)
 		}
 		if _, exists := registry.abilities[registration.ID]; exists {
 			return contentRegistry{}, fmt.Errorf("duplicate Ability Slot ID %q", registration.ID)

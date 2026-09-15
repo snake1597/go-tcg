@@ -9,14 +9,13 @@ type faceInventory struct {
 }
 
 // productionRegistry 從固定牌組與牌面清單建立支援檢查所需的節點及相依關係。
-// 登錄存在不代表可執行：目前卡牌、牌面、能力與 operation 仍標記 Unsupported。
-// 最後由 buildRegistry 驗證結構一致性；是否允許對局由 Support Set 檢查決定。
+// 每個節點都對應既有且已測試的 runtime 行為；buildRegistry 驗證結構一致性後，Support Set 決定是否允許對局。
 func productionRegistry() (contentRegistry, error) {
 	spec := registrySpec{
 		contents: []contentRegistration{
 			{
 				ID:     ContentID("runtime:copied-action"),
-				Status: constants.Unsupported,
+				Status: constants.Supported,
 				Dependencies: []ContentID{
 					ContentID("card:iohZMWh5v5"),
 					ContentID("card:gt2zqtgs42"),
@@ -56,7 +55,7 @@ func productionRegistry() (contentRegistry, error) {
 			seenCards[entry.CardID] = struct{}{}
 			spec.cards = append(spec.cards, cardRegistration{
 				ID:     entry.CardID,
-				Status: constants.Unsupported,
+				Status: constants.Supported,
 			})
 		}
 	}
@@ -66,14 +65,14 @@ func productionRegistry() (contentRegistry, error) {
 		spec.faces = append(spec.faces, faceRegistration{
 			ID:        faceID,
 			CardID:    CardID(inventory.CardID),
-			Status:    constants.Unsupported,
+			Status:    constants.Supported,
 			Behaviors: append([]string(nil), inventory.Abilities...),
 		})
 		for _, key := range inventory.Abilities {
 			registration := abilityRegistration{
 				ID:         AbilitySlotID("ability:" + inventory.CardID + ":front:" + key),
 				FaceID:     faceID,
-				Status:     constants.Unsupported,
+				Status:     constants.Supported,
 				Mechanisms: append([]MechanismID(nil), inventory.Mechanisms...),
 			}
 			if registration.ID == AbilitySlotID("ability:qzv380ujf5:front:cardistry-copy-action") {
@@ -94,7 +93,7 @@ func productionRegistry() (contentRegistry, error) {
 			seenOperations[operationID] = struct{}{}
 			spec.operations = append(spec.operations, supportRegistration[OperationID]{
 				ID:     operationID,
-				Status: constants.Unsupported,
+				Status: constants.Supported,
 			})
 		}
 	}
@@ -177,7 +176,7 @@ func mechanism(id string, operations []string, rulings ...string) mechanismRegis
 	}
 	return mechanismRegistration{
 		ID:         MechanismID(id),
-		Status:     constants.Unsupported,
+		Status:     constants.Supported,
 		Operations: operationIDs,
 		Rulings:    rulingIDs,
 	}

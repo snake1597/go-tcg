@@ -162,7 +162,7 @@ func newActionGameWithSource(t *testing.T, definition CardID) *Game {
 
 func newActionGameForPlayer(t *testing.T, player *model.Player, definition CardID) *Game {
 	t.Helper()
-	game, err := NewStandardSetup(StandardGameConfig{
+	game, err := NewStandardGame(StandardGameConfig{
 		Players: [2]*model.Player{
 			model.PlayerOne,
 			model.PlayerTwo,
@@ -171,7 +171,7 @@ func newActionGameForPlayer(t *testing.T, player *model.Player, definition CardI
 		Seed:           42,
 	})
 	if err != nil {
-		t.Fatalf("NewStandardSetup() error = %v", err)
+		t.Fatalf("NewStandardGame() error = %v", err)
 	}
 	zones := game.state.Zones[player.UID]
 	var source cardInstanceID

@@ -47,32 +47,41 @@ type supportClosure struct {
 }
 
 // NewStandardGame 驗證固定牌組、卡牌資料與 registry，並檢查牌組可達的 Support Set。
-// 有未支援或缺漏項目時回傳 GateError；通過後建立引擎並設定玩家。
-// 此入口目前不配置開局牌組或啟動排程，開局狀態建置由 NewStandardSetup 提供。
+// 有未支援或缺漏項目時回傳 GateError；通過後建立含起始 zones 與排程的正式單局。
 func NewStandardGame(configuration StandardGameConfig) (*Game, error) {
-	decks, err := loadValidatedStandardDecks(configuration)
-	if err != nil {
-		return nil, err
-	}
-	definitions := decks.Definitions
-	firstDeck := decks.First
 	registry, err := productionRegistry()
 	if err != nil {
 		return nil, fmt.Errorf("build production registry: %w", err)
 	}
-	if err := validateDefinitionsAgainstRegistry(definitions, registry); err != nil {
+	return newStandardGameWithRegistry(
+		configuration,
+		registry,
+	)
+}
+
+// newStandardGameWithRegistry 以指定 registry 驗證固定牌組並建立正式單局。
+// 輸入為 Standard 設定與完整 registry；輸出為完成開局的 Game 或具體驗證錯誤，副作用限於成功建立的 Game。
+func newStandardGameWithRegistry(configuration StandardGameConfig, registry contentRegistry) (*Game, error) {
+	decks, err := loadValidatedStandardDecks(configuration)
+	if err != nil {
 		return nil, err
 	}
-	_, diagnostics := evaluateSupportSet(firstDeck, registry)
+	if err := validateDefinitionsAgainstRegistry(decks.Definitions, registry); err != nil {
+		return nil, err
+	}
+	_, diagnostics := evaluateSupportSet(decks.First, registry)
 	if len(diagnostics) > 0 {
 		return nil, &GateError{
 			Diagnostics: diagnostics,
 		}
 	}
 
-	game := NewGame(configuration.Seed)
-	game.players = configuration.Players[:]
-	return game, nil
+	return newStandardSetup(
+		configuration,
+		decks.Definitions,
+		decks.First,
+		decks.Second,
+	)
 }
 
 type validatedStandardDecks struct {

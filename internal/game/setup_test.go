@@ -20,9 +20,9 @@ func TestStandardSetupStartsFirstTurnAtMainAndPassesToSecondPlayersDraw(t *testi
 		RepositoryRoot: filepath.Clean("../.."),
 		Seed:           42,
 	}
-	game, err := NewStandardSetup(configuration)
+	game, err := NewStandardGame(configuration)
 	if err != nil {
-		t.Fatalf("NewStandardSetup() error = %v", err)
+		t.Fatalf("NewStandardGame() error = %v", err)
 	}
 
 	assertTurnView(
@@ -132,13 +132,13 @@ func TestStandardPassesDeterministicallyReachRecollectionOnTheNextTurn(t *testin
 		RepositoryRoot: filepath.Clean("../.."),
 		Seed:           42,
 	}
-	first, err := NewStandardSetup(configuration)
+	first, err := NewStandardGame(configuration)
 	if err != nil {
-		t.Fatalf("first NewStandardSetup() error = %v", err)
+		t.Fatalf("first NewStandardGame() error = %v", err)
 	}
-	second, err := NewStandardSetup(configuration)
+	second, err := NewStandardGame(configuration)
 	if err != nil {
-		t.Fatalf("second NewStandardSetup() error = %v", err)
+		t.Fatalf("second NewStandardGame() error = %v", err)
 	}
 
 	for step := 0; step < 8; step++ {
@@ -199,9 +199,9 @@ func TestStandardTurnStopsAtMaterializeUntilTurnPlayerSkipsIt(t *testing.T) {
 		RepositoryRoot: filepath.Clean("../.."),
 		Seed:           42,
 	}
-	game, err := NewStandardSetup(configuration)
+	game, err := NewStandardGame(configuration)
 	if err != nil {
-		t.Fatalf("NewStandardSetup() error = %v", err)
+		t.Fatalf("NewStandardGame() error = %v", err)
 	}
 	for step := 0; step < 15; step++ {
 		view, err := game.PlayerView(model.PlayerOne)
@@ -486,7 +486,7 @@ func TestMaterializingTonorisFizzlesWhenLineageBecomesIllegalBeforeResolution(t 
 	}
 }
 
-func TestNewStandardSetupCreatesMirroredOpeningState(t *testing.T) {
+func TestNewStandardGameCreatesMirroredOpeningState(t *testing.T) {
 	configuration := StandardGameConfig{
 		Players: [2]*model.Player{
 			&model.Player{
@@ -503,9 +503,9 @@ func TestNewStandardSetupCreatesMirroredOpeningState(t *testing.T) {
 		Seed: 42,
 	}
 
-	game, err := NewStandardSetup(configuration)
+	game, err := NewStandardGame(configuration)
 	if err != nil {
-		t.Fatalf("NewStandardSetup() error = %v", err)
+		t.Fatalf("NewStandardGame() error = %v", err)
 	}
 	if game.state.Finished {
 		t.Fatal("setup game finished unexpectedly")
@@ -620,7 +620,7 @@ func TestStandardSetupEndsWhenStartingHandDrawDecksOut(t *testing.T) {
 	}
 }
 
-func TestNewStandardSetupIsReproducibleForTheSameSeed(t *testing.T) {
+func TestNewStandardGameIsReproducibleForTheSameSeed(t *testing.T) {
 	configuration := StandardGameConfig{
 		Players: [2]*model.Player{
 			&model.Player{
@@ -636,13 +636,13 @@ func TestNewStandardSetupIsReproducibleForTheSameSeed(t *testing.T) {
 		),
 		Seed: 42,
 	}
-	first, err := NewStandardSetup(configuration)
+	first, err := NewStandardGame(configuration)
 	if err != nil {
-		t.Fatalf("first NewStandardSetup() error = %v", err)
+		t.Fatalf("first NewStandardGame() error = %v", err)
 	}
-	second, err := NewStandardSetup(configuration)
+	second, err := NewStandardGame(configuration)
 	if err != nil {
-		t.Fatalf("second NewStandardSetup() error = %v", err)
+		t.Fatalf("second NewStandardGame() error = %v", err)
 	}
 	firstHash := first.StateHash()
 	secondHash := second.StateHash()
@@ -650,9 +650,9 @@ func TestNewStandardSetupIsReproducibleForTheSameSeed(t *testing.T) {
 		t.Fatalf("same-seed setup hashes differ: %q != %q", firstHash, secondHash)
 	}
 	configuration.Seed = 43
-	other, err := NewStandardSetup(configuration)
+	other, err := NewStandardGame(configuration)
 	if err != nil {
-		t.Fatalf("different-seed NewStandardSetup() error = %v", err)
+		t.Fatalf("different-seed NewStandardGame() error = %v", err)
 	}
 	otherHash := other.StateHash()
 	if firstHash == otherHash {
@@ -750,9 +750,9 @@ func newTonorisMaterializationGame(t *testing.T) *Game {
 		RepositoryRoot: repositoryRoot,
 		Seed:           42,
 	}
-	game, err := NewStandardSetup(configuration)
+	game, err := NewStandardGame(configuration)
 	if err != nil {
-		t.Fatalf("NewStandardSetup() error = %v", err)
+		t.Fatalf("NewStandardGame() error = %v", err)
 	}
 	for game.state.Scheduler.TurnPlayer != model.PlayerTwo || game.state.Scheduler.Phase != PhaseMaterialize {
 		view, err := game.PlayerView(model.PlayerOne)

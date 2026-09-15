@@ -93,21 +93,6 @@ type eventBatch struct {
 	CauseChain   []replacementCause `json:"cause_chain,omitempty"`
 }
 
-// NewStandardSetup 驗證固定牌組與卡牌資料後，建立由 seed 決定的開局狀態。
-// 此入口略過完整 Support Set 檢查；runtime 支援驗證由 NewStandardGame 負責。
-func NewStandardSetup(configuration StandardGameConfig) (*Game, error) {
-	decks, err := loadValidatedStandardDecks(configuration)
-	if err != nil {
-		return nil, err
-	}
-	return newStandardSetup(
-		configuration,
-		decks.Definitions,
-		decks.First,
-		decks.Second,
-	)
-}
-
 // newStandardSetup 使用已驗證的雙方牌組建立卡牌實例，洗牌並處理 Spirit of Fire 開局抽牌。
 // 開局未導致對局結束時才啟動標準排程；最後更新 revision 並保存 replay 初始快照。
 // configuration、definitions 與牌組的一致性由呼叫端先行驗證。
