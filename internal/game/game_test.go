@@ -222,6 +222,62 @@ func TestSameSeedAndInputProduceSameStateHash(t *testing.T) {
 	}
 }
 
+// TestSubmitRejectsActionAfterGameFinishes 驗證單局結束後不再接受先前合法的一般行動。
+// 輸入為 Standard 單局結束前取得的 pass 與投降 action；輸出為 ErrGameFinished，副作用僅有投降步驟且拒絕後 state hash 與 replay 不變。
+func TestSubmitRejectsActionAfterGameFinishes(t *testing.T) {
+	match, err := NewStandardGame(
+		StandardGameConfig{
+			Players: [2]*model.Player{
+				model.PlayerOne,
+				model.PlayerTwo,
+			},
+			RepositoryRoot: "../..",
+			Seed:           7,
+		},
+	)
+	if err != nil {
+		t.Fatalf("NewStandardGame() error = %v", err)
+	}
+	view, err := match.PlayerView(model.PlayerOne)
+	if err != nil {
+		t.Fatalf("PlayerView() error = %v", err)
+	}
+	pass := actionByKind(
+		t,
+		view,
+		constants.ActionPass,
+	)
+	concede := actionByKind(
+		t,
+		view,
+		constants.ActionConcede,
+	)
+	if err := match.Submit(
+		model.PlayerOne,
+		Input{
+			Revision: view.Revision,
+			Action:   concede.Handle,
+		},
+	); err != nil {
+		t.Fatalf("Submit() concede error = %v", err)
+	}
+	finishedHash := match.StateHash()
+	finishedSteps := len(match.Replay().Steps)
+	err = match.Submit(
+		model.PlayerOne,
+		Input{
+			Revision: view.Revision,
+			Action:   pass.Handle,
+		},
+	)
+	if !errors.Is(err, tcgErrors.ErrGameFinished) {
+		t.Fatalf("Submit() after finish error = %v, want ErrGameFinished", err)
+	}
+	if match.StateHash() != finishedHash || len(match.Replay().Steps) != finishedSteps {
+		t.Fatal("rejected post-game action changed state hash or replay")
+	}
+}
+
 func TestStateHashUsesCanonicalVersionedState(t *testing.T) {
 	game := NewGame(42)
 	const want = "64f3d3317a92c0e48ecfb871c902ed2873415933e6c3af028ede6391044bd595"

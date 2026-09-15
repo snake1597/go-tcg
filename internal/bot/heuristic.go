@@ -159,10 +159,49 @@ func (bot *Heuristic) decideAction(view game.PlayerView) (game.Input, error) {
 	if err != nil {
 		return game.Input{}, fmt.Errorf("select action: %w", err)
 	}
-	return game.Input{
+	input := game.Input{
 		Revision: view.Revision,
 		Action:   handle,
-	}, nil
+	}
+	for _, action := range view.LegalActions {
+		if action.Handle != handle {
+			continue
+		}
+		if action.ReserveCost > len(action.ReserveOptions) {
+			return game.Input{}, fmt.Errorf("reserve options = %d, want at least %d", len(action.ReserveOptions), action.ReserveCost)
+		}
+		for _, option := range action.ReserveOptions {
+			if action.CardName != option.Name && (option.Name == "Red Hare, Unrivaled Stallion" || option.Name == "Duchess, Six of Hearts") {
+				continue
+			}
+			input.Reserve = append(input.Reserve, option.Handle)
+			if len(input.Reserve) == action.ReserveCost {
+				return input, nil
+			}
+		}
+		for _, option := range action.ReserveOptions {
+			if containsHandle(input.Reserve, option.Handle) {
+				continue
+			}
+			input.Reserve = append(input.Reserve, option.Handle)
+			if len(input.Reserve) == action.ReserveCost {
+				break
+			}
+		}
+		break
+	}
+	return input, nil
+}
+
+// containsHandle 回傳 handles 是否含有 candidate，供 bot 避免將同一張 Reserve 卡重複放入提交。
+// 輸入為已選 handles 與候選 handle；輸出為是否存在，無副作用。
+func containsHandle(handles []game.ViewHandle, candidate game.ViewHandle) bool {
+	for _, handle := range handles {
+		if handle == candidate {
+			return true
+		}
+	}
+	return false
 }
 
 // selectChoice 從引擎提供的可見 choice rank 中保留最高優先級候選，再交由平手機制處理。

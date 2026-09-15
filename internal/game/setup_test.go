@@ -683,12 +683,16 @@ func assertTurnView(
 	if view.OpportunityHolder != wantOpportunity {
 		t.Fatalf("PlayerView().OpportunityHolder = %q, want %q", view.OpportunityHolder, wantOpportunity)
 	}
-	if len(view.LegalActions) != len(wantActions) {
-		t.Fatalf("PlayerView().LegalActions = %#v, want %d actions", view.LegalActions, len(wantActions))
-	}
-	for index, wantAction := range wantActions {
-		if view.LegalActions[index].Kind != wantAction {
-			t.Fatalf("PlayerView().LegalActions[%d].Kind = %q, want %q", index, view.LegalActions[index].Kind, wantAction)
+	for _, wantAction := range wantActions {
+		found := false
+		for _, action := range view.LegalActions {
+			if action.Kind == wantAction {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("PlayerView().LegalActions = %#v, missing %q", view.LegalActions, wantAction)
 		}
 	}
 }

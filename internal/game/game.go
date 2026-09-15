@@ -16,6 +16,7 @@ type Input struct {
 	Revision       uint64       `json:"revision"`
 	Action         ViewHandle   `json:"action"`
 	Choice         ViewHandle   `json:"choice"`
+	Reserve        []ViewHandle `json:"reserve,omitempty"`
 	FloatingMemory []ViewHandle `json:"floating_memory,omitempty"`
 }
 
@@ -25,6 +26,8 @@ type LegalAction struct {
 	Handle                ViewHandle           `json:"handle"`
 	Kind                  constants.ActionKind `json:"kind"`
 	CardName              string               `json:"card_name,omitempty"`
+	ReserveCost           int                  `json:"reserve_cost,omitempty"`
+	ReserveOptions        []VisibleCard        `json:"reserve_options,omitempty"`
 	FloatingMemoryOptions []VisibleCard        `json:"floating_memory_options,omitempty"`
 	HeuristicRank         int                  `json:"heuristic_rank"`
 }
@@ -230,7 +233,7 @@ func (g *Game) Submit(player *model.Player, input Input) error {
 	if input.Revision != g.state.Revision {
 		return fmt.Errorf("%w: got %d, current %d", tcgErrors.ErrStaleRevision, input.Revision, g.state.Revision)
 	}
-	if (input.Action != "" && input.Choice != "") || (input.Choice != "" && len(input.FloatingMemory) > 0) {
+	if (input.Action != "" && input.Choice != "") || (input.Choice != "" && (len(input.Reserve) > 0 || len(input.FloatingMemory) > 0)) {
 		return fmt.Errorf("%w: action and choice cannot be submitted together", tcgErrors.ErrInvalidViewHandle)
 	}
 	if input.Choice != "" {
@@ -285,7 +288,11 @@ func (g *Game) Submit(player *model.Player, input Input) error {
 		} else {
 			card, activateExists := g.state.Knowledge.Activations[player.UID][input.Action]
 			if activateExists {
-				if err := g.beginActionDeclaration(player, card); err != nil {
+				if containsString(g.state.Cards[card].Types, "ALLY") {
+					if err := g.commitAllyActivation(player, card, input.Reserve); err != nil {
+						return err
+					}
+				} else if err := g.beginActionDeclaration(player, card, input.Reserve); err != nil {
 					return err
 				}
 			} else {

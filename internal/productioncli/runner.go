@@ -6,6 +6,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"go-tcg/internal/bot"
 	"go-tcg/internal/constants"
 	"go-tcg/internal/game"
 	"go-tcg/internal/model"
@@ -17,8 +18,8 @@ import (
 
 const recentEventLimit = 8
 
-// Run 建立固定 Standard 單局，以引擎提供的編號選單接收真人輸入並輸出私人 canonical replay。
-// 輸入為命令列參數、終端輸入輸出與 repository root；輸出為流程或 I/O 錯誤，副作用為成功建立 replay 檔案及提交使用者選取的引擎輸入。
+// Run 建立固定 Standard 單局，以引擎 PlayerView 讓真人與 bot 依序提交行動並輸出私人 canonical replay。
+// 輸入為命令列參數、終端輸入輸出與 repository root；輸出為流程或 I/O 錯誤，副作用為建立 replay、提交真人與 bot 輸入，並將 bot 私密視圖保留在終端外。
 func Run(arguments []string, input io.Reader, output io.Writer, repositoryRoot string) (err error) {
 	flags := flag.NewFlagSet(
 		"production-cli",
@@ -57,6 +58,9 @@ func Run(arguments []string, input io.Reader, output io.Writer, repositoryRoot s
 		}
 		return fmt.Errorf("start standard game: %w", setupErr)
 	}
+	opponent := bot.NewHeuristic(
+		bot.NewSeededRandom(*seed),
+	)
 	writeReplayResult := true
 	defer func() {
 		if recovered := recover(); recovered != nil {
@@ -76,6 +80,7 @@ func Run(arguments []string, input io.Reader, output io.Writer, repositoryRoot s
 	}()
 
 	fmt.Fprintln(output, "隱私警告：canonical replay 可能包含完整隱藏資訊，僅供私人診斷使用，不可公開分享。")
+	fmt.Fprintln(output, "真人：player-1　bot：player-2")
 	scanner := bufio.NewScanner(input)
 	for {
 		player, playerErr := currentDecisionPlayer(match)
@@ -86,13 +91,29 @@ func Run(arguments []string, input io.Reader, output io.Writer, repositoryRoot s
 		if viewErr != nil {
 			return fmt.Errorf("get player view: %w", viewErr)
 		}
-		renderView(output, player, view)
 		if view.Finished {
+			renderView(output, model.PlayerOne, view)
 			if view.Diagnostic != "" {
 				fmt.Fprintf(output, "遊戲診斷：%s\n", view.Diagnostic)
 			}
 			return nil
 		}
+		if player == model.PlayerTwo {
+			botInput, decideErr := opponent.Decide(view)
+			if decideErr != nil {
+				return fmt.Errorf("decide bot action: %w", decideErr)
+			}
+			beforeHash := match.StateHash()
+			if submitErr := match.Submit(player, botInput); submitErr != nil {
+				if match.StateHash() != beforeHash {
+					return fmt.Errorf("rejected bot input changed game state: %w", submitErr)
+				}
+				return fmt.Errorf("submit bot action: %w", submitErr)
+			}
+			fmt.Fprintln(output, "bot player-2 已提交行動。")
+			continue
+		}
+		renderView(output, player, view)
 		selected, selectErr := readSelection(scanner, output, view)
 		if selectErr != nil {
 			return fmt.Errorf("read selection: %w", selectErr)
@@ -164,6 +185,10 @@ func readSelection(scanner *bufio.Scanner, output io.Writer, view game.PlayerVie
 			continue
 		}
 		action := view.LegalActions[selected-1]
+		reserve, reserveErr := readReserve(scanner, output, action)
+		if reserveErr != nil {
+			return game.Input{}, fmt.Errorf("read reserve: %w", reserveErr)
+		}
 		floatingMemory, floatingMemoryErr := readFloatingMemory(scanner, output, action)
 		if floatingMemoryErr != nil {
 			return game.Input{}, fmt.Errorf("read floating memory: %w", floatingMemoryErr)
@@ -171,8 +196,56 @@ func readSelection(scanner *bufio.Scanner, output io.Writer, view game.PlayerVie
 		return game.Input{
 			Revision:       view.Revision,
 			Action:         action.Handle,
+			Reserve:        reserve,
 			FloatingMemory: floatingMemory,
 		}, nil
+	}
+}
+
+// readReserve 讓玩家以引擎提供的編號選擇恰好數量的手牌支付 reserve cost。
+// 輸入為 scanner、輸出與合法 action；輸出為 reserve handles 或讀取錯誤，副作用僅為提示與無效輸入訊息。
+func readReserve(scanner *bufio.Scanner, output io.Writer, action game.LegalAction) ([]game.ViewHandle, error) {
+	if action.ReserveCost == 0 {
+		return nil, nil
+	}
+	fmt.Fprintf(output, "選擇 %d 張 Reserve（以逗號分隔）：\n", action.ReserveCost)
+	for index, card := range action.ReserveOptions {
+		fmt.Fprintf(output, "%d. %s\n", index+1, card.Name)
+	}
+	for {
+		fmt.Fprint(output, "請輸入編號：")
+		if !scanner.Scan() {
+			if scannerErr := scanner.Err(); scannerErr != nil {
+				return nil, fmt.Errorf("read reserve: %w", scannerErr)
+			}
+			return nil, fmt.Errorf("%w", io.EOF)
+		}
+		parts := strings.Split(strings.TrimSpace(scanner.Text()), ",")
+		if len(parts) != action.ReserveCost {
+			fmt.Fprintln(output, "無效編號，請重新輸入。")
+			continue
+		}
+		selected := make([]game.ViewHandle, 0, action.ReserveCost)
+		seen := make(map[game.ViewHandle]struct{}, action.ReserveCost)
+		valid := true
+		for _, part := range parts {
+			index, parseErr := strconv.Atoi(strings.TrimSpace(part))
+			if parseErr != nil || index <= 0 || index > len(action.ReserveOptions) {
+				valid = false
+				break
+			}
+			handle := action.ReserveOptions[index-1].Handle
+			if _, exists := seen[handle]; exists {
+				valid = false
+				break
+			}
+			seen[handle] = struct{}{}
+			selected = append(selected, handle)
+		}
+		if valid {
+			return selected, nil
+		}
+		fmt.Fprintln(output, "無效編號，請重新輸入。")
 	}
 }
 

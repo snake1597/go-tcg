@@ -17,21 +17,29 @@ type wieldDeclaration struct {
 	Weapon     objectID      `json:"weapon"`
 }
 
+// legalAttackers 分別評估回合玩家目前可宣告攻擊的 Champion 與支援攻擊的 Ally。
+// 輸入為持有行動機會的玩家；輸出為合法攻擊者的內部識別，無副作用。
 func (g *Game) legalAttackers(player *model.Player) []objectID {
 	scheduler := g.state.Scheduler
 	if !samePlayer(scheduler.TurnPlayer, player) || scheduler.Phase != PhaseMain || len(g.state.EffectsStack) != 0 {
 		return nil
 	}
+	attackers := make([]objectID, 0, 1)
 	champion, exists := g.state.Champions[player.UID]
-	if !exists || champion.Rested || g.characteristicsFor(champion.ID).Power <= 0 || len(g.attackTargets(player, champion.ID)) == 0 {
-		return nil
+	if exists && !champion.Rested && g.characteristicsFor(champion.ID).Power > 0 && len(g.attackTargets(player, champion.ID)) > 0 {
+		attackers = append(attackers, champion.ID)
 	}
-	attackers := []objectID{champion.ID}
 	for id, object := range g.state.Objects {
 		if samePlayer(object.Owner, player) && !object.Rested && g.state.Cards[object.Card].Definition == redHareCardID && g.canAttackWith(player, id) && len(g.attackTargets(player, id)) > 0 {
 			attackers = append(attackers, id)
 		}
 	}
+	sort.Slice(
+		attackers,
+		func(first, second int) bool {
+			return attackers[first] < attackers[second]
+		},
+	)
 	return attackers
 }
 

@@ -184,7 +184,7 @@ func TestVeritaAlternativeCostSelectsCardsBeforeAtomicallyCommitting(t *testing.
 		card.ReserveCost = cost
 		game.state.Cards[cards[index]] = card
 	}
-	if err := game.beginVeritaAlternativeCostDeclaration(player, verita); err != nil {
+	if err := game.beginVeritaAlternativeCostDeclaration(player, verita, nil); err != nil {
 		t.Fatalf("beginVeritaAlternativeCostDeclaration() error = %v", err)
 	}
 	if cardIndex(game.state.Zones[player.UID].Hand, verita) < 0 || cardIndex(game.state.Zones[player.UID].Graveyard, cards[0]) < 0 {
@@ -217,7 +217,7 @@ func TestVeritaAlternativeCostSelectsCardsBeforeAtomicallyCommitting(t *testing.
 	if game.state.Knowledge.VeritaCost != nil || cardIndex(game.state.Zones[player.UID].Hand, verita) < 0 || cardIndex(game.state.Zones[player.UID].Graveyard, cards[0]) < 0 {
 		t.Fatal("cancelled Verita choice left a partial modification")
 	}
-	if err := game.beginVeritaAlternativeCostDeclaration(player, verita); err != nil {
+	if err := game.beginVeritaAlternativeCostDeclaration(player, verita, nil); err != nil {
 		t.Fatalf("beginVeritaAlternativeCostDeclaration() after cancellation error = %v", err)
 	}
 	for _, card := range cards {

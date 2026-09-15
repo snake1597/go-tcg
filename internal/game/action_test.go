@@ -14,13 +14,11 @@ func TestActionCardsUsePlayerViewDeclarationAndResolveToGraveyard(t *testing.T) 
 	if err != nil {
 		t.Fatalf("PlayerView() error = %v", err)
 	}
-	action := actionByKind(t, view, constants.ActionActivate)
-	if action.CardName != "Blazing Throw" {
-		t.Fatalf("action card = %q, want Blazing Throw", action.CardName)
-	}
+	action := actionByCardName(t, view, "Blazing Throw")
 	if err := game.Submit(player, Input{
 		Revision: view.Revision,
 		Action:   action.Handle,
+		Reserve:  reserveHandles(action),
 	}); err != nil {
 		t.Fatalf("Submit() declaration error = %v", err)
 	}
@@ -53,13 +51,14 @@ func TestFieryInterferenceCanBeActivatedByNonTurnPlayerAtFastTiming(t *testing.T
 	if err != nil {
 		t.Fatalf("PlayerView() error = %v", err)
 	}
-	action := actionByKind(t, view, constants.ActionActivate)
+	action := actionByCardName(t, view, "Fiery Interference")
 	if action.CardName != "Fiery Interference" {
 		t.Fatalf("action card = %q, want Fiery Interference", action.CardName)
 	}
 	if err := game.Submit(model.PlayerTwo, Input{
 		Revision: view.Revision,
 		Action:   action.Handle,
+		Reserve:  reserveHandles(action),
 	}); err != nil {
 		t.Fatalf("Submit() declaration error = %v", err)
 	}
@@ -111,9 +110,11 @@ func TestStraightFlareCountsDistinctPrintedSuitedReserveCosts(t *testing.T) {
 	if err != nil {
 		t.Fatalf("PlayerView() error = %v", err)
 	}
+	action := actionByCardName(t, view, "Straight Flare")
 	if err := game.Submit(player, Input{
 		Revision: view.Revision,
-		Action:   actionByKind(t, view, constants.ActionActivate).Handle,
+		Action:   action.Handle,
+		Reserve:  reserveHandles(action),
 	}); err != nil {
 		t.Fatalf("Submit() declaration error = %v", err)
 	}
@@ -134,9 +135,11 @@ func TestActionFizzleMovesSourceToGraveyardWithoutUndoingCosts(t *testing.T) {
 	if err != nil {
 		t.Fatalf("PlayerView() error = %v", err)
 	}
+	action := actionByCardName(t, view, "Blazing Throw")
 	if err := game.Submit(player, Input{
 		Revision: view.Revision,
-		Action:   actionByKind(t, view, constants.ActionActivate).Handle,
+		Action:   action.Handle,
+		Reserve:  reserveHandles(action),
 	}); err != nil {
 		t.Fatalf("Submit() declaration error = %v", err)
 	}
@@ -154,6 +157,16 @@ func TestActionFizzleMovesSourceToGraveyardWithoutUndoingCosts(t *testing.T) {
 
 func newActionGame(t *testing.T) *Game {
 	return newActionGameWithSource(t, blazingThrowCardID)
+}
+
+// reserveHandles 取出合法 action 前幾個 reserve 選項，供規則案例提交完整付款。
+// 輸入為引擎提供的合法 action；輸出為恰好支付其 reserve cost 的 handles，無副作用。
+func reserveHandles(action LegalAction) []ViewHandle {
+	handles := make([]ViewHandle, 0, action.ReserveCost)
+	for index := 0; index < action.ReserveCost; index++ {
+		handles = append(handles, action.ReserveOptions[index].Handle)
+	}
+	return handles
 }
 
 func newActionGameWithSource(t *testing.T, definition CardID) *Game {

@@ -59,6 +59,7 @@ func TestSafeguardAmuletAbilityAndReplacementCauseChainReplay(t *testing.T) {
 	if err := game.Submit(model.PlayerOne, Input{
 		Revision: view.Revision,
 		Action:   amuletAction.Handle,
+		Reserve:  reserveHandles(amuletAction),
 	}); err != nil {
 		t.Fatalf("Submit() Safeguard Amulet error = %v", err)
 	}
@@ -71,6 +72,7 @@ func TestSafeguardAmuletAbilityAndReplacementCauseChainReplay(t *testing.T) {
 	if err := game.Submit(model.PlayerTwo, Input{
 		Revision: view.Revision,
 		Action:   fieryAction.Handle,
+		Reserve:  reserveHandles(fieryAction),
 	}); err != nil {
 		t.Fatalf("Submit() Fiery Interference error = %v", err)
 	}

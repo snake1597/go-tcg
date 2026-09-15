@@ -49,7 +49,6 @@ func TestRunRendersNumberedMenuAndWritesReplayOnEOF(t *testing.T) {
 			t.Fatalf("CLI output missing %q:\n%s", want, text)
 		}
 	}
-
 	encoded, readErr := os.ReadFile(replayPath)
 	if readErr != nil {
 		t.Fatalf("ReadFile(%q) error = %v", replayPath, readErr)
@@ -63,6 +62,65 @@ func TestRunRendersNumberedMenuAndWritesReplayOnEOF(t *testing.T) {
 	}
 	if len(replay.Steps) != 0 {
 		t.Fatalf("replay steps = %d, want 0 after invalid menu input", len(replay.Steps))
+	}
+}
+
+// TestRunCompletesHumanVsBotGameAndWritesVerifiableReplay 驗證 CLI 由真人與 bot 輪流透過各自 PlayerView 提交，並可在真人投降後完成單局。
+// 輸入為真人先讓過再投降的編號輸入、固定 seed 與 replay 路徑；輸出為完成後的畫面與可驗證 replay，副作用為 bot 提交回應並建立 replay 檔案。
+func TestRunCompletesHumanVsBotGameAndWritesVerifiableReplay(t *testing.T) {
+	replayPath := filepath.Join(
+		t.TempDir(),
+		"human-vs-bot.replay.json",
+	)
+	var output bytes.Buffer
+	err := Run(
+		[]string{
+			"--seed",
+			"7",
+			"--replay-out",
+			replayPath,
+		},
+		strings.NewReader("8\n2\n"),
+		&output,
+		filepath.Clean("../.."),
+	)
+	if err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+	text := output.String()
+	for _, want := range []string{
+		"真人：player-1　bot：player-2",
+		"bot player-2 已提交行動。",
+		"結果：player-2 獲勝",
+	} {
+		if !strings.Contains(text, want) {
+			t.Fatalf("CLI output missing %q:\n%s", want, text)
+		}
+	}
+	if strings.Contains(text, "- Two of Hearts\n") {
+		t.Fatalf("CLI output leaked bot private hand:\n%s", text)
+	}
+
+	encoded, readErr := os.ReadFile(replayPath)
+	if readErr != nil {
+		t.Fatalf("ReadFile(%q) error = %v", replayPath, readErr)
+	}
+	var replay game.Replay
+	if unmarshalErr := json.Unmarshal(encoded, &replay); unmarshalErr != nil {
+		t.Fatalf("unmarshal replay error = %v", unmarshalErr)
+	}
+	if verifyErr := replay.Verify(); verifyErr != nil {
+		t.Fatalf("replay.Verify() error = %v", verifyErr)
+	}
+	if len(replay.Steps) < 2 {
+		t.Fatalf("replay steps = %d, want human and bot submissions", len(replay.Steps))
+	}
+	if replay.Steps[1].Player == nil || replay.Steps[1].Player.UID != "player-2" {
+		t.Fatalf("bot replay player = %#v, want player-2", replay.Steps[1].Player)
+	}
+	lastStep := replay.Steps[len(replay.Steps)-1]
+	if lastStep.Player == nil || lastStep.Player.UID != "player-1" {
+		t.Fatalf("final replay player = %#v, want conceding player-1", lastStep.Player)
 	}
 }
 

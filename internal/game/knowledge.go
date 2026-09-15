@@ -164,6 +164,8 @@ func (g *Game) hasAction(player *model.Player, kind constants.ActionKind) bool {
 	return false
 }
 
+// legalActions 將引擎目前允許的所有行動投影為指定玩家可提交的穩定編號順序。
+// 輸入為檢視玩家；輸出為先按行動種類、再按不透明 handle 排序的合法行動，無副作用。
 func (g *Game) legalActions(player *model.Player) []LegalAction {
 	actions := g.state.Knowledge.Actions[player.UID]
 	legalActions := make([]LegalAction, 0, len(actions))
@@ -187,12 +189,18 @@ func (g *Game) legalActions(player *model.Player) []LegalAction {
 		)
 	}
 	for handle, card := range g.state.Knowledge.Activations[player.UID] {
+		reserveCost := g.actionReserveCost(player, card)
+		if g.state.Cards[card].Definition == veritaCardID && len(g.veritaAlternativeCostCards(player)) > 0 {
+			reserveCost = 0
+		}
 		legalActions = append(
 			legalActions,
 			LegalAction{
-				Handle:   handle,
-				Kind:     constants.ActionActivate,
-				CardName: g.state.Entities[entityID(card)].Name,
+				Handle:         handle,
+				Kind:           constants.ActionActivate,
+				CardName:       g.state.Entities[entityID(card)].Name,
+				ReserveCost:    reserveCost,
+				ReserveOptions: g.visibleReserveCards(player, card),
 			},
 		)
 	}
@@ -232,10 +240,37 @@ func (g *Game) legalActions(player *model.Player) []LegalAction {
 	sort.Slice(
 		legalActions,
 		func(first, second int) bool {
+			if legalActions[first].Kind == legalActions[second].Kind {
+				return legalActions[first].Handle < legalActions[second].Handle
+			}
 			return legalActions[first].Kind < legalActions[second].Kind
 		},
 	)
 	return legalActions
+}
+
+// visibleReserveCards 投影可支付指定行動 reserve cost 的其他手牌。
+// 輸入為玩家與正在啟動的手牌；輸出為可選的不透明 handles，無副作用且不暴露對手資訊。
+func (g *Game) visibleReserveCards(player *model.Player, source cardInstanceID) []VisibleCard {
+	zones := g.state.Zones[player.UID]
+	options := make([]VisibleCard, 0, len(zones.Hand))
+	for _, card := range zones.Hand {
+		if card == source {
+			continue
+		}
+		handle, exists := g.state.Knowledge.Cards[player.UID][entityID(card)]
+		if !exists {
+			continue
+		}
+		options = append(
+			options,
+			VisibleCard{
+				Handle: handle,
+				Name:   g.cardName(card),
+			},
+		)
+	}
+	return options
 }
 
 // visibleFloatingMemory 投影目前可作為 Cardistry Floating Memory 的已追蹤墓地卡牌。
@@ -273,8 +308,17 @@ func (g *Game) heuristicRank(player *model.Player, action LegalAction) int {
 	}
 	switch action.Kind {
 	case constants.ActionAttack:
-		return 2
+		return 1
 	case constants.ActionActivate:
+		if action.CardName == "Red Hare, Unrivaled Stallion" {
+			return 2
+		}
+		if action.CardName == "Duchess, Six of Hearts" {
+			return 2
+		}
+		if action.FloatingMemoryOptions != nil {
+			return 2
+		}
 		return 3
 	case constants.ActionWield:
 		return 3
