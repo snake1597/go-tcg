@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"time"
 
 	carddata "go-tcg/internal/card_data"
@@ -277,6 +278,9 @@ func validateFixedStandardDeck(deck DeckManifest, definitions map[CardID]CardDef
 	if err := validateDeckSection("outside game pool", deck.OutsideGamePool, 4, definitions); err != nil {
 		return err
 	}
+	if err := validateDivineRelics(deck.MaterialDeck, definitions); err != nil {
+		return err
+	}
 	canonicalDeck := fixedStandardDeck()
 	if !slices.Equal(deck.MainDeck, canonicalDeck.MainDeck) ||
 		!slices.Equal(deck.MaterialDeck, canonicalDeck.MaterialDeck) ||
@@ -293,6 +297,23 @@ func validateFixedStandardDeck(deck DeckManifest, definitions map[CardID]CardDef
 	}
 	if startingChampions == 0 {
 		return fmt.Errorf("material deck has no Level 0 Champion")
+	}
+	return nil
+}
+
+// validateDivineRelics 限制 material deck 中具有 Divine Relic 關鍵字的卡牌總數至多一張。
+// 輸入為已通過基本格式驗證的 material deck 與卡牌定義；輸出為驗證錯誤或 nil，副作用為零。
+func validateDivineRelics(section DeckSection, definitions map[CardID]CardDefinition) error {
+	count := 0
+	for _, entry := range section {
+		definition := definitions[entry.CardID]
+		if definition.card.EffectRaw == nil || !strings.Contains(*definition.card.EffectRaw, "Divine Relic") {
+			continue
+		}
+		count += entry.Count
+	}
+	if count > 1 {
+		return fmt.Errorf("material deck has %d Divine Relic cards, maximum is 1", count)
 	}
 	return nil
 }

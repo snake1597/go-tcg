@@ -125,12 +125,9 @@ func (g *Game) refreshLegalActions() {
 					handle := g.newViewHandle(player, "action:cardistry:"+string(source))
 					cardistries[handle] = source
 				}
-				for source, object := range g.state.Objects {
-					definition := g.state.Cards[object.Card].Definition
-					if samePlayer(object.Owner, player) && ((definition == duchessThornesCardID && !object.Rested) || definition == smokeBombsCardID || definition == safeguardAmuletCardID) {
-						handle := g.newViewHandle(player, "action:ability:"+string(source))
-						objectAbilities[handle] = source
-					}
+				for _, source := range g.legalObjectAbilities(player) {
+					handle := g.newViewHandle(player, "action:ability:"+string(source))
+					objectAbilities[handle] = source
 				}
 			case samePlayer(player, g.state.Scheduler.TurnPlayer) && g.state.Scheduler.Phase == PhaseMaterialize:
 				for _, card := range g.legalChampionMaterializations(player) {

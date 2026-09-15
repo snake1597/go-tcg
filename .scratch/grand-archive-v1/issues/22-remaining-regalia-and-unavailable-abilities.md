@@ -4,9 +4,9 @@
 
 **Blocked by:** 06: 以 Tonoris 完成 Champion Lineage 與 Materialization; 07: 以 Blazing Throw 建立第一條完整卡牌宣告與 Stack 路徑; 12: 以 Arthur 與 Bulwark Sword 建立中央衍生特徵求值器; 12.5: 建立統一 Ability 與 Effect Runtime.
 
-**Status:** ready-for-agent
+**Status:** completed
 
-- [ ] Divine Relic restriction 在 Standard deck validation 階段執行，非法牌組無法開始。
-- [ ] Grand Crusader's Ring 的 banish-and-draw 使用原子能力宣告與共用 zone operations。
-- [ ] Viridian tax 只在 active-player、opponent 與 water-card 條件同時成立時修改 activation cost。
-- [ ] 固定鏡像牌組沒有 water／wind Champion 時，兩種 Bauble ability 不會出現在合法行動中。
+- [x] Divine Relic restriction 在 Standard deck validation 階段執行，非法牌組無法開始。
+- [x] Grand Crusader's Ring 的 banish-and-draw 使用原子能力宣告與共用 zone operations。
+- [x] Viridian tax 只在 active-player、opponent 與 water-card 條件同時成立時修改 activation cost。
+- [x] 固定鏡像牌組沒有 water／wind Champion 時，兩種 Bauble ability 不會出現在合法行動中。

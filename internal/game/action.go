@@ -317,9 +317,28 @@ func (g *Game) canCommitActionDeclaration(declaration *actionDeclaration) bool {
 func (g *Game) actionReserveCost(player *model.Player, card cardInstanceID) int {
 	cost := g.characteristicsForCard(card).ReserveCost
 	if g.state.Cards[card].Definition == trumpSetCardID && g.championHasClass(player, g.state.Cards[card].Classes) && cost > 0 {
-		return cost - 1
+		cost--
+	}
+	if g.viridianProtectiveTrinketTaxApplies(player, card) {
+		return cost + 2
 	}
 	return cost
+}
+
+// viridianProtectiveTrinketTaxApplies 判定啟動者是否須支付 Viridian Protective Trinket 的額外費用。
+// 輸入為啟動行動的玩家與卡牌；輸出為是否加稅，副作用為零。
+func (g *Game) viridianProtectiveTrinketTaxApplies(player *model.Player, card cardInstanceID) bool {
+	candidate, exists := g.state.Cards[card]
+	if !exists || !containsString(candidate.Elements, "WATER") {
+		return false
+	}
+	for _, object := range g.state.Objects {
+		if g.state.Cards[object.Card].Definition != viridianProtectiveTrinketCardID || !samePlayer(object.Owner, g.state.Scheduler.TurnPlayer) || samePlayer(object.Owner, player) {
+			continue
+		}
+		return true
+	}
+	return false
 }
 
 func (g *Game) legalTargets() []objectID {
