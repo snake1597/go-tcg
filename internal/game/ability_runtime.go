@@ -107,8 +107,15 @@ func (g *Game) resolveAbility(instance abilityInstance) {
 				amount += g.distinctSuitedPrintedReserveCosts(instance.Controller)
 			}
 			if g.isLegalTarget(target) {
-				g.damageUnit(target, amount)
-				g.recordPublicEvent(instance.Controller, "ability", "damage", instance.SourceLKI)
+				continuation := instance
+				continuation.Operations = append(
+					[]effectOperation(nil),
+					instance.Operations[operationIndex+1:]...,
+				)
+				if !g.damageNonCombat(target, amount, instance.SourceLKI, &continuation) {
+					completed = false
+					return
+				}
 			}
 		case effectOperationContinuousModifier:
 			if !g.isLegalTarget(target) {
@@ -203,8 +210,15 @@ func (g *Game) resolveAbility(instance abilityInstance) {
 		case effectOperationSuitedThresholdDamage:
 			amount := suitedThresholdAmount(g.suitedReserveTotal(instance.Controller)) * 2
 			if amount > 0 && g.isLegalTarget(target) {
-				g.damageUnit(target, amount)
-				g.recordPublicEvent(instance.Controller, "ability", "damage", instance.SourceLKI)
+				continuation := instance
+				continuation.Operations = append(
+					[]effectOperation(nil),
+					instance.Operations[operationIndex+1:]...,
+				)
+				if !g.damageNonCombat(target, amount, instance.SourceLKI, &continuation) {
+					completed = false
+					return
+				}
 			}
 		case effectOperationMove:
 			if operation.MoveSourceToGraveyard {

@@ -16,6 +16,8 @@ const (
 	duchessThornesCardID  CardID = "bEXmm4rKOs"
 	trumpSetCardID        CardID = "w7g91ru45w"
 	veritaCardID          CardID = "4qc47amgpp"
+	safeguardAmuletCardID CardID = "yj2rJBREH8"
+	infernalVesselCardID  CardID = "vgWgu1DUYv"
 )
 
 type objectAbilityDeclaration struct {
@@ -30,6 +32,9 @@ func (g *Game) beginObjectAbility(player *model.Player, source objectID) error {
 	}
 	if g.state.Cards[object.Card].Definition == duchessThornesCardID {
 		return g.activateDuchessThornes(player, source)
+	}
+	if g.state.Cards[object.Card].Definition == safeguardAmuletCardID {
+		return g.activateSafeguardAmulet(player, source)
 	}
 	if g.state.Cards[object.Card].Definition != smokeBombsCardID {
 		return fmt.Errorf("unsupported object ability")

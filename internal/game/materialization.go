@@ -239,6 +239,7 @@ func (g *Game) resolveTonorisTaunt(item effectStackItem) {
 
 func (g *Game) expireTimedChampionEffects() {
 	g.expireContinuousEffects()
+	g.expireReplacementEffects()
 	for _, player := range g.players {
 		champion := g.state.Champions[player.UID]
 		if champion.TauntUntilTurn > 0 && champion.TauntUntilTurn <= g.state.Scheduler.TurnNumber {

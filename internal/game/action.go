@@ -460,24 +460,6 @@ func (g *Game) isChampion(target objectID) bool {
 	return false
 }
 
-func (g *Game) recoverChampion(target objectID, amount int) bool {
-	for playerID, champion := range g.state.Champions {
-		if champion.ID != target {
-			continue
-		}
-		if g.characteristicsFor(target).RecoverProhibited {
-			return false
-		}
-		champion.Damage -= amount
-		if champion.Damage < 0 {
-			champion.Damage = 0
-		}
-		g.state.Champions[playerID] = champion
-		return true
-	}
-	return false
-}
-
 func (g *Game) distinctSuitedPrintedReserveCosts(player *model.Player) int {
 	costs := make(map[int]struct{})
 	for _, object := range g.state.Objects {

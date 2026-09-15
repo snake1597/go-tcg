@@ -89,6 +89,8 @@ type gameState struct {
 	EffectsStack       []effectStackItem
 	ContinuousEffects  []continuousEffect
 	AbilityChoice      *abilityChoice
+	ReplacementEffects []replacementEffect
+	ReplacementChoice  *replacementChoice
 	CardistryUsed      map[objectID]bool
 	CardistryDiscounts map[string]int
 	Scheduler          schedulerFrame
@@ -124,6 +126,8 @@ type canonicalState struct {
 	EffectsStack       []effectStackItem               `json:"effects_stack,omitempty"`
 	ContinuousEffects  []continuousEffect              `json:"continuous_effects,omitempty"`
 	AbilityChoice      *abilityChoice                  `json:"ability_choice,omitempty"`
+	ReplacementEffects []replacementEffect             `json:"replacement_effects,omitempty"`
+	ReplacementChoice  *replacementChoice              `json:"replacement_choice,omitempty"`
 	CardistryUsed      map[objectID]bool               `json:"cardistry_used,omitempty"`
 	CardistryDiscounts map[string]int                  `json:"cardistry_discounts,omitempty"`
 	Scheduler          schedulerFrame                  `json:"scheduler"`
@@ -367,26 +371,30 @@ func (g *Game) PlayerView(player *model.Player) (PlayerView, error) {
 // JSON 編碼失敗代表內部狀態無法序列化，會 panic。
 func (g *Game) StateHash() string {
 	canonical := canonicalState{
-		SchemaVersion: 3,
-		Versions:      g.versions,
-		Players:       g.players,
-		Revision:      g.state.Revision,
-		Finished:      g.state.Finished,
-		Winner:        g.state.Winner,
-		Diagnostic:    g.state.Diagnostic,
-		PRNG:          g.state.PRNG,
-		Knowledge:     g.state.Knowledge,
-		Entities:      g.state.Entities,
-		Cards:         g.state.Cards,
-		Zones:         g.state.Zones,
-		Champions:     g.state.Champions,
-		Objects:       g.state.Objects,
-		EffectSources: g.state.EffectSources,
-		EffectsStack:  g.state.EffectsStack,
-		Scheduler:     g.state.Scheduler,
-		Events:        g.state.Events,
-		NextHandle:    g.state.NextHandle,
-		NextEvent:     g.state.NextEvent,
+		SchemaVersion:      3,
+		Versions:           g.versions,
+		Players:            g.players,
+		Revision:           g.state.Revision,
+		Finished:           g.state.Finished,
+		Winner:             g.state.Winner,
+		Diagnostic:         g.state.Diagnostic,
+		PRNG:               g.state.PRNG,
+		Knowledge:          g.state.Knowledge,
+		Entities:           g.state.Entities,
+		Cards:              g.state.Cards,
+		Zones:              g.state.Zones,
+		Champions:          g.state.Champions,
+		Objects:            g.state.Objects,
+		EffectSources:      g.state.EffectSources,
+		EffectsStack:       g.state.EffectsStack,
+		ContinuousEffects:  g.state.ContinuousEffects,
+		AbilityChoice:      g.state.AbilityChoice,
+		ReplacementEffects: g.state.ReplacementEffects,
+		ReplacementChoice:  g.state.ReplacementChoice,
+		Scheduler:          g.state.Scheduler,
+		Events:             g.state.Events,
+		NextHandle:         g.state.NextHandle,
+		NextEvent:          g.state.NextEvent,
 	}
 	state, err := json.Marshal(canonical)
 	if err != nil {

@@ -127,7 +127,7 @@ func (g *Game) refreshLegalActions() {
 				}
 				for source, object := range g.state.Objects {
 					definition := g.state.Cards[object.Card].Definition
-					if samePlayer(object.Owner, player) && ((definition == duchessThornesCardID && !object.Rested) || definition == smokeBombsCardID) {
+					if samePlayer(object.Owner, player) && ((definition == duchessThornesCardID && !object.Rested) || definition == smokeBombsCardID || definition == safeguardAmuletCardID) {
 						handle := g.newViewHandle(player, "action:ability:"+string(source))
 						objectAbilities[handle] = source
 					}
@@ -410,6 +410,13 @@ func (g *Game) submitChoice(player *model.Player, input Input) error {
 			player,
 			cardInstanceID(subject),
 		); err != nil {
+			return err
+		}
+		g.advanceKnowledgeRevision()
+		return nil
+	}
+	if g.state.ReplacementChoice != nil {
+		if err := g.submitReplacementChoice(player, objectID(subject)); err != nil {
 			return err
 		}
 		g.advanceKnowledgeRevision()

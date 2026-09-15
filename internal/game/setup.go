@@ -85,11 +85,12 @@ type gameEvent struct {
 }
 
 type eventBatch struct {
-	Player       *model.Player `json:"player"`
-	Cause        string        `json:"cause"`
-	ParentFlow   string        `json:"parent_flow,omitempty"`
-	Simultaneous bool          `json:"simultaneous"`
-	Events       []gameEvent   `json:"events"`
+	Player       *model.Player      `json:"player"`
+	Cause        string             `json:"cause"`
+	ParentFlow   string             `json:"parent_flow,omitempty"`
+	Simultaneous bool               `json:"simultaneous"`
+	Events       []gameEvent        `json:"events"`
+	CauseChain   []replacementCause `json:"cause_chain,omitempty"`
 }
 
 // NewStandardSetup 驗證固定牌組與卡牌資料後，建立由 seed 決定的開局狀態。
