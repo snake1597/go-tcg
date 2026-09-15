@@ -6,7 +6,7 @@ description: use the grill-me implement skill and automatically review completed
 ## 核心工作流程 (必需嚴格執行)
 
 ### 階段一：使用skill
-使用 grill-me `/implement` skill
+使用 grill-me `/Users/arthur/.agents/skills/implement` skill
 
 ### 階段二：檢查issues
 確認issues裡的項目是否都完成
