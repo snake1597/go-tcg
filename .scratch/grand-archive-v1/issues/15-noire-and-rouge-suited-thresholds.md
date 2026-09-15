@@ -4,7 +4,7 @@
 
 **Blocked by:** 10: 以 Impact Hammer 完成觸發收集與排序; 12: 以 Arthur 與 Bulwark Sword 建立中央衍生特徵求值器; 12.5: 建立統一 Ability 與 Effect Runtime; 13: 建立 Cardistry 核心並支援基本 Cardistry 卡牌.
 
-**Status:** in-progress
+**Status:** completed
 
 - [x] Noire 只在存在另一個合格 Suited Ally 時取得 stealth，來源變化後即時重新求值。
 - [x] On Enter reserve-total 門檻使用共用查詢並正確放置 buff counters。

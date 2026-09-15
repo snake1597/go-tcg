@@ -26,4 +26,4 @@
 
 ## 目前可執行
 
-依目前狀態，issue 01 至 12.5 已完成；下一張可執行工作是 [13：Basic Cardistry cards](./13-basic-cardistry-cards.md)。後續工作仍受各自的 `Blocked by` 限制。
+依目前狀態，issue 01 至 26 已完成；下一張可執行工作是 [27：首版發布與文件 gate](./27-v1-release-quality-gate.md)。Ticket 26 收尾後確認的測試、收斂性、輸入契約與規則核對工作，均已列在 issue 27 的「已知未完成項目」，完成前不得宣告首版可發布。
