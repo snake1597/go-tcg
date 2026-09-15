@@ -22,9 +22,18 @@ type Input struct {
 type ViewHandle string
 
 type LegalAction struct {
-	Handle   ViewHandle           `json:"handle"`
-	Kind     constants.ActionKind `json:"kind"`
-	CardName string               `json:"card_name,omitempty"`
+	Handle        ViewHandle           `json:"handle"`
+	Kind          constants.ActionKind `json:"kind"`
+	CardName      string               `json:"card_name,omitempty"`
+	HeuristicRank int                  `json:"heuristic_rank"`
+}
+
+// VisibleChoice 提供 PendingChoice 選項的玩家可見描述與啟發式優先級。
+// Handle 是提交用的不透明識別；其餘欄位只由既有 PlayerView 可見資料導出，不包含內部 ID。
+type VisibleChoice struct {
+	Handle        ViewHandle `json:"handle"`
+	CardName      string     `json:"card_name,omitempty"`
+	HeuristicRank int        `json:"heuristic_rank"`
 }
 
 type VisibleChampion struct {
@@ -32,6 +41,7 @@ type VisibleChampion struct {
 	CardName string        `json:"card_name"`
 	Power    int           `json:"power"`
 	Life     int           `json:"life"`
+	Damage   int           `json:"damage"`
 	Rested   bool          `json:"rested"`
 	Taunt    bool          `json:"taunt"`
 }
@@ -47,8 +57,9 @@ type VisibleEvent struct {
 }
 
 type PendingChoice struct {
-	Options []ViewHandle `json:"options"`
-	CanPass bool         `json:"can_pass,omitempty"`
+	Options []ViewHandle    `json:"options"`
+	Choices []VisibleChoice `json:"choices"`
+	CanPass bool            `json:"can_pass,omitempty"`
 }
 
 type PlayerView struct {

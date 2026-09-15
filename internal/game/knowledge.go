@@ -221,6 +221,12 @@ func (g *Game) legalActions(player *model.Player) []LegalAction {
 	for handle, source := range g.state.Knowledge.ObjectAbilities[player.UID] {
 		legalActions = append(legalActions, LegalAction{Handle: handle, Kind: constants.ActionActivate, CardName: g.state.Entities[entityID(g.state.Objects[source].Card)].Name})
 	}
+	for index := range legalActions {
+		legalActions[index].HeuristicRank = g.heuristicRank(
+			player,
+			legalActions[index],
+		)
+	}
 	sort.Slice(
 		legalActions,
 		func(first, second int) bool {
@@ -228,6 +234,54 @@ func (g *Game) legalActions(player *model.Player) []LegalAction {
 		},
 	)
 	return legalActions
+}
+
+// heuristicRank 依公開 Champion 狀態與已合法的 action 建立 bot 可消費的固定戰術優先級。
+// 輸入為決策玩家與合法 action；輸出為越小越優先的 rank，無副作用且不讀取隱藏區域資料。
+func (g *Game) heuristicRank(player *model.Player, action LegalAction) int {
+	if action.Kind == constants.ActionAttack && g.attackWinsGame(player, action.Handle) {
+		return 0
+	}
+	switch action.Kind {
+	case constants.ActionAttack:
+		return 2
+	case constants.ActionActivate:
+		return 3
+	case constants.ActionWield:
+		return 3
+	case constants.ActionMaterialize:
+		return 4
+	case constants.ActionSkipMaterialize:
+		return 5
+	case constants.ActionPass:
+		return 5
+	case constants.ActionConcede:
+		return 6
+	default:
+		return 7
+	}
+}
+
+// attackWinsGame 判斷指定合法攻擊是否能以公開攻擊力擊敗任一可攻擊對方 Champion。
+// 輸入為攻擊玩家與 action handle；輸出為是否有立即獲勝目標，無副作用且僅檢查公開場上物件。
+func (g *Game) attackWinsGame(player *model.Player, handle ViewHandle) bool {
+	attacker, exists := g.state.Knowledge.Attacks[player.UID][handle]
+	if !exists {
+		return false
+	}
+	power := g.characteristicsFor(attacker).Power
+	for _, target := range g.attackTargets(player, attacker) {
+		for _, opponent := range g.players {
+			champion, championExists := g.state.Champions[opponent.UID]
+			if !championExists || samePlayer(opponent, player) || champion.ID != target {
+				continue
+			}
+			if power >= g.characteristicsFor(champion.ID).Life-champion.Damage {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func (g *Game) visibleChampions(_ *model.Player) []VisibleChampion {
@@ -244,6 +298,7 @@ func (g *Game) visibleChampions(_ *model.Player) []VisibleChampion {
 				CardName: g.state.Entities[entityID(champion.Card)].Name,
 				Power:    g.characteristicsFor(champion.ID).Power,
 				Life:     g.characteristicsFor(champion.ID).Life,
+				Damage:   champion.Damage,
 				Rested:   champion.Rested,
 				Taunt:    champion.TauntUntilTurn > g.state.Scheduler.TurnNumber,
 			},
@@ -341,8 +396,24 @@ func (g *Game) pendingChoice(player *model.Player) *PendingChoice {
 		return nil
 	}
 	options := make([]ViewHandle, 0, len(choice.Options))
-	for handle := range choice.Options {
+	choices := make([]VisibleChoice, 0, len(choice.Options))
+	for handle, subject := range choice.Options {
 		options = append(options, handle)
+		cardName := ""
+		if _, visible := g.state.Knowledge.Cards[player.UID][subject]; visible {
+			cardName = g.state.Entities[subject].Name
+		}
+		choices = append(
+			choices,
+			VisibleChoice{
+				Handle:   handle,
+				CardName: cardName,
+				HeuristicRank: g.choiceHeuristicRank(
+					player,
+					subject,
+				),
+			},
+		)
 	}
 	sort.Slice(
 		options,
@@ -350,10 +421,36 @@ func (g *Game) pendingChoice(player *model.Player) *PendingChoice {
 			return options[first] < options[second]
 		},
 	)
+	sort.Slice(
+		choices,
+		func(first, second int) bool {
+			return choices[first].Handle < choices[second].Handle
+		},
+	)
 	return &PendingChoice{
 		Options: options,
+		Choices: choices,
 		CanPass: choice.CanPass,
 	}
+}
+
+// choiceHeuristicRank 對攻擊目標優先選取可立即擊敗的公開 Champion，其餘 choice 保持同分。
+// 輸入為選擇玩家與已合法的選項 subject；輸出為越小越優先的 rank，無副作用且不讀取隱藏區域資料。
+func (g *Game) choiceHeuristicRank(player *model.Player, subject entityID) int {
+	attack := g.state.Knowledge.Attack
+	if attack == nil || !samePlayer(attack.Controller, player) {
+		return 0
+	}
+	for _, opponent := range g.players {
+		champion, exists := g.state.Champions[opponent.UID]
+		if !exists || samePlayer(opponent, player) || champion.ID != objectID(subject) {
+			continue
+		}
+		if g.characteristicsFor(attack.Attacker).Power >= g.characteristicsFor(champion.ID).Life-champion.Damage {
+			return 0
+		}
+	}
+	return 2
 }
 
 // submitChoice 先驗證選擇者與待選 handle，再依目前宣告、觸發排序或能力狀態分派。

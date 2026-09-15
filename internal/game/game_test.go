@@ -83,6 +83,22 @@ func TestPlayerViewScopesOpaqueActionHandles(t *testing.T) {
 	}
 }
 
+// TestPlayerViewIncludesHeuristicRank 驗證 PlayerView 對每個合法 action 提供 bot 可用的固定優先級。
+// 輸入為新建對局與 Player One；輸出為投降 action 的最低優先級 rank，副作用是無。
+func TestPlayerViewIncludesHeuristicRank(t *testing.T) {
+	game := NewGame(1)
+	view, err := game.PlayerView(model.PlayerOne)
+	if err != nil {
+		t.Fatalf("PlayerView() error = %v", err)
+	}
+	if len(view.LegalActions) != 1 {
+		t.Fatalf("LegalActions = %#v, want one action", view.LegalActions)
+	}
+	if view.LegalActions[0].Kind != constants.ActionConcede || view.LegalActions[0].HeuristicRank != 6 {
+		t.Fatalf("LegalAction = %#v, want concede with rank 6", view.LegalActions[0])
+	}
+}
+
 func TestSubmitRejectsInvalidActionHandleWithoutChangingGame(t *testing.T) {
 	testCases := []struct {
 		name       string
