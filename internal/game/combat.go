@@ -21,7 +21,7 @@ type wieldDeclaration struct {
 // 輸入為持有行動機會的玩家；輸出為合法攻擊者的內部識別，無副作用。
 func (g *Game) legalAttackers(player *model.Player) []objectID {
 	scheduler := g.state.Scheduler
-	if !samePlayer(scheduler.TurnPlayer, player) || scheduler.Phase != PhaseMain || len(g.state.EffectsStack) != 0 {
+	if scheduler.TurnNumber == 1 || !samePlayer(scheduler.TurnPlayer, player) || scheduler.Phase != PhaseMain || len(g.state.EffectsStack) != 0 {
 		return nil
 	}
 	attackers := make([]objectID, 0, 1)

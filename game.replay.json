@@ -1,0 +1,6223 @@
+{
+  "format_version": 4,
+  "versions": {
+    "engine": "grand-archive-v1",
+    "rules": "602c917f2f8fd4df7198429a72eb596bf7f647c6",
+    "card_data": "card-data-v3",
+    "deck": "standard-fire-v2",
+    "prng": "splitmix64-v1"
+  },
+  "initial_seed": 7,
+  "initial_state": {
+    "Revision": 2,
+    "Finished": false,
+    "Winner": null,
+    "Diagnostic": "",
+    "PRNG": {
+      "seed": 7,
+      "cursor": 118
+    },
+    "Knowledge": {
+      "actions": {
+        "player-1": {
+          "2b76b7ac73b186b706ebe5875afbb592fe9d410fa3b06ef1878cb91825ed47a2": "pass",
+          "44d1de48d8199119a3d305a0bb3b2eb649de08819e8898a4a04a21e01af824d2": "concede"
+        },
+        "player-2": {
+          "72ed3ec7921d079d36a58ddaa4f797815560592e2e0157948a0afb05918ca1c6": "concede"
+        }
+      },
+      "materializations": {
+        "player-1": {},
+        "player-2": {}
+      },
+      "activations": {
+        "player-1": {
+          "2386485812ba152bd17a620ff2dee1ee2e006481c4368eacceb450261a1ebe56": "card:\u0026{player-1}:41",
+          "8b25b02e7a9bf3b3dd49437a459a805d2fa050cd4d1f09fbbf08cf496f2738e3": "card:\u0026{player-1}:28",
+          "9da435e8a19980efff7faf25abbdfbf138c2e5ab777ba6f9990f55c6502ad171": "card:\u0026{player-1}:35",
+          "b7b6669592f415b7143743cfd4d1ab97c4c6a941fb17db4c4ee07fec8107711b": "card:\u0026{player-1}:42",
+          "c33e718574b1594555a76170903672ec2df99039b1b995426e51913081d0935b": "card:\u0026{player-1}:31",
+          "fe23a6f5c55fcdf6afbe3e5afddcdd41938bc898427d5cc05b7e51e84a87b54f": "card:\u0026{player-1}:37"
+        },
+        "player-2": {}
+      },
+      "attacks": {
+        "player-1": {},
+        "player-2": {}
+      },
+      "wields": {
+        "player-1": {},
+        "player-2": {}
+      },
+      "cardistries": {
+        "player-1": {},
+        "player-2": {}
+      },
+      "object_abilities": {
+        "player-1": {},
+        "player-2": {}
+      },
+      "cards": {
+        "player-1": {
+          "card:\u0026{player-1}:27": "d0e36c1fedee61ad401109f274c364bff04f0d2695042ec781c84d25243078f6",
+          "card:\u0026{player-1}:28": "b8857cf190c52fbea630900f381e05430dbb91099ba542d9c59a8ea4fca0cb49",
+          "card:\u0026{player-1}:31": "5db75d43c7e2f2e1212fcdb6c1a35a00d8ad71ea01cadff82e22539039ccc3d3",
+          "card:\u0026{player-1}:35": "e37f9f77c89877d0ac2958472381b5e56bb9ea639ce5f7784e7d4265a967f075",
+          "card:\u0026{player-1}:37": "7f6e7b643343f4ea418180e81c5ad7413dd3e05799670a95a5b37d99d69001bc",
+          "card:\u0026{player-1}:41": "478975e6c2c3db5f04d2b4a5ad8fdd7ff5bf26e323cecbf855fce05f15eca3c5",
+          "card:\u0026{player-1}:42": "48c91b69f302da04ab7520f44461099d17acc33a3aefe767cea4952a53506a6e",
+          "card:\u0026{player-1}:61": "29899bd007228e639943440e00e84c64f9ef66b5b170bced8a101b393e2a814d",
+          "card:\u0026{player-2}:133": "93d0df235c93c493425de6aeca16221b7b11c5f50ae3b5dd6fe3fcace16a3a09"
+        },
+        "player-2": {
+          "card:\u0026{player-1}:61": "c762eecbe9405d4393e18df295bd46ca40dc1aa9f847c6933bb640f82915dba6",
+          "card:\u0026{player-2}:105": "e50ab18138be77a58edb8b4383a0b4e838eae1b0e0a27e232bcffa855106d49c",
+          "card:\u0026{player-2}:112": "b1572539c4682f2c419a69edefd023fb6928ce9a5fa30ee97636a328444a5043",
+          "card:\u0026{player-2}:127": "3202d10ee79f6f0ec13ea810759734be149a6acae70ffbbe0ca210314ed8d2ac",
+          "card:\u0026{player-2}:133": "920fd1284b8e50a85802c1cc96bf9c3d9c3b341d3f05e859ecbb789fc0106fb0",
+          "card:\u0026{player-2}:73": "65afe87dc0a22df5ae6e08f5360beffb05f5b0ccc5a267667fcaaede4c0ebde8",
+          "card:\u0026{player-2}:80": "35b0b9184507793b07056aacfea0346243fcf2324aafb3cacd45d46cdd2b3191",
+          "card:\u0026{player-2}:82": "7f0d14a643dfa6dcff7ea314f3099ccc81c026cdadcb632fe6f07ff3d88fda1d",
+          "card:\u0026{player-2}:86": "7817899329b14bdd9b57fb163d1b03cdfb3b8cbc362f931e6ddd3ca402e5b8a2"
+        }
+      },
+      "events": {
+        "player-1": [
+          {
+            "kind": "draw",
+            "card_name": "Duchess, Six of Hearts"
+          },
+          {
+            "kind": "draw",
+            "card_name": "Red Hare, Unrivaled Stallion"
+          },
+          {
+            "kind": "draw",
+            "card_name": "Four of Hearts"
+          },
+          {
+            "kind": "draw",
+            "card_name": "Fiery Interference"
+          },
+          {
+            "kind": "draw",
+            "card_name": "Blazing Throw"
+          },
+          {
+            "kind": "draw",
+            "card_name": "Red Hare, Unrivaled Stallion"
+          },
+          {
+            "kind": "draw",
+            "card_name": "Four of Hearts"
+          }
+        ],
+        "player-2": [
+          {
+            "kind": "draw",
+            "card_name": "Two of Hearts"
+          },
+          {
+            "kind": "draw",
+            "card_name": "Peppered Chef"
+          },
+          {
+            "kind": "draw",
+            "card_name": "Fiery Interference"
+          },
+          {
+            "kind": "draw",
+            "card_name": "Trump Set"
+          },
+          {
+            "kind": "draw",
+            "card_name": "Five of Spades"
+          },
+          {
+            "kind": "draw",
+            "card_name": "Noire, Ace of Spades"
+          },
+          {
+            "kind": "draw",
+            "card_name": "Noire, Ace of Spades"
+          }
+        ]
+      }
+    },
+    "Entities": {
+      "card:\u0026{player-1}:1": {
+        "name": "Five of Spades"
+      },
+      "card:\u0026{player-1}:10": {
+        "name": "Noire, Ace of Spades"
+      },
+      "card:\u0026{player-1}:11": {
+        "name": "Three of Spades"
+      },
+      "card:\u0026{player-1}:12": {
+        "name": "Three of Spades"
+      },
+      "card:\u0026{player-1}:13": {
+        "name": "Three of Spades"
+      },
+      "card:\u0026{player-1}:14": {
+        "name": "Trump Set"
+      },
+      "card:\u0026{player-1}:15": {
+        "name": "Trump Set"
+      },
+      "card:\u0026{player-1}:16": {
+        "name": "Two of Spades"
+      },
+      "card:\u0026{player-1}:17": {
+        "name": "Two of Spades"
+      },
+      "card:\u0026{player-1}:18": {
+        "name": "Two of Spades"
+      },
+      "card:\u0026{player-1}:19": {
+        "name": "Two of Spades"
+      },
+      "card:\u0026{player-1}:2": {
+        "name": "Five of Spades"
+      },
+      "card:\u0026{player-1}:20": {
+        "name": "Wonderland's Reign"
+      },
+      "card:\u0026{player-1}:21": {
+        "name": "Arthur, Young Heir"
+      },
+      "card:\u0026{player-1}:22": {
+        "name": "Arthur, Young Heir"
+      },
+      "card:\u0026{player-1}:23": {
+        "name": "Arthur, Young Heir"
+      },
+      "card:\u0026{player-1}:24": {
+        "name": "Arthur, Young Heir"
+      },
+      "card:\u0026{player-1}:25": {
+        "name": "Blazing Throw"
+      },
+      "card:\u0026{player-1}:26": {
+        "name": "Blazing Throw"
+      },
+      "card:\u0026{player-1}:27": {
+        "name": "Blazing Throw"
+      },
+      "card:\u0026{player-1}:28": {
+        "name": "Duchess, Six of Hearts"
+      },
+      "card:\u0026{player-1}:29": {
+        "name": "Duchess, Six of Hearts"
+      },
+      "card:\u0026{player-1}:3": {
+        "name": "Five of Spades"
+      },
+      "card:\u0026{player-1}:30": {
+        "name": "Duchess, Six of Hearts"
+      },
+      "card:\u0026{player-1}:31": {
+        "name": "Fiery Interference"
+      },
+      "card:\u0026{player-1}:32": {
+        "name": "Fiery Interference"
+      },
+      "card:\u0026{player-1}:33": {
+        "name": "Fiery Interference"
+      },
+      "card:\u0026{player-1}:34": {
+        "name": "Four of Hearts"
+      },
+      "card:\u0026{player-1}:35": {
+        "name": "Four of Hearts"
+      },
+      "card:\u0026{player-1}:36": {
+        "name": "Four of Hearts"
+      },
+      "card:\u0026{player-1}:37": {
+        "name": "Four of Hearts"
+      },
+      "card:\u0026{player-1}:38": {
+        "name": "Heated Vengeance"
+      },
+      "card:\u0026{player-1}:39": {
+        "name": "Peppered Chef"
+      },
+      "card:\u0026{player-1}:4": {
+        "name": "Four of Spades"
+      },
+      "card:\u0026{player-1}:40": {
+        "name": "Peppered Chef"
+      },
+      "card:\u0026{player-1}:41": {
+        "name": "Red Hare, Unrivaled Stallion"
+      },
+      "card:\u0026{player-1}:42": {
+        "name": "Red Hare, Unrivaled Stallion"
+      },
+      "card:\u0026{player-1}:43": {
+        "name": "Red Hare, Unrivaled Stallion"
+      },
+      "card:\u0026{player-1}:44": {
+        "name": "Rouge, Ace of Hearts"
+      },
+      "card:\u0026{player-1}:45": {
+        "name": "Rouge, Ace of Hearts"
+      },
+      "card:\u0026{player-1}:46": {
+        "name": "Rouge, Ace of Hearts"
+      },
+      "card:\u0026{player-1}:47": {
+        "name": "Straight Flare"
+      },
+      "card:\u0026{player-1}:48": {
+        "name": "Straight Flare"
+      },
+      "card:\u0026{player-1}:49": {
+        "name": "Straight Flare"
+      },
+      "card:\u0026{player-1}:5": {
+        "name": "Four of Spades"
+      },
+      "card:\u0026{player-1}:50": {
+        "name": "Straight Flare"
+      },
+      "card:\u0026{player-1}:51": {
+        "name": "Three of Hearts"
+      },
+      "card:\u0026{player-1}:52": {
+        "name": "Three of Hearts"
+      },
+      "card:\u0026{player-1}:53": {
+        "name": "Three of Hearts"
+      },
+      "card:\u0026{player-1}:54": {
+        "name": "Three of Hearts"
+      },
+      "card:\u0026{player-1}:55": {
+        "name": "Two of Hearts"
+      },
+      "card:\u0026{player-1}:56": {
+        "name": "Two of Hearts"
+      },
+      "card:\u0026{player-1}:57": {
+        "name": "Two of Hearts"
+      },
+      "card:\u0026{player-1}:58": {
+        "name": "Two of Hearts"
+      },
+      "card:\u0026{player-1}:59": {
+        "name": "Verita, Queen of Hearts"
+      },
+      "card:\u0026{player-1}:6": {
+        "name": "Four of Spades"
+      },
+      "card:\u0026{player-1}:60": {
+        "name": "Verita, Queen of Hearts"
+      },
+      "card:\u0026{player-1}:61": {
+        "name": "Spirit of Fire"
+      },
+      "card:\u0026{player-1}:62": {
+        "name": "Tonoris, Lone Mercenary"
+      },
+      "card:\u0026{player-1}:63": {
+        "name": "Bulwark Sword"
+      },
+      "card:\u0026{player-1}:64": {
+        "name": "Grand Crusader's Ring"
+      },
+      "card:\u0026{player-1}:65": {
+        "name": "Safeguard Amulet"
+      },
+      "card:\u0026{player-1}:66": {
+        "name": "Smoke Bombs"
+      },
+      "card:\u0026{player-1}:67": {
+        "name": "Viridian Protective Trinket"
+      },
+      "card:\u0026{player-1}:68": {
+        "name": "Water Resonance Bauble"
+      },
+      "card:\u0026{player-1}:69": {
+        "name": "Wind Resonance Bauble"
+      },
+      "card:\u0026{player-1}:7": {
+        "name": "Four of Spades"
+      },
+      "card:\u0026{player-1}:70": {
+        "name": "Impact Hammer"
+      },
+      "card:\u0026{player-1}:71": {
+        "name": "Infernal Vessel"
+      },
+      "card:\u0026{player-1}:72": {
+        "name": "The Duchess's Thornes"
+      },
+      "card:\u0026{player-1}:8": {
+        "name": "Noire, Ace of Spades"
+      },
+      "card:\u0026{player-1}:9": {
+        "name": "Noire, Ace of Spades"
+      },
+      "card:\u0026{player-2}:100": {
+        "name": "Duchess, Six of Hearts"
+      },
+      "card:\u0026{player-2}:101": {
+        "name": "Duchess, Six of Hearts"
+      },
+      "card:\u0026{player-2}:102": {
+        "name": "Duchess, Six of Hearts"
+      },
+      "card:\u0026{player-2}:103": {
+        "name": "Fiery Interference"
+      },
+      "card:\u0026{player-2}:104": {
+        "name": "Fiery Interference"
+      },
+      "card:\u0026{player-2}:105": {
+        "name": "Fiery Interference"
+      },
+      "card:\u0026{player-2}:106": {
+        "name": "Four of Hearts"
+      },
+      "card:\u0026{player-2}:107": {
+        "name": "Four of Hearts"
+      },
+      "card:\u0026{player-2}:108": {
+        "name": "Four of Hearts"
+      },
+      "card:\u0026{player-2}:109": {
+        "name": "Four of Hearts"
+      },
+      "card:\u0026{player-2}:110": {
+        "name": "Heated Vengeance"
+      },
+      "card:\u0026{player-2}:111": {
+        "name": "Peppered Chef"
+      },
+      "card:\u0026{player-2}:112": {
+        "name": "Peppered Chef"
+      },
+      "card:\u0026{player-2}:113": {
+        "name": "Red Hare, Unrivaled Stallion"
+      },
+      "card:\u0026{player-2}:114": {
+        "name": "Red Hare, Unrivaled Stallion"
+      },
+      "card:\u0026{player-2}:115": {
+        "name": "Red Hare, Unrivaled Stallion"
+      },
+      "card:\u0026{player-2}:116": {
+        "name": "Rouge, Ace of Hearts"
+      },
+      "card:\u0026{player-2}:117": {
+        "name": "Rouge, Ace of Hearts"
+      },
+      "card:\u0026{player-2}:118": {
+        "name": "Rouge, Ace of Hearts"
+      },
+      "card:\u0026{player-2}:119": {
+        "name": "Straight Flare"
+      },
+      "card:\u0026{player-2}:120": {
+        "name": "Straight Flare"
+      },
+      "card:\u0026{player-2}:121": {
+        "name": "Straight Flare"
+      },
+      "card:\u0026{player-2}:122": {
+        "name": "Straight Flare"
+      },
+      "card:\u0026{player-2}:123": {
+        "name": "Three of Hearts"
+      },
+      "card:\u0026{player-2}:124": {
+        "name": "Three of Hearts"
+      },
+      "card:\u0026{player-2}:125": {
+        "name": "Three of Hearts"
+      },
+      "card:\u0026{player-2}:126": {
+        "name": "Three of Hearts"
+      },
+      "card:\u0026{player-2}:127": {
+        "name": "Two of Hearts"
+      },
+      "card:\u0026{player-2}:128": {
+        "name": "Two of Hearts"
+      },
+      "card:\u0026{player-2}:129": {
+        "name": "Two of Hearts"
+      },
+      "card:\u0026{player-2}:130": {
+        "name": "Two of Hearts"
+      },
+      "card:\u0026{player-2}:131": {
+        "name": "Verita, Queen of Hearts"
+      },
+      "card:\u0026{player-2}:132": {
+        "name": "Verita, Queen of Hearts"
+      },
+      "card:\u0026{player-2}:133": {
+        "name": "Spirit of Fire"
+      },
+      "card:\u0026{player-2}:134": {
+        "name": "Tonoris, Lone Mercenary"
+      },
+      "card:\u0026{player-2}:135": {
+        "name": "Bulwark Sword"
+      },
+      "card:\u0026{player-2}:136": {
+        "name": "Grand Crusader's Ring"
+      },
+      "card:\u0026{player-2}:137": {
+        "name": "Safeguard Amulet"
+      },
+      "card:\u0026{player-2}:138": {
+        "name": "Smoke Bombs"
+      },
+      "card:\u0026{player-2}:139": {
+        "name": "Viridian Protective Trinket"
+      },
+      "card:\u0026{player-2}:140": {
+        "name": "Water Resonance Bauble"
+      },
+      "card:\u0026{player-2}:141": {
+        "name": "Wind Resonance Bauble"
+      },
+      "card:\u0026{player-2}:142": {
+        "name": "Impact Hammer"
+      },
+      "card:\u0026{player-2}:143": {
+        "name": "Infernal Vessel"
+      },
+      "card:\u0026{player-2}:144": {
+        "name": "The Duchess's Thornes"
+      },
+      "card:\u0026{player-2}:73": {
+        "name": "Five of Spades"
+      },
+      "card:\u0026{player-2}:74": {
+        "name": "Five of Spades"
+      },
+      "card:\u0026{player-2}:75": {
+        "name": "Five of Spades"
+      },
+      "card:\u0026{player-2}:76": {
+        "name": "Four of Spades"
+      },
+      "card:\u0026{player-2}:77": {
+        "name": "Four of Spades"
+      },
+      "card:\u0026{player-2}:78": {
+        "name": "Four of Spades"
+      },
+      "card:\u0026{player-2}:79": {
+        "name": "Four of Spades"
+      },
+      "card:\u0026{player-2}:80": {
+        "name": "Noire, Ace of Spades"
+      },
+      "card:\u0026{player-2}:81": {
+        "name": "Noire, Ace of Spades"
+      },
+      "card:\u0026{player-2}:82": {
+        "name": "Noire, Ace of Spades"
+      },
+      "card:\u0026{player-2}:83": {
+        "name": "Three of Spades"
+      },
+      "card:\u0026{player-2}:84": {
+        "name": "Three of Spades"
+      },
+      "card:\u0026{player-2}:85": {
+        "name": "Three of Spades"
+      },
+      "card:\u0026{player-2}:86": {
+        "name": "Trump Set"
+      },
+      "card:\u0026{player-2}:87": {
+        "name": "Trump Set"
+      },
+      "card:\u0026{player-2}:88": {
+        "name": "Two of Spades"
+      },
+      "card:\u0026{player-2}:89": {
+        "name": "Two of Spades"
+      },
+      "card:\u0026{player-2}:90": {
+        "name": "Two of Spades"
+      },
+      "card:\u0026{player-2}:91": {
+        "name": "Two of Spades"
+      },
+      "card:\u0026{player-2}:92": {
+        "name": "Wonderland's Reign"
+      },
+      "card:\u0026{player-2}:93": {
+        "name": "Arthur, Young Heir"
+      },
+      "card:\u0026{player-2}:94": {
+        "name": "Arthur, Young Heir"
+      },
+      "card:\u0026{player-2}:95": {
+        "name": "Arthur, Young Heir"
+      },
+      "card:\u0026{player-2}:96": {
+        "name": "Arthur, Young Heir"
+      },
+      "card:\u0026{player-2}:97": {
+        "name": "Blazing Throw"
+      },
+      "card:\u0026{player-2}:98": {
+        "name": "Blazing Throw"
+      },
+      "card:\u0026{player-2}:99": {
+        "name": "Blazing Throw"
+      }
+    },
+    "Cards": {
+      "card:\u0026{player-1}:1": {
+        "id": "card:\u0026{player-1}:1",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "i9hf5lhl5f",
+        "face": "face:i9hf5lhl5f:front",
+        "level": -1,
+        "types": [
+          "ALLY"
+        ],
+        "subtypes": [
+          "TAMER",
+          "SUITED",
+          "ANIMAL",
+          "BEAR"
+        ],
+        "elements": [
+          "NORM"
+        ],
+        "classes": [
+          "TAMER"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 5,
+        "fast": false,
+        "power": 1,
+        "life": 4
+      },
+      "card:\u0026{player-1}:10": {
+        "id": "card:\u0026{player-1}:10",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "wbjc9t8ycp",
+        "face": "face:wbjc9t8ycp:front",
+        "level": -1,
+        "types": [
+          "UNIQUE",
+          "ALLY"
+        ],
+        "subtypes": [
+          "ASSASSIN",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "NORM"
+        ],
+        "classes": [
+          "ASSASSIN"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 1,
+        "fast": false,
+        "power": 1,
+        "life": 1
+      },
+      "card:\u0026{player-1}:11": {
+        "id": "card:\u0026{player-1}:11",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "o09csnorqv",
+        "face": "face:o09csnorqv:front",
+        "level": -1,
+        "types": [
+          "ALLY"
+        ],
+        "subtypes": [
+          "ASSASSIN",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "NORM"
+        ],
+        "classes": [
+          "ASSASSIN"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 3,
+        "fast": false,
+        "power": 2,
+        "life": 2
+      },
+      "card:\u0026{player-1}:12": {
+        "id": "card:\u0026{player-1}:12",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "o09csnorqv",
+        "face": "face:o09csnorqv:front",
+        "level": -1,
+        "types": [
+          "ALLY"
+        ],
+        "subtypes": [
+          "ASSASSIN",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "NORM"
+        ],
+        "classes": [
+          "ASSASSIN"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 3,
+        "fast": false,
+        "power": 2,
+        "life": 2
+      },
+      "card:\u0026{player-1}:13": {
+        "id": "card:\u0026{player-1}:13",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "o09csnorqv",
+        "face": "face:o09csnorqv:front",
+        "level": -1,
+        "types": [
+          "ALLY"
+        ],
+        "subtypes": [
+          "ASSASSIN",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "NORM"
+        ],
+        "classes": [
+          "ASSASSIN"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 3,
+        "fast": false,
+        "power": 2,
+        "life": 2
+      },
+      "card:\u0026{player-1}:14": {
+        "id": "card:\u0026{player-1}:14",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "w7g91ru45w",
+        "face": "face:w7g91ru45w:front",
+        "level": -1,
+        "types": [
+          "ACTION"
+        ],
+        "subtypes": [
+          "GUARDIAN",
+          "SUITED",
+          "SKILL",
+          "REACTION"
+        ],
+        "elements": [
+          "NORM"
+        ],
+        "classes": [
+          "GUARDIAN"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 2,
+        "fast": true,
+        "power": 0,
+        "life": 0
+      },
+      "card:\u0026{player-1}:15": {
+        "id": "card:\u0026{player-1}:15",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "w7g91ru45w",
+        "face": "face:w7g91ru45w:front",
+        "level": -1,
+        "types": [
+          "ACTION"
+        ],
+        "subtypes": [
+          "GUARDIAN",
+          "SUITED",
+          "SKILL",
+          "REACTION"
+        ],
+        "elements": [
+          "NORM"
+        ],
+        "classes": [
+          "GUARDIAN"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 2,
+        "fast": true,
+        "power": 0,
+        "life": 0
+      },
+      "card:\u0026{player-1}:16": {
+        "id": "card:\u0026{player-1}:16",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "e8ygl32jef",
+        "face": "face:e8ygl32jef:front",
+        "level": -1,
+        "types": [
+          "ALLY"
+        ],
+        "subtypes": [
+          "ASSASSIN",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "NORM"
+        ],
+        "classes": [
+          "ASSASSIN"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 2,
+        "fast": false,
+        "power": 1,
+        "life": 1
+      },
+      "card:\u0026{player-1}:17": {
+        "id": "card:\u0026{player-1}:17",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "e8ygl32jef",
+        "face": "face:e8ygl32jef:front",
+        "level": -1,
+        "types": [
+          "ALLY"
+        ],
+        "subtypes": [
+          "ASSASSIN",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "NORM"
+        ],
+        "classes": [
+          "ASSASSIN"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 2,
+        "fast": false,
+        "power": 1,
+        "life": 1
+      },
+      "card:\u0026{player-1}:18": {
+        "id": "card:\u0026{player-1}:18",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "e8ygl32jef",
+        "face": "face:e8ygl32jef:front",
+        "level": -1,
+        "types": [
+          "ALLY"
+        ],
+        "subtypes": [
+          "ASSASSIN",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "NORM"
+        ],
+        "classes": [
+          "ASSASSIN"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 2,
+        "fast": false,
+        "power": 1,
+        "life": 1
+      },
+      "card:\u0026{player-1}:19": {
+        "id": "card:\u0026{player-1}:19",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "e8ygl32jef",
+        "face": "face:e8ygl32jef:front",
+        "level": -1,
+        "types": [
+          "ALLY"
+        ],
+        "subtypes": [
+          "ASSASSIN",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "NORM"
+        ],
+        "classes": [
+          "ASSASSIN"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 2,
+        "fast": false,
+        "power": 1,
+        "life": 1
+      },
+      "card:\u0026{player-1}:2": {
+        "id": "card:\u0026{player-1}:2",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "i9hf5lhl5f",
+        "face": "face:i9hf5lhl5f:front",
+        "level": -1,
+        "types": [
+          "ALLY"
+        ],
+        "subtypes": [
+          "TAMER",
+          "SUITED",
+          "ANIMAL",
+          "BEAR"
+        ],
+        "elements": [
+          "NORM"
+        ],
+        "classes": [
+          "TAMER"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 5,
+        "fast": false,
+        "power": 1,
+        "life": 4
+      },
+      "card:\u0026{player-1}:20": {
+        "id": "card:\u0026{player-1}:20",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "0mf1ug6yfi",
+        "face": "face:0mf1ug6yfi:front",
+        "level": -1,
+        "types": [
+          "UNIQUE",
+          "PHANTASIA"
+        ],
+        "subtypes": [
+          "CLERIC",
+          "SUITED",
+          "SPELL"
+        ],
+        "elements": [
+          "NORM"
+        ],
+        "classes": [
+          "CLERIC"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 0,
+        "fast": false,
+        "power": 0,
+        "life": 0
+      },
+      "card:\u0026{player-1}:21": {
+        "id": "card:\u0026{player-1}:21",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "GjM8b5fxqj",
+        "face": "face:GjM8b5fxqj:front",
+        "level": -1,
+        "types": [
+          "UNIQUE",
+          "ALLY"
+        ],
+        "subtypes": [
+          "WARRIOR",
+          "HUMAN"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "WARRIOR"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 4,
+        "fast": false,
+        "power": 2,
+        "life": 3
+      },
+      "card:\u0026{player-1}:22": {
+        "id": "card:\u0026{player-1}:22",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "GjM8b5fxqj",
+        "face": "face:GjM8b5fxqj:front",
+        "level": -1,
+        "types": [
+          "UNIQUE",
+          "ALLY"
+        ],
+        "subtypes": [
+          "WARRIOR",
+          "HUMAN"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "WARRIOR"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 4,
+        "fast": false,
+        "power": 2,
+        "life": 3
+      },
+      "card:\u0026{player-1}:23": {
+        "id": "card:\u0026{player-1}:23",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "GjM8b5fxqj",
+        "face": "face:GjM8b5fxqj:front",
+        "level": -1,
+        "types": [
+          "UNIQUE",
+          "ALLY"
+        ],
+        "subtypes": [
+          "WARRIOR",
+          "HUMAN"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "WARRIOR"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 4,
+        "fast": false,
+        "power": 2,
+        "life": 3
+      },
+      "card:\u0026{player-1}:24": {
+        "id": "card:\u0026{player-1}:24",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "GjM8b5fxqj",
+        "face": "face:GjM8b5fxqj:front",
+        "level": -1,
+        "types": [
+          "UNIQUE",
+          "ALLY"
+        ],
+        "subtypes": [
+          "WARRIOR",
+          "HUMAN"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "WARRIOR"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 4,
+        "fast": false,
+        "power": 2,
+        "life": 3
+      },
+      "card:\u0026{player-1}:25": {
+        "id": "card:\u0026{player-1}:25",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "iohZMWh5v5",
+        "face": "face:iohZMWh5v5:front",
+        "level": -1,
+        "types": [
+          "ACTION"
+        ],
+        "subtypes": [
+          "WARRIOR",
+          "SKILL"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "WARRIOR"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 1,
+        "fast": false,
+        "power": 0,
+        "life": 0
+      },
+      "card:\u0026{player-1}:26": {
+        "id": "card:\u0026{player-1}:26",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "iohZMWh5v5",
+        "face": "face:iohZMWh5v5:front",
+        "level": -1,
+        "types": [
+          "ACTION"
+        ],
+        "subtypes": [
+          "WARRIOR",
+          "SKILL"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "WARRIOR"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 1,
+        "fast": false,
+        "power": 0,
+        "life": 0
+      },
+      "card:\u0026{player-1}:27": {
+        "id": "card:\u0026{player-1}:27",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "iohZMWh5v5",
+        "face": "face:iohZMWh5v5:front",
+        "level": -1,
+        "types": [
+          "ACTION"
+        ],
+        "subtypes": [
+          "WARRIOR",
+          "SKILL"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "WARRIOR"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 1,
+        "fast": false,
+        "power": 0,
+        "life": 0
+      },
+      "card:\u0026{player-1}:28": {
+        "id": "card:\u0026{player-1}:28",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "qzv380ujf5",
+        "face": "face:qzv380ujf5:front",
+        "level": -1,
+        "types": [
+          "UNIQUE",
+          "ALLY"
+        ],
+        "subtypes": [
+          "ASSASSIN",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "ASSASSIN"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 6,
+        "fast": false,
+        "power": 4,
+        "life": 2
+      },
+      "card:\u0026{player-1}:29": {
+        "id": "card:\u0026{player-1}:29",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "qzv380ujf5",
+        "face": "face:qzv380ujf5:front",
+        "level": -1,
+        "types": [
+          "UNIQUE",
+          "ALLY"
+        ],
+        "subtypes": [
+          "ASSASSIN",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "ASSASSIN"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 6,
+        "fast": false,
+        "power": 4,
+        "life": 2
+      },
+      "card:\u0026{player-1}:3": {
+        "id": "card:\u0026{player-1}:3",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "i9hf5lhl5f",
+        "face": "face:i9hf5lhl5f:front",
+        "level": -1,
+        "types": [
+          "ALLY"
+        ],
+        "subtypes": [
+          "TAMER",
+          "SUITED",
+          "ANIMAL",
+          "BEAR"
+        ],
+        "elements": [
+          "NORM"
+        ],
+        "classes": [
+          "TAMER"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 5,
+        "fast": false,
+        "power": 1,
+        "life": 4
+      },
+      "card:\u0026{player-1}:30": {
+        "id": "card:\u0026{player-1}:30",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "qzv380ujf5",
+        "face": "face:qzv380ujf5:front",
+        "level": -1,
+        "types": [
+          "UNIQUE",
+          "ALLY"
+        ],
+        "subtypes": [
+          "ASSASSIN",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "ASSASSIN"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 6,
+        "fast": false,
+        "power": 4,
+        "life": 2
+      },
+      "card:\u0026{player-1}:31": {
+        "id": "card:\u0026{player-1}:31",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "gt2zqtgs42",
+        "face": "face:gt2zqtgs42:front",
+        "level": -1,
+        "types": [
+          "ACTION"
+        ],
+        "subtypes": [
+          "CLERIC",
+          "SPELL"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "CLERIC"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 2,
+        "fast": true,
+        "power": 0,
+        "life": 0
+      },
+      "card:\u0026{player-1}:32": {
+        "id": "card:\u0026{player-1}:32",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "gt2zqtgs42",
+        "face": "face:gt2zqtgs42:front",
+        "level": -1,
+        "types": [
+          "ACTION"
+        ],
+        "subtypes": [
+          "CLERIC",
+          "SPELL"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "CLERIC"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 2,
+        "fast": true,
+        "power": 0,
+        "life": 0
+      },
+      "card:\u0026{player-1}:33": {
+        "id": "card:\u0026{player-1}:33",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "gt2zqtgs42",
+        "face": "face:gt2zqtgs42:front",
+        "level": -1,
+        "types": [
+          "ACTION"
+        ],
+        "subtypes": [
+          "CLERIC",
+          "SPELL"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "CLERIC"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 2,
+        "fast": true,
+        "power": 0,
+        "life": 0
+      },
+      "card:\u0026{player-1}:34": {
+        "id": "card:\u0026{player-1}:34",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "xgax8bbjqj",
+        "face": "face:xgax8bbjqj:front",
+        "level": -1,
+        "types": [
+          "ALLY"
+        ],
+        "subtypes": [
+          "ASSASSIN",
+          "GUARDIAN",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "ASSASSIN",
+          "GUARDIAN"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 4,
+        "fast": false,
+        "power": 1,
+        "life": 3
+      },
+      "card:\u0026{player-1}:35": {
+        "id": "card:\u0026{player-1}:35",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "xgax8bbjqj",
+        "face": "face:xgax8bbjqj:front",
+        "level": -1,
+        "types": [
+          "ALLY"
+        ],
+        "subtypes": [
+          "ASSASSIN",
+          "GUARDIAN",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "ASSASSIN",
+          "GUARDIAN"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 4,
+        "fast": false,
+        "power": 1,
+        "life": 3
+      },
+      "card:\u0026{player-1}:36": {
+        "id": "card:\u0026{player-1}:36",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "xgax8bbjqj",
+        "face": "face:xgax8bbjqj:front",
+        "level": -1,
+        "types": [
+          "ALLY"
+        ],
+        "subtypes": [
+          "ASSASSIN",
+          "GUARDIAN",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "ASSASSIN",
+          "GUARDIAN"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 4,
+        "fast": false,
+        "power": 1,
+        "life": 3
+      },
+      "card:\u0026{player-1}:37": {
+        "id": "card:\u0026{player-1}:37",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "xgax8bbjqj",
+        "face": "face:xgax8bbjqj:front",
+        "level": -1,
+        "types": [
+          "ALLY"
+        ],
+        "subtypes": [
+          "ASSASSIN",
+          "GUARDIAN",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "ASSASSIN",
+          "GUARDIAN"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 4,
+        "fast": false,
+        "power": 1,
+        "life": 3
+      },
+      "card:\u0026{player-1}:38": {
+        "id": "card:\u0026{player-1}:38",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "td460e8ig0",
+        "face": "face:td460e8ig0:front",
+        "level": -1,
+        "types": [
+          "ATTACK"
+        ],
+        "subtypes": [
+          "WARRIOR",
+          "POLEARM"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "WARRIOR"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 3,
+        "fast": false,
+        "power": 2,
+        "life": 0
+      },
+      "card:\u0026{player-1}:39": {
+        "id": "card:\u0026{player-1}:39",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "lcy0lw1veb",
+        "face": "face:lcy0lw1veb:front",
+        "level": -1,
+        "types": [
+          "ALLY"
+        ],
+        "subtypes": [
+          "CLERIC",
+          "HUMAN"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "CLERIC"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 2,
+        "fast": false,
+        "power": 2,
+        "life": 1
+      },
+      "card:\u0026{player-1}:4": {
+        "id": "card:\u0026{player-1}:4",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "8bolq2y5qp",
+        "face": "face:8bolq2y5qp:front",
+        "level": -1,
+        "types": [
+          "ALLY"
+        ],
+        "subtypes": [
+          "GUARDIAN",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "NORM"
+        ],
+        "classes": [
+          "GUARDIAN"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 4,
+        "fast": false,
+        "power": 2,
+        "life": 3
+      },
+      "card:\u0026{player-1}:40": {
+        "id": "card:\u0026{player-1}:40",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "lcy0lw1veb",
+        "face": "face:lcy0lw1veb:front",
+        "level": -1,
+        "types": [
+          "ALLY"
+        ],
+        "subtypes": [
+          "CLERIC",
+          "HUMAN"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "CLERIC"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 2,
+        "fast": false,
+        "power": 2,
+        "life": 1
+      },
+      "card:\u0026{player-1}:41": {
+        "id": "card:\u0026{player-1}:41",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "5du8f077ua",
+        "face": "face:5du8f077ua:front",
+        "level": -1,
+        "types": [
+          "UNIQUE",
+          "ALLY"
+        ],
+        "subtypes": [
+          "TAMER",
+          "WARRIOR",
+          "BEAST",
+          "HORSE"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "TAMER",
+          "WARRIOR"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 2,
+        "fast": false,
+        "power": 3,
+        "life": 3
+      },
+      "card:\u0026{player-1}:42": {
+        "id": "card:\u0026{player-1}:42",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "5du8f077ua",
+        "face": "face:5du8f077ua:front",
+        "level": -1,
+        "types": [
+          "UNIQUE",
+          "ALLY"
+        ],
+        "subtypes": [
+          "TAMER",
+          "WARRIOR",
+          "BEAST",
+          "HORSE"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "TAMER",
+          "WARRIOR"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 2,
+        "fast": false,
+        "power": 3,
+        "life": 3
+      },
+      "card:\u0026{player-1}:43": {
+        "id": "card:\u0026{player-1}:43",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "5du8f077ua",
+        "face": "face:5du8f077ua:front",
+        "level": -1,
+        "types": [
+          "UNIQUE",
+          "ALLY"
+        ],
+        "subtypes": [
+          "TAMER",
+          "WARRIOR",
+          "BEAST",
+          "HORSE"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "TAMER",
+          "WARRIOR"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 2,
+        "fast": false,
+        "power": 3,
+        "life": 3
+      },
+      "card:\u0026{player-1}:44": {
+        "id": "card:\u0026{player-1}:44",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "h68dr63eo5",
+        "face": "face:h68dr63eo5:front",
+        "level": -1,
+        "types": [
+          "UNIQUE",
+          "ALLY"
+        ],
+        "subtypes": [
+          "MAGE",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "MAGE"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 1,
+        "fast": false,
+        "power": 1,
+        "life": 1
+      },
+      "card:\u0026{player-1}:45": {
+        "id": "card:\u0026{player-1}:45",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "h68dr63eo5",
+        "face": "face:h68dr63eo5:front",
+        "level": -1,
+        "types": [
+          "UNIQUE",
+          "ALLY"
+        ],
+        "subtypes": [
+          "MAGE",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "MAGE"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 1,
+        "fast": false,
+        "power": 1,
+        "life": 1
+      },
+      "card:\u0026{player-1}:46": {
+        "id": "card:\u0026{player-1}:46",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "h68dr63eo5",
+        "face": "face:h68dr63eo5:front",
+        "level": -1,
+        "types": [
+          "UNIQUE",
+          "ALLY"
+        ],
+        "subtypes": [
+          "MAGE",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "MAGE"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 1,
+        "fast": false,
+        "power": 1,
+        "life": 1
+      },
+      "card:\u0026{player-1}:47": {
+        "id": "card:\u0026{player-1}:47",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "28bjn8g50v",
+        "face": "face:28bjn8g50v:front",
+        "level": -1,
+        "types": [
+          "ACTION"
+        ],
+        "subtypes": [
+          "MAGE",
+          "SUITED",
+          "SPELL"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "MAGE"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 2,
+        "fast": true,
+        "power": 0,
+        "life": 0
+      },
+      "card:\u0026{player-1}:48": {
+        "id": "card:\u0026{player-1}:48",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "28bjn8g50v",
+        "face": "face:28bjn8g50v:front",
+        "level": -1,
+        "types": [
+          "ACTION"
+        ],
+        "subtypes": [
+          "MAGE",
+          "SUITED",
+          "SPELL"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "MAGE"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 2,
+        "fast": true,
+        "power": 0,
+        "life": 0
+      },
+      "card:\u0026{player-1}:49": {
+        "id": "card:\u0026{player-1}:49",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "28bjn8g50v",
+        "face": "face:28bjn8g50v:front",
+        "level": -1,
+        "types": [
+          "ACTION"
+        ],
+        "subtypes": [
+          "MAGE",
+          "SUITED",
+          "SPELL"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "MAGE"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 2,
+        "fast": true,
+        "power": 0,
+        "life": 0
+      },
+      "card:\u0026{player-1}:5": {
+        "id": "card:\u0026{player-1}:5",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "8bolq2y5qp",
+        "face": "face:8bolq2y5qp:front",
+        "level": -1,
+        "types": [
+          "ALLY"
+        ],
+        "subtypes": [
+          "GUARDIAN",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "NORM"
+        ],
+        "classes": [
+          "GUARDIAN"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 4,
+        "fast": false,
+        "power": 2,
+        "life": 3
+      },
+      "card:\u0026{player-1}:50": {
+        "id": "card:\u0026{player-1}:50",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "28bjn8g50v",
+        "face": "face:28bjn8g50v:front",
+        "level": -1,
+        "types": [
+          "ACTION"
+        ],
+        "subtypes": [
+          "MAGE",
+          "SUITED",
+          "SPELL"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "MAGE"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 2,
+        "fast": true,
+        "power": 0,
+        "life": 0
+      },
+      "card:\u0026{player-1}:51": {
+        "id": "card:\u0026{player-1}:51",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "1db8hz4prm",
+        "face": "face:1db8hz4prm:front",
+        "level": -1,
+        "types": [
+          "ALLY"
+        ],
+        "subtypes": [
+          "WARRIOR",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "WARRIOR"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 3,
+        "fast": false,
+        "power": 2,
+        "life": 3
+      },
+      "card:\u0026{player-1}:52": {
+        "id": "card:\u0026{player-1}:52",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "1db8hz4prm",
+        "face": "face:1db8hz4prm:front",
+        "level": -1,
+        "types": [
+          "ALLY"
+        ],
+        "subtypes": [
+          "WARRIOR",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "WARRIOR"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 3,
+        "fast": false,
+        "power": 2,
+        "life": 3
+      },
+      "card:\u0026{player-1}:53": {
+        "id": "card:\u0026{player-1}:53",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "1db8hz4prm",
+        "face": "face:1db8hz4prm:front",
+        "level": -1,
+        "types": [
+          "ALLY"
+        ],
+        "subtypes": [
+          "WARRIOR",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "WARRIOR"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 3,
+        "fast": false,
+        "power": 2,
+        "life": 3
+      },
+      "card:\u0026{player-1}:54": {
+        "id": "card:\u0026{player-1}:54",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "1db8hz4prm",
+        "face": "face:1db8hz4prm:front",
+        "level": -1,
+        "types": [
+          "ALLY"
+        ],
+        "subtypes": [
+          "WARRIOR",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "WARRIOR"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 3,
+        "fast": false,
+        "power": 2,
+        "life": 3
+      },
+      "card:\u0026{player-1}:55": {
+        "id": "card:\u0026{player-1}:55",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "rufki4o41y",
+        "face": "face:rufki4o41y:front",
+        "level": -1,
+        "types": [
+          "ALLY"
+        ],
+        "subtypes": [
+          "WARRIOR",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "WARRIOR"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 2,
+        "fast": false,
+        "power": 1,
+        "life": 1
+      },
+      "card:\u0026{player-1}:56": {
+        "id": "card:\u0026{player-1}:56",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "rufki4o41y",
+        "face": "face:rufki4o41y:front",
+        "level": -1,
+        "types": [
+          "ALLY"
+        ],
+        "subtypes": [
+          "WARRIOR",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "WARRIOR"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 2,
+        "fast": false,
+        "power": 1,
+        "life": 1
+      },
+      "card:\u0026{player-1}:57": {
+        "id": "card:\u0026{player-1}:57",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "rufki4o41y",
+        "face": "face:rufki4o41y:front",
+        "level": -1,
+        "types": [
+          "ALLY"
+        ],
+        "subtypes": [
+          "WARRIOR",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "WARRIOR"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 2,
+        "fast": false,
+        "power": 1,
+        "life": 1
+      },
+      "card:\u0026{player-1}:58": {
+        "id": "card:\u0026{player-1}:58",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "rufki4o41y",
+        "face": "face:rufki4o41y:front",
+        "level": -1,
+        "types": [
+          "ALLY"
+        ],
+        "subtypes": [
+          "WARRIOR",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "WARRIOR"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 2,
+        "fast": false,
+        "power": 1,
+        "life": 1
+      },
+      "card:\u0026{player-1}:59": {
+        "id": "card:\u0026{player-1}:59",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "4qc47amgpp",
+        "face": "face:4qc47amgpp:front",
+        "level": -1,
+        "types": [
+          "UNIQUE",
+          "ALLY"
+        ],
+        "subtypes": [
+          "CLERIC",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "CLERIC"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 10,
+        "fast": false,
+        "power": 4,
+        "life": 4
+      },
+      "card:\u0026{player-1}:6": {
+        "id": "card:\u0026{player-1}:6",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "8bolq2y5qp",
+        "face": "face:8bolq2y5qp:front",
+        "level": -1,
+        "types": [
+          "ALLY"
+        ],
+        "subtypes": [
+          "GUARDIAN",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "NORM"
+        ],
+        "classes": [
+          "GUARDIAN"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 4,
+        "fast": false,
+        "power": 2,
+        "life": 3
+      },
+      "card:\u0026{player-1}:60": {
+        "id": "card:\u0026{player-1}:60",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "4qc47amgpp",
+        "face": "face:4qc47amgpp:front",
+        "level": -1,
+        "types": [
+          "UNIQUE",
+          "ALLY"
+        ],
+        "subtypes": [
+          "CLERIC",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "CLERIC"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 10,
+        "fast": false,
+        "power": 4,
+        "life": 4
+      },
+      "card:\u0026{player-1}:61": {
+        "id": "card:\u0026{player-1}:61",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "LMyKyVC2O9",
+        "face": "face:LMyKyVC2O9:front",
+        "level": 0,
+        "types": [
+          "CHAMPION"
+        ],
+        "subtypes": [
+          "SPIRIT"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "SPIRIT"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 0,
+        "fast": false,
+        "power": 0,
+        "life": 15
+      },
+      "card:\u0026{player-1}:62": {
+        "id": "card:\u0026{player-1}:62",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "zb14m4c8lj",
+        "face": "face:zb14m4c8lj:front",
+        "level": 1,
+        "types": [
+          "CHAMPION"
+        ],
+        "subtypes": [
+          "GUARDIAN",
+          "HUMAN"
+        ],
+        "elements": [
+          "NORM"
+        ],
+        "classes": [
+          "GUARDIAN"
+        ],
+        "memory_cost": 1,
+        "reserve_cost": 0,
+        "fast": false,
+        "power": 0,
+        "life": 20
+      },
+      "card:\u0026{player-1}:63": {
+        "id": "card:\u0026{player-1}:63",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "8kmoi0a5uh",
+        "face": "face:8kmoi0a5uh:front",
+        "level": -1,
+        "types": [
+          "REGALIA",
+          "WEAPON"
+        ],
+        "subtypes": [
+          "GUARDIAN",
+          "SWORD"
+        ],
+        "elements": [
+          "NORM"
+        ],
+        "classes": [
+          "GUARDIAN"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 0,
+        "fast": false,
+        "power": 2,
+        "life": 0
+      },
+      "card:\u0026{player-1}:64": {
+        "id": "card:\u0026{player-1}:64",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "2gv7DC0KID",
+        "face": "face:2gv7DC0KID:front",
+        "level": -1,
+        "types": [
+          "REGALIA",
+          "ITEM"
+        ],
+        "subtypes": [
+          "WARRIOR",
+          "RING"
+        ],
+        "elements": [
+          "NORM"
+        ],
+        "classes": [
+          "WARRIOR"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 0,
+        "fast": false,
+        "power": 0,
+        "life": 0
+      },
+      "card:\u0026{player-1}:65": {
+        "id": "card:\u0026{player-1}:65",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "yj2rJBREH8",
+        "face": "face:yj2rJBREH8:front",
+        "level": -1,
+        "types": [
+          "REGALIA",
+          "ITEM"
+        ],
+        "subtypes": [
+          "CLERIC",
+          "ACCESSORY"
+        ],
+        "elements": [
+          "NORM"
+        ],
+        "classes": [
+          "CLERIC"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 0,
+        "fast": false,
+        "power": 0,
+        "life": 0
+      },
+      "card:\u0026{player-1}:66": {
+        "id": "card:\u0026{player-1}:66",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "ScGcOmkoQt",
+        "face": "face:ScGcOmkoQt:front",
+        "level": -1,
+        "types": [
+          "REGALIA",
+          "ITEM"
+        ],
+        "subtypes": [
+          "ASSASSIN",
+          "BAUBLE"
+        ],
+        "elements": [
+          "NORM"
+        ],
+        "classes": [
+          "ASSASSIN"
+        ],
+        "memory_cost": 1,
+        "reserve_cost": 0,
+        "fast": false,
+        "power": 0,
+        "life": 0
+      },
+      "card:\u0026{player-1}:67": {
+        "id": "card:\u0026{player-1}:67",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "s3572j3oda",
+        "face": "face:s3572j3oda:front",
+        "level": -1,
+        "types": [
+          "REGALIA",
+          "ITEM"
+        ],
+        "subtypes": [
+          "CLERIC",
+          "ACCESSORY"
+        ],
+        "elements": [
+          "NORM"
+        ],
+        "classes": [
+          "CLERIC"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 0,
+        "fast": false,
+        "power": 0,
+        "life": 0
+      },
+      "card:\u0026{player-1}:68": {
+        "id": "card:\u0026{player-1}:68",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "dSSRtNnPtw",
+        "face": "face:dSSRtNnPtw:front",
+        "level": -1,
+        "types": [
+          "REGALIA",
+          "ITEM"
+        ],
+        "subtypes": [
+          "MAGE",
+          "BAUBLE"
+        ],
+        "elements": [
+          "NORM"
+        ],
+        "classes": [
+          "MAGE"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 0,
+        "fast": false,
+        "power": 0,
+        "life": 0
+      },
+      "card:\u0026{player-1}:69": {
+        "id": "card:\u0026{player-1}:69",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "bHGUNMFLg9",
+        "face": "face:bHGUNMFLg9:front",
+        "level": -1,
+        "types": [
+          "REGALIA",
+          "ITEM"
+        ],
+        "subtypes": [
+          "MAGE",
+          "BAUBLE"
+        ],
+        "elements": [
+          "NORM"
+        ],
+        "classes": [
+          "MAGE"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 0,
+        "fast": false,
+        "power": 0,
+        "life": 0
+      },
+      "card:\u0026{player-1}:7": {
+        "id": "card:\u0026{player-1}:7",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "8bolq2y5qp",
+        "face": "face:8bolq2y5qp:front",
+        "level": -1,
+        "types": [
+          "ALLY"
+        ],
+        "subtypes": [
+          "GUARDIAN",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "NORM"
+        ],
+        "classes": [
+          "GUARDIAN"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 4,
+        "fast": false,
+        "power": 2,
+        "life": 3
+      },
+      "card:\u0026{player-1}:70": {
+        "id": "card:\u0026{player-1}:70",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "chsbalegbs",
+        "face": "face:chsbalegbs:front",
+        "level": -1,
+        "types": [
+          "REGALIA",
+          "WEAPON"
+        ],
+        "subtypes": [
+          "GUARDIAN",
+          "HAMMER"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "GUARDIAN"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 0,
+        "fast": false,
+        "power": 2,
+        "life": 0
+      },
+      "card:\u0026{player-1}:71": {
+        "id": "card:\u0026{player-1}:71",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "vgWgu1DUYv",
+        "face": "face:vgWgu1DUYv:front",
+        "level": -1,
+        "types": [
+          "REGALIA",
+          "ITEM"
+        ],
+        "subtypes": [
+          "CLERIC",
+          "ACCESSORY"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "CLERIC"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 0,
+        "fast": false,
+        "power": 0,
+        "life": 0
+      },
+      "card:\u0026{player-1}:72": {
+        "id": "card:\u0026{player-1}:72",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "bEXmm4rKOs",
+        "face": "face:bEXmm4rKOs:front",
+        "level": -1,
+        "types": [
+          "REGALIA",
+          "ITEM"
+        ],
+        "subtypes": [
+          "MAGE",
+          "SUITED",
+          "ACCESSORY"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "MAGE"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 0,
+        "fast": false,
+        "power": 0,
+        "life": 0
+      },
+      "card:\u0026{player-1}:8": {
+        "id": "card:\u0026{player-1}:8",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "wbjc9t8ycp",
+        "face": "face:wbjc9t8ycp:front",
+        "level": -1,
+        "types": [
+          "UNIQUE",
+          "ALLY"
+        ],
+        "subtypes": [
+          "ASSASSIN",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "NORM"
+        ],
+        "classes": [
+          "ASSASSIN"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 1,
+        "fast": false,
+        "power": 1,
+        "life": 1
+      },
+      "card:\u0026{player-1}:9": {
+        "id": "card:\u0026{player-1}:9",
+        "owner": {
+          "UID": "player-1"
+        },
+        "definition": "wbjc9t8ycp",
+        "face": "face:wbjc9t8ycp:front",
+        "level": -1,
+        "types": [
+          "UNIQUE",
+          "ALLY"
+        ],
+        "subtypes": [
+          "ASSASSIN",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "NORM"
+        ],
+        "classes": [
+          "ASSASSIN"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 1,
+        "fast": false,
+        "power": 1,
+        "life": 1
+      },
+      "card:\u0026{player-2}:100": {
+        "id": "card:\u0026{player-2}:100",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "qzv380ujf5",
+        "face": "face:qzv380ujf5:front",
+        "level": -1,
+        "types": [
+          "UNIQUE",
+          "ALLY"
+        ],
+        "subtypes": [
+          "ASSASSIN",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "ASSASSIN"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 6,
+        "fast": false,
+        "power": 4,
+        "life": 2
+      },
+      "card:\u0026{player-2}:101": {
+        "id": "card:\u0026{player-2}:101",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "qzv380ujf5",
+        "face": "face:qzv380ujf5:front",
+        "level": -1,
+        "types": [
+          "UNIQUE",
+          "ALLY"
+        ],
+        "subtypes": [
+          "ASSASSIN",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "ASSASSIN"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 6,
+        "fast": false,
+        "power": 4,
+        "life": 2
+      },
+      "card:\u0026{player-2}:102": {
+        "id": "card:\u0026{player-2}:102",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "qzv380ujf5",
+        "face": "face:qzv380ujf5:front",
+        "level": -1,
+        "types": [
+          "UNIQUE",
+          "ALLY"
+        ],
+        "subtypes": [
+          "ASSASSIN",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "ASSASSIN"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 6,
+        "fast": false,
+        "power": 4,
+        "life": 2
+      },
+      "card:\u0026{player-2}:103": {
+        "id": "card:\u0026{player-2}:103",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "gt2zqtgs42",
+        "face": "face:gt2zqtgs42:front",
+        "level": -1,
+        "types": [
+          "ACTION"
+        ],
+        "subtypes": [
+          "CLERIC",
+          "SPELL"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "CLERIC"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 2,
+        "fast": true,
+        "power": 0,
+        "life": 0
+      },
+      "card:\u0026{player-2}:104": {
+        "id": "card:\u0026{player-2}:104",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "gt2zqtgs42",
+        "face": "face:gt2zqtgs42:front",
+        "level": -1,
+        "types": [
+          "ACTION"
+        ],
+        "subtypes": [
+          "CLERIC",
+          "SPELL"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "CLERIC"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 2,
+        "fast": true,
+        "power": 0,
+        "life": 0
+      },
+      "card:\u0026{player-2}:105": {
+        "id": "card:\u0026{player-2}:105",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "gt2zqtgs42",
+        "face": "face:gt2zqtgs42:front",
+        "level": -1,
+        "types": [
+          "ACTION"
+        ],
+        "subtypes": [
+          "CLERIC",
+          "SPELL"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "CLERIC"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 2,
+        "fast": true,
+        "power": 0,
+        "life": 0
+      },
+      "card:\u0026{player-2}:106": {
+        "id": "card:\u0026{player-2}:106",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "xgax8bbjqj",
+        "face": "face:xgax8bbjqj:front",
+        "level": -1,
+        "types": [
+          "ALLY"
+        ],
+        "subtypes": [
+          "ASSASSIN",
+          "GUARDIAN",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "ASSASSIN",
+          "GUARDIAN"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 4,
+        "fast": false,
+        "power": 1,
+        "life": 3
+      },
+      "card:\u0026{player-2}:107": {
+        "id": "card:\u0026{player-2}:107",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "xgax8bbjqj",
+        "face": "face:xgax8bbjqj:front",
+        "level": -1,
+        "types": [
+          "ALLY"
+        ],
+        "subtypes": [
+          "ASSASSIN",
+          "GUARDIAN",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "ASSASSIN",
+          "GUARDIAN"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 4,
+        "fast": false,
+        "power": 1,
+        "life": 3
+      },
+      "card:\u0026{player-2}:108": {
+        "id": "card:\u0026{player-2}:108",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "xgax8bbjqj",
+        "face": "face:xgax8bbjqj:front",
+        "level": -1,
+        "types": [
+          "ALLY"
+        ],
+        "subtypes": [
+          "ASSASSIN",
+          "GUARDIAN",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "ASSASSIN",
+          "GUARDIAN"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 4,
+        "fast": false,
+        "power": 1,
+        "life": 3
+      },
+      "card:\u0026{player-2}:109": {
+        "id": "card:\u0026{player-2}:109",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "xgax8bbjqj",
+        "face": "face:xgax8bbjqj:front",
+        "level": -1,
+        "types": [
+          "ALLY"
+        ],
+        "subtypes": [
+          "ASSASSIN",
+          "GUARDIAN",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "ASSASSIN",
+          "GUARDIAN"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 4,
+        "fast": false,
+        "power": 1,
+        "life": 3
+      },
+      "card:\u0026{player-2}:110": {
+        "id": "card:\u0026{player-2}:110",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "td460e8ig0",
+        "face": "face:td460e8ig0:front",
+        "level": -1,
+        "types": [
+          "ATTACK"
+        ],
+        "subtypes": [
+          "WARRIOR",
+          "POLEARM"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "WARRIOR"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 3,
+        "fast": false,
+        "power": 2,
+        "life": 0
+      },
+      "card:\u0026{player-2}:111": {
+        "id": "card:\u0026{player-2}:111",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "lcy0lw1veb",
+        "face": "face:lcy0lw1veb:front",
+        "level": -1,
+        "types": [
+          "ALLY"
+        ],
+        "subtypes": [
+          "CLERIC",
+          "HUMAN"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "CLERIC"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 2,
+        "fast": false,
+        "power": 2,
+        "life": 1
+      },
+      "card:\u0026{player-2}:112": {
+        "id": "card:\u0026{player-2}:112",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "lcy0lw1veb",
+        "face": "face:lcy0lw1veb:front",
+        "level": -1,
+        "types": [
+          "ALLY"
+        ],
+        "subtypes": [
+          "CLERIC",
+          "HUMAN"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "CLERIC"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 2,
+        "fast": false,
+        "power": 2,
+        "life": 1
+      },
+      "card:\u0026{player-2}:113": {
+        "id": "card:\u0026{player-2}:113",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "5du8f077ua",
+        "face": "face:5du8f077ua:front",
+        "level": -1,
+        "types": [
+          "UNIQUE",
+          "ALLY"
+        ],
+        "subtypes": [
+          "TAMER",
+          "WARRIOR",
+          "BEAST",
+          "HORSE"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "TAMER",
+          "WARRIOR"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 2,
+        "fast": false,
+        "power": 3,
+        "life": 3
+      },
+      "card:\u0026{player-2}:114": {
+        "id": "card:\u0026{player-2}:114",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "5du8f077ua",
+        "face": "face:5du8f077ua:front",
+        "level": -1,
+        "types": [
+          "UNIQUE",
+          "ALLY"
+        ],
+        "subtypes": [
+          "TAMER",
+          "WARRIOR",
+          "BEAST",
+          "HORSE"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "TAMER",
+          "WARRIOR"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 2,
+        "fast": false,
+        "power": 3,
+        "life": 3
+      },
+      "card:\u0026{player-2}:115": {
+        "id": "card:\u0026{player-2}:115",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "5du8f077ua",
+        "face": "face:5du8f077ua:front",
+        "level": -1,
+        "types": [
+          "UNIQUE",
+          "ALLY"
+        ],
+        "subtypes": [
+          "TAMER",
+          "WARRIOR",
+          "BEAST",
+          "HORSE"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "TAMER",
+          "WARRIOR"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 2,
+        "fast": false,
+        "power": 3,
+        "life": 3
+      },
+      "card:\u0026{player-2}:116": {
+        "id": "card:\u0026{player-2}:116",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "h68dr63eo5",
+        "face": "face:h68dr63eo5:front",
+        "level": -1,
+        "types": [
+          "UNIQUE",
+          "ALLY"
+        ],
+        "subtypes": [
+          "MAGE",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "MAGE"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 1,
+        "fast": false,
+        "power": 1,
+        "life": 1
+      },
+      "card:\u0026{player-2}:117": {
+        "id": "card:\u0026{player-2}:117",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "h68dr63eo5",
+        "face": "face:h68dr63eo5:front",
+        "level": -1,
+        "types": [
+          "UNIQUE",
+          "ALLY"
+        ],
+        "subtypes": [
+          "MAGE",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "MAGE"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 1,
+        "fast": false,
+        "power": 1,
+        "life": 1
+      },
+      "card:\u0026{player-2}:118": {
+        "id": "card:\u0026{player-2}:118",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "h68dr63eo5",
+        "face": "face:h68dr63eo5:front",
+        "level": -1,
+        "types": [
+          "UNIQUE",
+          "ALLY"
+        ],
+        "subtypes": [
+          "MAGE",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "MAGE"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 1,
+        "fast": false,
+        "power": 1,
+        "life": 1
+      },
+      "card:\u0026{player-2}:119": {
+        "id": "card:\u0026{player-2}:119",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "28bjn8g50v",
+        "face": "face:28bjn8g50v:front",
+        "level": -1,
+        "types": [
+          "ACTION"
+        ],
+        "subtypes": [
+          "MAGE",
+          "SUITED",
+          "SPELL"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "MAGE"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 2,
+        "fast": true,
+        "power": 0,
+        "life": 0
+      },
+      "card:\u0026{player-2}:120": {
+        "id": "card:\u0026{player-2}:120",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "28bjn8g50v",
+        "face": "face:28bjn8g50v:front",
+        "level": -1,
+        "types": [
+          "ACTION"
+        ],
+        "subtypes": [
+          "MAGE",
+          "SUITED",
+          "SPELL"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "MAGE"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 2,
+        "fast": true,
+        "power": 0,
+        "life": 0
+      },
+      "card:\u0026{player-2}:121": {
+        "id": "card:\u0026{player-2}:121",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "28bjn8g50v",
+        "face": "face:28bjn8g50v:front",
+        "level": -1,
+        "types": [
+          "ACTION"
+        ],
+        "subtypes": [
+          "MAGE",
+          "SUITED",
+          "SPELL"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "MAGE"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 2,
+        "fast": true,
+        "power": 0,
+        "life": 0
+      },
+      "card:\u0026{player-2}:122": {
+        "id": "card:\u0026{player-2}:122",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "28bjn8g50v",
+        "face": "face:28bjn8g50v:front",
+        "level": -1,
+        "types": [
+          "ACTION"
+        ],
+        "subtypes": [
+          "MAGE",
+          "SUITED",
+          "SPELL"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "MAGE"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 2,
+        "fast": true,
+        "power": 0,
+        "life": 0
+      },
+      "card:\u0026{player-2}:123": {
+        "id": "card:\u0026{player-2}:123",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "1db8hz4prm",
+        "face": "face:1db8hz4prm:front",
+        "level": -1,
+        "types": [
+          "ALLY"
+        ],
+        "subtypes": [
+          "WARRIOR",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "WARRIOR"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 3,
+        "fast": false,
+        "power": 2,
+        "life": 3
+      },
+      "card:\u0026{player-2}:124": {
+        "id": "card:\u0026{player-2}:124",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "1db8hz4prm",
+        "face": "face:1db8hz4prm:front",
+        "level": -1,
+        "types": [
+          "ALLY"
+        ],
+        "subtypes": [
+          "WARRIOR",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "WARRIOR"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 3,
+        "fast": false,
+        "power": 2,
+        "life": 3
+      },
+      "card:\u0026{player-2}:125": {
+        "id": "card:\u0026{player-2}:125",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "1db8hz4prm",
+        "face": "face:1db8hz4prm:front",
+        "level": -1,
+        "types": [
+          "ALLY"
+        ],
+        "subtypes": [
+          "WARRIOR",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "WARRIOR"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 3,
+        "fast": false,
+        "power": 2,
+        "life": 3
+      },
+      "card:\u0026{player-2}:126": {
+        "id": "card:\u0026{player-2}:126",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "1db8hz4prm",
+        "face": "face:1db8hz4prm:front",
+        "level": -1,
+        "types": [
+          "ALLY"
+        ],
+        "subtypes": [
+          "WARRIOR",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "WARRIOR"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 3,
+        "fast": false,
+        "power": 2,
+        "life": 3
+      },
+      "card:\u0026{player-2}:127": {
+        "id": "card:\u0026{player-2}:127",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "rufki4o41y",
+        "face": "face:rufki4o41y:front",
+        "level": -1,
+        "types": [
+          "ALLY"
+        ],
+        "subtypes": [
+          "WARRIOR",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "WARRIOR"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 2,
+        "fast": false,
+        "power": 1,
+        "life": 1
+      },
+      "card:\u0026{player-2}:128": {
+        "id": "card:\u0026{player-2}:128",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "rufki4o41y",
+        "face": "face:rufki4o41y:front",
+        "level": -1,
+        "types": [
+          "ALLY"
+        ],
+        "subtypes": [
+          "WARRIOR",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "WARRIOR"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 2,
+        "fast": false,
+        "power": 1,
+        "life": 1
+      },
+      "card:\u0026{player-2}:129": {
+        "id": "card:\u0026{player-2}:129",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "rufki4o41y",
+        "face": "face:rufki4o41y:front",
+        "level": -1,
+        "types": [
+          "ALLY"
+        ],
+        "subtypes": [
+          "WARRIOR",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "WARRIOR"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 2,
+        "fast": false,
+        "power": 1,
+        "life": 1
+      },
+      "card:\u0026{player-2}:130": {
+        "id": "card:\u0026{player-2}:130",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "rufki4o41y",
+        "face": "face:rufki4o41y:front",
+        "level": -1,
+        "types": [
+          "ALLY"
+        ],
+        "subtypes": [
+          "WARRIOR",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "WARRIOR"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 2,
+        "fast": false,
+        "power": 1,
+        "life": 1
+      },
+      "card:\u0026{player-2}:131": {
+        "id": "card:\u0026{player-2}:131",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "4qc47amgpp",
+        "face": "face:4qc47amgpp:front",
+        "level": -1,
+        "types": [
+          "UNIQUE",
+          "ALLY"
+        ],
+        "subtypes": [
+          "CLERIC",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "CLERIC"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 10,
+        "fast": false,
+        "power": 4,
+        "life": 4
+      },
+      "card:\u0026{player-2}:132": {
+        "id": "card:\u0026{player-2}:132",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "4qc47amgpp",
+        "face": "face:4qc47amgpp:front",
+        "level": -1,
+        "types": [
+          "UNIQUE",
+          "ALLY"
+        ],
+        "subtypes": [
+          "CLERIC",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "CLERIC"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 10,
+        "fast": false,
+        "power": 4,
+        "life": 4
+      },
+      "card:\u0026{player-2}:133": {
+        "id": "card:\u0026{player-2}:133",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "LMyKyVC2O9",
+        "face": "face:LMyKyVC2O9:front",
+        "level": 0,
+        "types": [
+          "CHAMPION"
+        ],
+        "subtypes": [
+          "SPIRIT"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "SPIRIT"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 0,
+        "fast": false,
+        "power": 0,
+        "life": 15
+      },
+      "card:\u0026{player-2}:134": {
+        "id": "card:\u0026{player-2}:134",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "zb14m4c8lj",
+        "face": "face:zb14m4c8lj:front",
+        "level": 1,
+        "types": [
+          "CHAMPION"
+        ],
+        "subtypes": [
+          "GUARDIAN",
+          "HUMAN"
+        ],
+        "elements": [
+          "NORM"
+        ],
+        "classes": [
+          "GUARDIAN"
+        ],
+        "memory_cost": 1,
+        "reserve_cost": 0,
+        "fast": false,
+        "power": 0,
+        "life": 20
+      },
+      "card:\u0026{player-2}:135": {
+        "id": "card:\u0026{player-2}:135",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "8kmoi0a5uh",
+        "face": "face:8kmoi0a5uh:front",
+        "level": -1,
+        "types": [
+          "REGALIA",
+          "WEAPON"
+        ],
+        "subtypes": [
+          "GUARDIAN",
+          "SWORD"
+        ],
+        "elements": [
+          "NORM"
+        ],
+        "classes": [
+          "GUARDIAN"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 0,
+        "fast": false,
+        "power": 2,
+        "life": 0
+      },
+      "card:\u0026{player-2}:136": {
+        "id": "card:\u0026{player-2}:136",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "2gv7DC0KID",
+        "face": "face:2gv7DC0KID:front",
+        "level": -1,
+        "types": [
+          "REGALIA",
+          "ITEM"
+        ],
+        "subtypes": [
+          "WARRIOR",
+          "RING"
+        ],
+        "elements": [
+          "NORM"
+        ],
+        "classes": [
+          "WARRIOR"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 0,
+        "fast": false,
+        "power": 0,
+        "life": 0
+      },
+      "card:\u0026{player-2}:137": {
+        "id": "card:\u0026{player-2}:137",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "yj2rJBREH8",
+        "face": "face:yj2rJBREH8:front",
+        "level": -1,
+        "types": [
+          "REGALIA",
+          "ITEM"
+        ],
+        "subtypes": [
+          "CLERIC",
+          "ACCESSORY"
+        ],
+        "elements": [
+          "NORM"
+        ],
+        "classes": [
+          "CLERIC"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 0,
+        "fast": false,
+        "power": 0,
+        "life": 0
+      },
+      "card:\u0026{player-2}:138": {
+        "id": "card:\u0026{player-2}:138",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "ScGcOmkoQt",
+        "face": "face:ScGcOmkoQt:front",
+        "level": -1,
+        "types": [
+          "REGALIA",
+          "ITEM"
+        ],
+        "subtypes": [
+          "ASSASSIN",
+          "BAUBLE"
+        ],
+        "elements": [
+          "NORM"
+        ],
+        "classes": [
+          "ASSASSIN"
+        ],
+        "memory_cost": 1,
+        "reserve_cost": 0,
+        "fast": false,
+        "power": 0,
+        "life": 0
+      },
+      "card:\u0026{player-2}:139": {
+        "id": "card:\u0026{player-2}:139",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "s3572j3oda",
+        "face": "face:s3572j3oda:front",
+        "level": -1,
+        "types": [
+          "REGALIA",
+          "ITEM"
+        ],
+        "subtypes": [
+          "CLERIC",
+          "ACCESSORY"
+        ],
+        "elements": [
+          "NORM"
+        ],
+        "classes": [
+          "CLERIC"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 0,
+        "fast": false,
+        "power": 0,
+        "life": 0
+      },
+      "card:\u0026{player-2}:140": {
+        "id": "card:\u0026{player-2}:140",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "dSSRtNnPtw",
+        "face": "face:dSSRtNnPtw:front",
+        "level": -1,
+        "types": [
+          "REGALIA",
+          "ITEM"
+        ],
+        "subtypes": [
+          "MAGE",
+          "BAUBLE"
+        ],
+        "elements": [
+          "NORM"
+        ],
+        "classes": [
+          "MAGE"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 0,
+        "fast": false,
+        "power": 0,
+        "life": 0
+      },
+      "card:\u0026{player-2}:141": {
+        "id": "card:\u0026{player-2}:141",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "bHGUNMFLg9",
+        "face": "face:bHGUNMFLg9:front",
+        "level": -1,
+        "types": [
+          "REGALIA",
+          "ITEM"
+        ],
+        "subtypes": [
+          "MAGE",
+          "BAUBLE"
+        ],
+        "elements": [
+          "NORM"
+        ],
+        "classes": [
+          "MAGE"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 0,
+        "fast": false,
+        "power": 0,
+        "life": 0
+      },
+      "card:\u0026{player-2}:142": {
+        "id": "card:\u0026{player-2}:142",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "chsbalegbs",
+        "face": "face:chsbalegbs:front",
+        "level": -1,
+        "types": [
+          "REGALIA",
+          "WEAPON"
+        ],
+        "subtypes": [
+          "GUARDIAN",
+          "HAMMER"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "GUARDIAN"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 0,
+        "fast": false,
+        "power": 2,
+        "life": 0
+      },
+      "card:\u0026{player-2}:143": {
+        "id": "card:\u0026{player-2}:143",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "vgWgu1DUYv",
+        "face": "face:vgWgu1DUYv:front",
+        "level": -1,
+        "types": [
+          "REGALIA",
+          "ITEM"
+        ],
+        "subtypes": [
+          "CLERIC",
+          "ACCESSORY"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "CLERIC"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 0,
+        "fast": false,
+        "power": 0,
+        "life": 0
+      },
+      "card:\u0026{player-2}:144": {
+        "id": "card:\u0026{player-2}:144",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "bEXmm4rKOs",
+        "face": "face:bEXmm4rKOs:front",
+        "level": -1,
+        "types": [
+          "REGALIA",
+          "ITEM"
+        ],
+        "subtypes": [
+          "MAGE",
+          "SUITED",
+          "ACCESSORY"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "MAGE"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 0,
+        "fast": false,
+        "power": 0,
+        "life": 0
+      },
+      "card:\u0026{player-2}:73": {
+        "id": "card:\u0026{player-2}:73",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "i9hf5lhl5f",
+        "face": "face:i9hf5lhl5f:front",
+        "level": -1,
+        "types": [
+          "ALLY"
+        ],
+        "subtypes": [
+          "TAMER",
+          "SUITED",
+          "ANIMAL",
+          "BEAR"
+        ],
+        "elements": [
+          "NORM"
+        ],
+        "classes": [
+          "TAMER"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 5,
+        "fast": false,
+        "power": 1,
+        "life": 4
+      },
+      "card:\u0026{player-2}:74": {
+        "id": "card:\u0026{player-2}:74",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "i9hf5lhl5f",
+        "face": "face:i9hf5lhl5f:front",
+        "level": -1,
+        "types": [
+          "ALLY"
+        ],
+        "subtypes": [
+          "TAMER",
+          "SUITED",
+          "ANIMAL",
+          "BEAR"
+        ],
+        "elements": [
+          "NORM"
+        ],
+        "classes": [
+          "TAMER"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 5,
+        "fast": false,
+        "power": 1,
+        "life": 4
+      },
+      "card:\u0026{player-2}:75": {
+        "id": "card:\u0026{player-2}:75",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "i9hf5lhl5f",
+        "face": "face:i9hf5lhl5f:front",
+        "level": -1,
+        "types": [
+          "ALLY"
+        ],
+        "subtypes": [
+          "TAMER",
+          "SUITED",
+          "ANIMAL",
+          "BEAR"
+        ],
+        "elements": [
+          "NORM"
+        ],
+        "classes": [
+          "TAMER"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 5,
+        "fast": false,
+        "power": 1,
+        "life": 4
+      },
+      "card:\u0026{player-2}:76": {
+        "id": "card:\u0026{player-2}:76",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "8bolq2y5qp",
+        "face": "face:8bolq2y5qp:front",
+        "level": -1,
+        "types": [
+          "ALLY"
+        ],
+        "subtypes": [
+          "GUARDIAN",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "NORM"
+        ],
+        "classes": [
+          "GUARDIAN"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 4,
+        "fast": false,
+        "power": 2,
+        "life": 3
+      },
+      "card:\u0026{player-2}:77": {
+        "id": "card:\u0026{player-2}:77",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "8bolq2y5qp",
+        "face": "face:8bolq2y5qp:front",
+        "level": -1,
+        "types": [
+          "ALLY"
+        ],
+        "subtypes": [
+          "GUARDIAN",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "NORM"
+        ],
+        "classes": [
+          "GUARDIAN"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 4,
+        "fast": false,
+        "power": 2,
+        "life": 3
+      },
+      "card:\u0026{player-2}:78": {
+        "id": "card:\u0026{player-2}:78",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "8bolq2y5qp",
+        "face": "face:8bolq2y5qp:front",
+        "level": -1,
+        "types": [
+          "ALLY"
+        ],
+        "subtypes": [
+          "GUARDIAN",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "NORM"
+        ],
+        "classes": [
+          "GUARDIAN"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 4,
+        "fast": false,
+        "power": 2,
+        "life": 3
+      },
+      "card:\u0026{player-2}:79": {
+        "id": "card:\u0026{player-2}:79",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "8bolq2y5qp",
+        "face": "face:8bolq2y5qp:front",
+        "level": -1,
+        "types": [
+          "ALLY"
+        ],
+        "subtypes": [
+          "GUARDIAN",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "NORM"
+        ],
+        "classes": [
+          "GUARDIAN"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 4,
+        "fast": false,
+        "power": 2,
+        "life": 3
+      },
+      "card:\u0026{player-2}:80": {
+        "id": "card:\u0026{player-2}:80",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "wbjc9t8ycp",
+        "face": "face:wbjc9t8ycp:front",
+        "level": -1,
+        "types": [
+          "UNIQUE",
+          "ALLY"
+        ],
+        "subtypes": [
+          "ASSASSIN",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "NORM"
+        ],
+        "classes": [
+          "ASSASSIN"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 1,
+        "fast": false,
+        "power": 1,
+        "life": 1
+      },
+      "card:\u0026{player-2}:81": {
+        "id": "card:\u0026{player-2}:81",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "wbjc9t8ycp",
+        "face": "face:wbjc9t8ycp:front",
+        "level": -1,
+        "types": [
+          "UNIQUE",
+          "ALLY"
+        ],
+        "subtypes": [
+          "ASSASSIN",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "NORM"
+        ],
+        "classes": [
+          "ASSASSIN"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 1,
+        "fast": false,
+        "power": 1,
+        "life": 1
+      },
+      "card:\u0026{player-2}:82": {
+        "id": "card:\u0026{player-2}:82",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "wbjc9t8ycp",
+        "face": "face:wbjc9t8ycp:front",
+        "level": -1,
+        "types": [
+          "UNIQUE",
+          "ALLY"
+        ],
+        "subtypes": [
+          "ASSASSIN",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "NORM"
+        ],
+        "classes": [
+          "ASSASSIN"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 1,
+        "fast": false,
+        "power": 1,
+        "life": 1
+      },
+      "card:\u0026{player-2}:83": {
+        "id": "card:\u0026{player-2}:83",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "o09csnorqv",
+        "face": "face:o09csnorqv:front",
+        "level": -1,
+        "types": [
+          "ALLY"
+        ],
+        "subtypes": [
+          "ASSASSIN",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "NORM"
+        ],
+        "classes": [
+          "ASSASSIN"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 3,
+        "fast": false,
+        "power": 2,
+        "life": 2
+      },
+      "card:\u0026{player-2}:84": {
+        "id": "card:\u0026{player-2}:84",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "o09csnorqv",
+        "face": "face:o09csnorqv:front",
+        "level": -1,
+        "types": [
+          "ALLY"
+        ],
+        "subtypes": [
+          "ASSASSIN",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "NORM"
+        ],
+        "classes": [
+          "ASSASSIN"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 3,
+        "fast": false,
+        "power": 2,
+        "life": 2
+      },
+      "card:\u0026{player-2}:85": {
+        "id": "card:\u0026{player-2}:85",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "o09csnorqv",
+        "face": "face:o09csnorqv:front",
+        "level": -1,
+        "types": [
+          "ALLY"
+        ],
+        "subtypes": [
+          "ASSASSIN",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "NORM"
+        ],
+        "classes": [
+          "ASSASSIN"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 3,
+        "fast": false,
+        "power": 2,
+        "life": 2
+      },
+      "card:\u0026{player-2}:86": {
+        "id": "card:\u0026{player-2}:86",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "w7g91ru45w",
+        "face": "face:w7g91ru45w:front",
+        "level": -1,
+        "types": [
+          "ACTION"
+        ],
+        "subtypes": [
+          "GUARDIAN",
+          "SUITED",
+          "SKILL",
+          "REACTION"
+        ],
+        "elements": [
+          "NORM"
+        ],
+        "classes": [
+          "GUARDIAN"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 2,
+        "fast": true,
+        "power": 0,
+        "life": 0
+      },
+      "card:\u0026{player-2}:87": {
+        "id": "card:\u0026{player-2}:87",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "w7g91ru45w",
+        "face": "face:w7g91ru45w:front",
+        "level": -1,
+        "types": [
+          "ACTION"
+        ],
+        "subtypes": [
+          "GUARDIAN",
+          "SUITED",
+          "SKILL",
+          "REACTION"
+        ],
+        "elements": [
+          "NORM"
+        ],
+        "classes": [
+          "GUARDIAN"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 2,
+        "fast": true,
+        "power": 0,
+        "life": 0
+      },
+      "card:\u0026{player-2}:88": {
+        "id": "card:\u0026{player-2}:88",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "e8ygl32jef",
+        "face": "face:e8ygl32jef:front",
+        "level": -1,
+        "types": [
+          "ALLY"
+        ],
+        "subtypes": [
+          "ASSASSIN",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "NORM"
+        ],
+        "classes": [
+          "ASSASSIN"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 2,
+        "fast": false,
+        "power": 1,
+        "life": 1
+      },
+      "card:\u0026{player-2}:89": {
+        "id": "card:\u0026{player-2}:89",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "e8ygl32jef",
+        "face": "face:e8ygl32jef:front",
+        "level": -1,
+        "types": [
+          "ALLY"
+        ],
+        "subtypes": [
+          "ASSASSIN",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "NORM"
+        ],
+        "classes": [
+          "ASSASSIN"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 2,
+        "fast": false,
+        "power": 1,
+        "life": 1
+      },
+      "card:\u0026{player-2}:90": {
+        "id": "card:\u0026{player-2}:90",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "e8ygl32jef",
+        "face": "face:e8ygl32jef:front",
+        "level": -1,
+        "types": [
+          "ALLY"
+        ],
+        "subtypes": [
+          "ASSASSIN",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "NORM"
+        ],
+        "classes": [
+          "ASSASSIN"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 2,
+        "fast": false,
+        "power": 1,
+        "life": 1
+      },
+      "card:\u0026{player-2}:91": {
+        "id": "card:\u0026{player-2}:91",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "e8ygl32jef",
+        "face": "face:e8ygl32jef:front",
+        "level": -1,
+        "types": [
+          "ALLY"
+        ],
+        "subtypes": [
+          "ASSASSIN",
+          "SUITED",
+          "HUMAN"
+        ],
+        "elements": [
+          "NORM"
+        ],
+        "classes": [
+          "ASSASSIN"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 2,
+        "fast": false,
+        "power": 1,
+        "life": 1
+      },
+      "card:\u0026{player-2}:92": {
+        "id": "card:\u0026{player-2}:92",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "0mf1ug6yfi",
+        "face": "face:0mf1ug6yfi:front",
+        "level": -1,
+        "types": [
+          "UNIQUE",
+          "PHANTASIA"
+        ],
+        "subtypes": [
+          "CLERIC",
+          "SUITED",
+          "SPELL"
+        ],
+        "elements": [
+          "NORM"
+        ],
+        "classes": [
+          "CLERIC"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 0,
+        "fast": false,
+        "power": 0,
+        "life": 0
+      },
+      "card:\u0026{player-2}:93": {
+        "id": "card:\u0026{player-2}:93",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "GjM8b5fxqj",
+        "face": "face:GjM8b5fxqj:front",
+        "level": -1,
+        "types": [
+          "UNIQUE",
+          "ALLY"
+        ],
+        "subtypes": [
+          "WARRIOR",
+          "HUMAN"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "WARRIOR"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 4,
+        "fast": false,
+        "power": 2,
+        "life": 3
+      },
+      "card:\u0026{player-2}:94": {
+        "id": "card:\u0026{player-2}:94",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "GjM8b5fxqj",
+        "face": "face:GjM8b5fxqj:front",
+        "level": -1,
+        "types": [
+          "UNIQUE",
+          "ALLY"
+        ],
+        "subtypes": [
+          "WARRIOR",
+          "HUMAN"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "WARRIOR"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 4,
+        "fast": false,
+        "power": 2,
+        "life": 3
+      },
+      "card:\u0026{player-2}:95": {
+        "id": "card:\u0026{player-2}:95",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "GjM8b5fxqj",
+        "face": "face:GjM8b5fxqj:front",
+        "level": -1,
+        "types": [
+          "UNIQUE",
+          "ALLY"
+        ],
+        "subtypes": [
+          "WARRIOR",
+          "HUMAN"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "WARRIOR"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 4,
+        "fast": false,
+        "power": 2,
+        "life": 3
+      },
+      "card:\u0026{player-2}:96": {
+        "id": "card:\u0026{player-2}:96",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "GjM8b5fxqj",
+        "face": "face:GjM8b5fxqj:front",
+        "level": -1,
+        "types": [
+          "UNIQUE",
+          "ALLY"
+        ],
+        "subtypes": [
+          "WARRIOR",
+          "HUMAN"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "WARRIOR"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 4,
+        "fast": false,
+        "power": 2,
+        "life": 3
+      },
+      "card:\u0026{player-2}:97": {
+        "id": "card:\u0026{player-2}:97",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "iohZMWh5v5",
+        "face": "face:iohZMWh5v5:front",
+        "level": -1,
+        "types": [
+          "ACTION"
+        ],
+        "subtypes": [
+          "WARRIOR",
+          "SKILL"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "WARRIOR"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 1,
+        "fast": false,
+        "power": 0,
+        "life": 0
+      },
+      "card:\u0026{player-2}:98": {
+        "id": "card:\u0026{player-2}:98",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "iohZMWh5v5",
+        "face": "face:iohZMWh5v5:front",
+        "level": -1,
+        "types": [
+          "ACTION"
+        ],
+        "subtypes": [
+          "WARRIOR",
+          "SKILL"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "WARRIOR"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 1,
+        "fast": false,
+        "power": 0,
+        "life": 0
+      },
+      "card:\u0026{player-2}:99": {
+        "id": "card:\u0026{player-2}:99",
+        "owner": {
+          "UID": "player-2"
+        },
+        "definition": "iohZMWh5v5",
+        "face": "face:iohZMWh5v5:front",
+        "level": -1,
+        "types": [
+          "ACTION"
+        ],
+        "subtypes": [
+          "WARRIOR",
+          "SKILL"
+        ],
+        "elements": [
+          "FIRE"
+        ],
+        "classes": [
+          "WARRIOR"
+        ],
+        "memory_cost": 0,
+        "reserve_cost": 1,
+        "fast": false,
+        "power": 0,
+        "life": 0
+      }
+    },
+    "Zones": {
+      "player-1": {
+        "main_deck": [
+          "card:\u0026{player-1}:60",
+          "card:\u0026{player-1}:56",
+          "card:\u0026{player-1}:51",
+          "card:\u0026{player-1}:32",
+          "card:\u0026{player-1}:15",
+          "card:\u0026{player-1}:10",
+          "card:\u0026{player-1}:13",
+          "card:\u0026{player-1}:30",
+          "card:\u0026{player-1}:22",
+          "card:\u0026{player-1}:12",
+          "card:\u0026{player-1}:50",
+          "card:\u0026{player-1}:7",
+          "card:\u0026{player-1}:55",
+          "card:\u0026{player-1}:20",
+          "card:\u0026{player-1}:29",
+          "card:\u0026{player-1}:46",
+          "card:\u0026{player-1}:53",
+          "card:\u0026{player-1}:47",
+          "card:\u0026{player-1}:4",
+          "card:\u0026{player-1}:14",
+          "card:\u0026{player-1}:17",
+          "card:\u0026{player-1}:36",
+          "card:\u0026{player-1}:38",
+          "card:\u0026{player-1}:9",
+          "card:\u0026{player-1}:45",
+          "card:\u0026{player-1}:26",
+          "card:\u0026{player-1}:54",
+          "card:\u0026{player-1}:21",
+          "card:\u0026{player-1}:18",
+          "card:\u0026{player-1}:23",
+          "card:\u0026{player-1}:58",
+          "card:\u0026{player-1}:8",
+          "card:\u0026{player-1}:16",
+          "card:\u0026{player-1}:19",
+          "card:\u0026{player-1}:1",
+          "card:\u0026{player-1}:33",
+          "card:\u0026{player-1}:2",
+          "card:\u0026{player-1}:40",
+          "card:\u0026{player-1}:3",
+          "card:\u0026{player-1}:49",
+          "card:\u0026{player-1}:25",
+          "card:\u0026{player-1}:59",
+          "card:\u0026{player-1}:39",
+          "card:\u0026{player-1}:24",
+          "card:\u0026{player-1}:48",
+          "card:\u0026{player-1}:43",
+          "card:\u0026{player-1}:11",
+          "card:\u0026{player-1}:57",
+          "card:\u0026{player-1}:44",
+          "card:\u0026{player-1}:52",
+          "card:\u0026{player-1}:6",
+          "card:\u0026{player-1}:34",
+          "card:\u0026{player-1}:5"
+        ],
+        "hand": [
+          "card:\u0026{player-1}:28",
+          "card:\u0026{player-1}:42",
+          "card:\u0026{player-1}:37",
+          "card:\u0026{player-1}:31",
+          "card:\u0026{player-1}:27",
+          "card:\u0026{player-1}:41",
+          "card:\u0026{player-1}:35"
+        ],
+        "material_deck": [
+          "card:\u0026{player-1}:62",
+          "card:\u0026{player-1}:63",
+          "card:\u0026{player-1}:64",
+          "card:\u0026{player-1}:65",
+          "card:\u0026{player-1}:66",
+          "card:\u0026{player-1}:67",
+          "card:\u0026{player-1}:68",
+          "card:\u0026{player-1}:69",
+          "card:\u0026{player-1}:70",
+          "card:\u0026{player-1}:71",
+          "card:\u0026{player-1}:72"
+        ],
+        "memory": null,
+        "banishment": null,
+        "graveyard": null,
+        "outside_game_pool": null
+      },
+      "player-2": {
+        "main_deck": [
+          "card:\u0026{player-2}:117",
+          "card:\u0026{player-2}:111",
+          "card:\u0026{player-2}:96",
+          "card:\u0026{player-2}:97",
+          "card:\u0026{player-2}:77",
+          "card:\u0026{player-2}:126",
+          "card:\u0026{player-2}:132",
+          "card:\u0026{player-2}:101",
+          "card:\u0026{player-2}:123",
+          "card:\u0026{player-2}:95",
+          "card:\u0026{player-2}:87",
+          "card:\u0026{player-2}:88",
+          "card:\u0026{player-2}:92",
+          "card:\u0026{player-2}:128",
+          "card:\u0026{player-2}:103",
+          "card:\u0026{player-2}:120",
+          "card:\u0026{player-2}:81",
+          "card:\u0026{player-2}:76",
+          "card:\u0026{player-2}:109",
+          "card:\u0026{player-2}:125",
+          "card:\u0026{player-2}:102",
+          "card:\u0026{player-2}:121",
+          "card:\u0026{player-2}:89",
+          "card:\u0026{player-2}:110",
+          "card:\u0026{player-2}:91",
+          "card:\u0026{player-2}:75",
+          "card:\u0026{player-2}:130",
+          "card:\u0026{player-2}:90",
+          "card:\u0026{player-2}:114",
+          "card:\u0026{player-2}:118",
+          "card:\u0026{player-2}:100",
+          "card:\u0026{player-2}:116",
+          "card:\u0026{player-2}:85",
+          "card:\u0026{player-2}:104",
+          "card:\u0026{player-2}:98",
+          "card:\u0026{player-2}:99",
+          "card:\u0026{player-2}:122",
+          "card:\u0026{player-2}:79",
+          "card:\u0026{player-2}:108",
+          "card:\u0026{player-2}:84",
+          "card:\u0026{player-2}:74",
+          "card:\u0026{player-2}:107",
+          "card:\u0026{player-2}:94",
+          "card:\u0026{player-2}:129",
+          "card:\u0026{player-2}:115",
+          "card:\u0026{player-2}:131",
+          "card:\u0026{player-2}:83",
+          "card:\u0026{player-2}:78",
+          "card:\u0026{player-2}:93",
+          "card:\u0026{player-2}:119",
+          "card:\u0026{player-2}:113",
+          "card:\u0026{player-2}:124",
+          "card:\u0026{player-2}:106"
+        ],
+        "hand": [
+          "card:\u0026{player-2}:127",
+          "card:\u0026{player-2}:112",
+          "card:\u0026{player-2}:105",
+          "card:\u0026{player-2}:86",
+          "card:\u0026{player-2}:73",
+          "card:\u0026{player-2}:80",
+          "card:\u0026{player-2}:82"
+        ],
+        "material_deck": [
+          "card:\u0026{player-2}:134",
+          "card:\u0026{player-2}:135",
+          "card:\u0026{player-2}:136",
+          "card:\u0026{player-2}:137",
+          "card:\u0026{player-2}:138",
+          "card:\u0026{player-2}:139",
+          "card:\u0026{player-2}:140",
+          "card:\u0026{player-2}:141",
+          "card:\u0026{player-2}:142",
+          "card:\u0026{player-2}:143",
+          "card:\u0026{player-2}:144"
+        ],
+        "memory": null,
+        "banishment": null,
+        "graveyard": null,
+        "outside_game_pool": null
+      }
+    },
+    "Champions": {
+      "player-1": {
+        "id": "champion:player-1",
+        "card": "card:\u0026{player-1}:61",
+        "owner": {
+          "UID": "player-1"
+        },
+        "inner_lineage": null,
+        "rested": false,
+        "counters": null,
+        "combat_role": "",
+        "taunt_until_turn": 0,
+        "damage": 0
+      },
+      "player-2": {
+        "id": "champion:player-2",
+        "card": "card:\u0026{player-2}:133",
+        "owner": {
+          "UID": "player-2"
+        },
+        "inner_lineage": null,
+        "rested": false,
+        "counters": null,
+        "combat_role": "",
+        "taunt_until_turn": 0,
+        "damage": 0
+      }
+    },
+    "Objects": {},
+    "EffectSources": null,
+    "EffectsStack": null,
+    "ContinuousEffects": null,
+    "AbilityChoice": null,
+    "ReplacementEffects": [],
+    "ReplacementChoice": null,
+    "CardistryUsed": {},
+    "CardistryDiscounts": {},
+    "Scheduler": {
+      "kind": "stable",
+      "turn_player": {
+        "UID": "player-1"
+      },
+      "phase": "main",
+      "opportunity_holder": {
+        "UID": "player-1"
+      },
+      "consecutive_passes": 0,
+      "turn_number": 1
+    },
+    "Events": [
+      {
+        "player": {
+          "UID": "player-1"
+        },
+        "cause": "ability:LMyKyVC2O9:front:on-enter-draw-seven",
+        "simultaneous": false,
+        "events": [
+          {
+            "sequence": 1,
+            "kind": "draw",
+            "card": "card:\u0026{player-1}:28"
+          },
+          {
+            "sequence": 2,
+            "kind": "draw",
+            "card": "card:\u0026{player-1}:42"
+          },
+          {
+            "sequence": 3,
+            "kind": "draw",
+            "card": "card:\u0026{player-1}:37"
+          },
+          {
+            "sequence": 4,
+            "kind": "draw",
+            "card": "card:\u0026{player-1}:31"
+          },
+          {
+            "sequence": 5,
+            "kind": "draw",
+            "card": "card:\u0026{player-1}:27"
+          },
+          {
+            "sequence": 6,
+            "kind": "draw",
+            "card": "card:\u0026{player-1}:41"
+          },
+          {
+            "sequence": 7,
+            "kind": "draw",
+            "card": "card:\u0026{player-1}:35"
+          }
+        ]
+      },
+      {
+        "player": {
+          "UID": "player-2"
+        },
+        "cause": "ability:LMyKyVC2O9:front:on-enter-draw-seven",
+        "simultaneous": false,
+        "events": [
+          {
+            "sequence": 8,
+            "kind": "draw",
+            "card": "card:\u0026{player-2}:127"
+          },
+          {
+            "sequence": 9,
+            "kind": "draw",
+            "card": "card:\u0026{player-2}:112"
+          },
+          {
+            "sequence": 10,
+            "kind": "draw",
+            "card": "card:\u0026{player-2}:105"
+          },
+          {
+            "sequence": 11,
+            "kind": "draw",
+            "card": "card:\u0026{player-2}:86"
+          },
+          {
+            "sequence": 12,
+            "kind": "draw",
+            "card": "card:\u0026{player-2}:73"
+          },
+          {
+            "sequence": 13,
+            "kind": "draw",
+            "card": "card:\u0026{player-2}:80"
+          },
+          {
+            "sequence": 14,
+            "kind": "draw",
+            "card": "card:\u0026{player-2}:82"
+          }
+        ]
+      }
+    ],
+    "NextHandle": 29,
+    "NextEvent": 14,
+    "NextEffect": 0,
+    "NextAbility": 0,
+    "NextObject": 0
+  },
+  "initial_players": [
+    {
+      "UID": "player-1"
+    },
+    {
+      "UID": "player-2"
+    }
+  ],
+  "steps": [
+    {
+      "player": {
+        "UID": "player-1"
+      },
+      "input": {
+        "revision": 2,
+        "action": "9da435e8a19980efff7faf25abbdfbf138c2e5ab777ba6f9990f55c6502ad171",
+        "choice": "",
+        "reserve": [
+          "b8857cf190c52fbea630900f381e05430dbb91099ba542d9c59a8ea4fca0cb49",
+          "48c91b69f302da04ab7520f44461099d17acc33a3aefe767cea4952a53506a6e",
+          "7f6e7b643343f4ea418180e81c5ad7413dd3e05799670a95a5b37d99d69001bc",
+          "5db75d43c7e2f2e1212fcdb6c1a35a00d8ad71ea01cadff82e22539039ccc3d3"
+        ]
+      },
+      "state_hash": "6b890e6879bedd43d050574c00d968e4dcf34d37397cc82de42266bd763fbd7a"
+    },
+    {
+      "player": {
+        "UID": "player-1"
+      },
+      "input": {
+        "revision": 3,
+        "action": "bbcc7f7c2ed7bdf9379e799bb9e1366f20e07c51d633270753a51acd2a498d8b",
+        "choice": ""
+      },
+      "state_hash": "5396a490aba83c22b76863e3bf26fb1682333bc3fbb1a2ff0a28b582bd798b90"
+    },
+    {
+      "player": {
+        "UID": "player-2"
+      },
+      "input": {
+        "revision": 4,
+        "action": "468d48379a9286303c8518cf2b7780d1d5ba366866e7064bb050751c9a6c9805",
+        "choice": "",
+        "reserve": [
+          "3202d10ee79f6f0ec13ea810759734be149a6acae70ffbbe0ca210314ed8d2ac",
+          "b1572539c4682f2c419a69edefd023fb6928ce9a5fa30ee97636a328444a5043"
+        ]
+      },
+      "state_hash": "28dbbd15c239c5393dfd85b271294e5ad7be26071722ef2e070edcd6c74d4605"
+    },
+    {
+      "player": {
+        "UID": "player-2"
+      },
+      "input": {
+        "revision": 5,
+        "action": "",
+        "choice": "a7bf27fe7d4c6dd3c6cf61567a869618b2c7fbaddef1b8e2826fbb4fe2ce5087"
+      },
+      "state_hash": "ee09560cf6ca683564f57c7828cbb6f2afd3c8cbcf36b2e7afb39ad1e18539c9"
+    },
+    {
+      "player": {
+        "UID": "player-2"
+      },
+      "input": {
+        "revision": 6,
+        "action": "6dc6b7e61d4a0aa380768c5ff56dc3ac891661edd0b39ba83ba0d3420ef17249",
+        "choice": ""
+      },
+      "state_hash": "eb928d6cac976cef45d0d1c74d24a263b4a4fbd993f412be786959dcff366ab0"
+    },
+    {
+      "player": {
+        "UID": "player-1"
+      },
+      "input": {
+        "revision": 7,
+        "action": "fac23ab3a358d24b746ae6af9ee7efdced48717dd19eaa1280dae68cd2f87fe6",
+        "choice": ""
+      },
+      "state_hash": "af3cb8096d4be1cad4d902071dfb2c969a1403d3f0abbe2016c4905432a29c29"
+    },
+    {
+      "player": {
+        "UID": "player-1"
+      },
+      "input": {
+        "revision": 8,
+        "action": "4b336b2bbb192adae1071ca0f9e2a2355ebd4c7d0a2b776e5e0b5b69747cdc50",
+        "choice": ""
+      },
+      "state_hash": "74a8b0f9e9c098deef1644459e7cde22ac60377cf9f195856c38884677b20316"
+    },
+    {
+      "player": {
+        "UID": "player-2"
+      },
+      "input": {
+        "revision": 9,
+        "action": "cd63dd70837219fe9e858b35ce5943e2401fea47b6fc86d2ec415a64a596487f",
+        "choice": ""
+      },
+      "state_hash": "35681f1e5dfa743bd805c526fb713922b8a22ae92cfc461ea498fd12e10ac336"
+    },
+    {
+      "player": {
+        "UID": "player-1"
+      },
+      "input": {
+        "revision": 10,
+        "action": "32132366c0198aec817bdb1d6d6fe77b6cff6743e15fef36c4d3a1ab38d97d6a",
+        "choice": ""
+      },
+      "state_hash": "012aca98b478d22064ffd6ac32b38f61644acb346b73e6e8f787df1115ae9821"
+    },
+    {
+      "player": {
+        "UID": "player-2"
+      },
+      "input": {
+        "revision": 11,
+        "action": "ca1ccbcd47fecb7eef2d9d70bd0a4900af46b89b01f2d984286ee714108ed6ce",
+        "choice": ""
+      },
+      "state_hash": "5e422ca25d934fa64215de1b50d8b6f017caa53afb1ea0d38c5cfbd64e1e12ea"
+    },
+    {
+      "player": {
+        "UID": "player-1"
+      },
+      "input": {
+        "revision": 12,
+        "action": "dd9ef1880fe930ce91b5c0caba4a7a3eed2cb09d8e6beb184d62aac5aca135e8",
+        "choice": ""
+      },
+      "state_hash": "8e1a492dd67352df7c033886ce871f1456472d4ca1bb16dc5ff532955746c428"
+    },
+    {
+      "player": {
+        "UID": "player-2"
+      },
+      "input": {
+        "revision": 13,
+        "action": "529db27c39bb6d02c2d6fac09bbfe9c98c22d2b1d2331c14ae2ecf9fe2d5caff",
+        "choice": ""
+      },
+      "state_hash": "0c78b260fb322b66d5c44eab16cccaccc921bb53e21bedc6d9a2b7e73783348d"
+    },
+    {
+      "player": {
+        "UID": "player-2"
+      },
+      "input": {
+        "revision": 14,
+        "action": "352650745c1d6b42c1feffb71689ac8e04b668e144ea40e75fa25f99f1ff184c",
+        "choice": "",
+        "reserve": [
+          "7817899329b14bdd9b57fb163d1b03cdfb3b8cbc362f931e6ddd3ca402e5b8a2",
+          "65afe87dc0a22df5ae6e08f5360beffb05f5b0ccc5a267667fcaaede4c0ebde8",
+          "35b0b9184507793b07056aacfea0346243fcf2324aafb3cacd45d46cdd2b3191",
+          "7f0d14a643dfa6dcff7ea314f3099ccc81c026cdadcb632fe6f07ff3d88fda1d"
+        ]
+      },
+      "state_hash": "678bcbff748ef49575baed65f2c2bf152a2c2c033a3bd1ba0894742ff8e782ed"
+    },
+    {
+      "player": {
+        "UID": "player-2"
+      },
+      "input": {
+        "revision": 15,
+        "action": "0367020b39030419bdb7fcedcfb6101d6d7ea491e22a4d58e860f209481ae892",
+        "choice": ""
+      },
+      "state_hash": "ad9bd42f1264dbc2116988c8dd62b0655250b52767ebb31bf497db7b49acf844"
+    },
+    {
+      "player": {
+        "UID": "player-1"
+      },
+      "input": {
+        "revision": 16,
+        "action": "789e47bc23c63d8aff4a229c639949884b32510817919dca6afa87b67cc67e3a",
+        "choice": ""
+      },
+      "state_hash": "a1a4073b8efecfa1296f9575cd9c91d8ce24a4d962be48fa05fab48266f82a5e"
+    },
+    {
+      "player": {
+        "UID": "player-2"
+      },
+      "input": {
+        "revision": 17,
+        "action": "9b5b8ec14646bba0baa3da5518825bb103c963d9cc0f7d18190cd180e9c81236",
+        "choice": ""
+      },
+      "state_hash": "3dddbac406431d034c7b60bc722618d3491587a5d5c19aa5eccfd6c489adb648"
+    },
+    {
+      "player": {
+        "UID": "player-2"
+      },
+      "input": {
+        "revision": 18,
+        "action": "",
+        "choice": "4317f9eafd9cbe646c667f7cb18c23bba6a38614ef423fe11606ac0d41b62680"
+      },
+      "state_hash": "429a08e8092d25a40d8a3f3a2010e507d31d1d09c4b52c7a077fcbcfec8f8ea2"
+    },
+    {
+      "player": {
+        "UID": "player-2"
+      },
+      "input": {
+        "revision": 19,
+        "action": "feed7b6ee2d7120951a26b3148f487bb59b3a7d8d72e37dc48d0d1f9f2b603d5",
+        "choice": ""
+      },
+      "state_hash": "c0205a3ff20388e75e57f5935a33ddbb8fa753d917308042904fb35e6c824f55"
+    },
+    {
+      "player": {
+        "UID": "player-1"
+      },
+      "input": {
+        "revision": 20,
+        "action": "bfb594e20e856f5356dba6298bd02d8541bd7b066be73b3963bb2f7188a7dd0d",
+        "choice": ""
+      },
+      "state_hash": "9985572f306795a555799b8c4c40b1b5e3990d27910e9021c45efd3a9df6d119"
+    },
+    {
+      "player": {
+        "UID": "player-2"
+      },
+      "input": {
+        "revision": 21,
+        "action": "c86cadf038ec4ec37b46c598033afd0418cd399beff0da5a6c4be4f6765f4be5",
+        "choice": ""
+      },
+      "state_hash": "126f87de8b40992576152bbaa9019423b8e1cd7ce3e0feb437d6282d3d240de0"
+    },
+    {
+      "player": {
+        "UID": "player-2"
+      },
+      "input": {
+        "revision": 22,
+        "action": "20f37b7e377886051b6f49c7b078adec4b0f419a30b714e1ae264c62d573efe8",
+        "choice": ""
+      },
+      "state_hash": "654fddabbe3fa232c933a58ab6ce430560e74d0ae7a9c826b08203225d94723f"
+    },
+    {
+      "player": {
+        "UID": "player-1"
+      },
+      "input": {
+        "revision": 23,
+        "action": "4ff31863646e6484800effde042ec13e4194cafe00555a4bbeeb3b655148832f",
+        "choice": ""
+      },
+      "state_hash": "e17ed55cac03f42092e87ea30c30eb881af736f7436d503a72fbbe161797de47"
+    },
+    {
+      "player": {
+        "UID": "player-2"
+      },
+      "input": {
+        "revision": 25,
+        "action": "",
+        "choice": "3310994c3a73a7b9301d60abfc84f7bf6bdd0eacedb11a637e1a63646fe6f437"
+      },
+      "state_hash": "fb6c9a532ad11e2a4f1c2a011290c2dfdcc98ae1c4bdb71d96a1a2e5ece180e2"
+    },
+    {
+      "player": {
+        "UID": "player-2"
+      },
+      "input": {
+        "revision": 26,
+        "action": "8163b5ea54731d6edc530ff3889d7cfe6dfd67e19d033fa4a5b65f3957757640",
+        "choice": ""
+      },
+      "state_hash": "1292b5b67223045febbb7afdfbdced38ef4868940f8d943c998aa0655ee2b86f"
+    },
+    {
+      "player": {
+        "UID": "player-1"
+      },
+      "input": {
+        "revision": 27,
+        "action": "ec84a9bfdd98d860fe87e065b0092d92fc07be591b8440b7636d19683c341806",
+        "choice": ""
+      },
+      "state_hash": "718ebaeb7ee8eb2668ecd787fdee23324800d82968eca73fabb4df18bf47cfdd"
+    },
+    {
+      "player": {
+        "UID": "player-2"
+      },
+      "input": {
+        "revision": 28,
+        "action": "8378fa29b5ab5d9098e9d7f2c4a6ff76ceeb5c5267cf0535a90efdf8d073bfd1",
+        "choice": ""
+      },
+      "state_hash": "753ab5d0f61765fedb7db631cf6e2710dce494d87ad42af282e20970c67f87df"
+    },
+    {
+      "player": {
+        "UID": "player-2"
+      },
+      "input": {
+        "revision": 29,
+        "action": "",
+        "choice": "636bfa7df2cc3a5443b9410886866d47b6d246ac9e1c22b244f919fa8ddcd2ba"
+      },
+      "state_hash": "619fdce1f55eb875b841dcb54889a12076c0e874d2a63425b1ddb255035d3f9d"
+    },
+    {
+      "player": {
+        "UID": "player-2"
+      },
+      "input": {
+        "revision": 30,
+        "action": "18f54f97cdb9b5dea76459ae994034212864c9f1c8972931c291acd6e1262ef4",
+        "choice": ""
+      },
+      "state_hash": "9992da44003c7ba48ec53b5fc3b786063f8802defa920ce639fca77f1747a2ed"
+    },
+    {
+      "player": {
+        "UID": "player-1"
+      },
+      "input": {
+        "revision": 31,
+        "action": "bf84ed986cebb9b1967b3729dfe41d32853c11fd7aa96769a728796711af5a73",
+        "choice": ""
+      },
+      "state_hash": "2638d750cebcdaecf2b57c3c3661887de4aa4da9d5c025db324315d39e3b68ad"
+    },
+    {
+      "player": {
+        "UID": "player-2"
+      },
+      "input": {
+        "revision": 32,
+        "action": "786fed4b01c0ea7e27b6282d6cf6edce12638926e91cc1e9921edea2c0c7728c",
+        "choice": ""
+      },
+      "state_hash": "9308bbb577f355e1695c2be0965666c9bcc02609f3b53794ab6a2fd388a9cea3"
+    },
+    {
+      "player": {
+        "UID": "player-1"
+      },
+      "input": {
+        "revision": 33,
+        "action": "4a239b2c5b55c7399a765d071a35bf298624ea5bf31a7d104bd6fd4105a08d23",
+        "choice": ""
+      },
+      "state_hash": "b7e7c8022c9c92413214e11d804f0171c7201368b48b6a68b4bd249f5fa2cb97"
+    },
+    {
+      "player": {
+        "UID": "player-2"
+      },
+      "input": {
+        "revision": 34,
+        "action": "0d7f2ec774c611dfdf5921cfd0a765da62cda7b43fe7f9a5db3645bcfe797077",
+        "choice": ""
+      },
+      "state_hash": "b5b18a0c6c0c84c35ea28ee0d6b5cfdca433fdb85f894e12757ad5be475e202f"
+    },
+    {
+      "player": {
+        "UID": "player-1"
+      },
+      "input": {
+        "revision": 35,
+        "action": "66922d7d701c981b8c6795085edde74d136cbe9bea3201cff17fee11c9afe99e",
+        "choice": ""
+      },
+      "state_hash": "7be95c80197e533fc63c4ffaa9fa56bb36b7f780933f4ee3004a61440efe05e9"
+    },
+    {
+      "player": {
+        "UID": "player-1"
+      },
+      "input": {
+        "revision": 36,
+        "action": "b1fde37dbe82bf961854020e6a5c32cf4762a29af5973ef319775993aa17aa75",
+        "choice": ""
+      },
+      "state_hash": "7a58745b194600d3fe5089e3172a0b2d7c2d7607fb66045f95816f958bd319f1"
+    },
+    {
+      "player": {
+        "UID": "player-1"
+      },
+      "input": {
+        "revision": 37,
+        "action": "d410dda3f8972abb2aaaf00bab40b93a4687f5ceac5a8c04736f07e5d2c09ac2",
+        "choice": ""
+      },
+      "state_hash": "bb64aef26b6ff31058e87a819ee1b7a06dde366d7fe84574f996b6718cb3bb3d"
+    },
+    {
+      "player": {
+        "UID": "player-2"
+      },
+      "input": {
+        "revision": 38,
+        "action": "b64231587c354bd389453c6c7f9edff4b5480d1064dc721718255331f7ed74df",
+        "choice": ""
+      },
+      "state_hash": "096417c5ef70d8932418ead02b5a7f9a248732c023918748384cb033151e2dc3"
+    },
+    {
+      "player": {
+        "UID": "player-1"
+      },
+      "input": {
+        "revision": 39,
+        "action": "83df830a16bc604ad14528611586f246658abc01d1ec754bbb94d055d9a36fe8",
+        "choice": ""
+      },
+      "state_hash": "ef6a8f3e7e3dc60242889535f06ba0ab5806f6ac0cc68b1f0cce0faf7c729ec5"
+    },
+    {
+      "player": {
+        "UID": "player-2"
+      },
+      "input": {
+        "revision": 40,
+        "action": "3d80539efb4ac2252808a9fd45d68a2e37f7b89150346e7c47e0488f66a402fb",
+        "choice": ""
+      },
+      "state_hash": "d48a005f3ca9cfe810576fe920cecfcbd58757c346b6774edb891a26e2897598"
+    },
+    {
+      "player": {
+        "UID": "player-1"
+      },
+      "input": {
+        "revision": 41,
+        "action": "92c6d13660c4fa02aa3ee33337ebdb6e74b5bef3fe3b0f6d6962c4b6395fc168",
+        "choice": ""
+      },
+      "state_hash": "f5904a40ea457ca1be5cedaaafe2b3069aa167e202fa173085bdcb37551559a4"
+    },
+    {
+      "player": {
+        "UID": "player-2"
+      },
+      "input": {
+        "revision": 42,
+        "action": "3a4d31e4947d743e2239247d78f581723a48ed9b9f848cf1616cca3b56c76a29",
+        "choice": ""
+      },
+      "state_hash": "43fad940bc3ebe8760dd88d2783caf9a75a78244be24cee39c80f75f9920a536"
+    },
+    {
+      "player": {
+        "UID": "player-1"
+      },
+      "input": {
+        "revision": 43,
+        "action": "02071b8bb04050f63a99d757ea0a5a25ed56a896c77b17ed8b01da07775460a4",
+        "choice": "",
+        "reserve": [
+          "d0e36c1fedee61ad401109f274c364bff04f0d2695042ec781c84d25243078f6",
+          "478975e6c2c3db5f04d2b4a5ad8fdd7ff5bf26e323cecbf855fce05f15eca3c5",
+          "b8857cf190c52fbea630900f381e05430dbb91099ba542d9c59a8ea4fca0cb49",
+          "48c91b69f302da04ab7520f44461099d17acc33a3aefe767cea4952a53506a6e"
+        ]
+      },
+      "state_hash": "291baef35aa86b338e5c13b36d74b91a56dab3756f30cb2a019520656ab3c03d"
+    },
+    {
+      "player": {
+        "UID": "player-1"
+      },
+      "input": {
+        "revision": 44,
+        "action": "ad21127958be2d72bbe49b73247d3da7d914e890eca8e156d9b625cd673ee994",
+        "choice": ""
+      },
+      "state_hash": "5acfd7642fe212d41c74156ee73833c7735337f5bf9ee5b0a3dcb0e6cb85d0b4"
+    },
+    {
+      "player": {
+        "UID": "player-2"
+      },
+      "input": {
+        "revision": 45,
+        "action": "b00f79ce4a76819ae33aa34cfe1d852ac21c64b0b6d382a73b6875f285b87126",
+        "choice": ""
+      },
+      "state_hash": "b4583b30690a4dc3bac8ae71ef5e2e42c38b2775fbd2e5179d3f0d51d05ad003"
+    },
+    {
+      "player": {
+        "UID": "player-1"
+      },
+      "input": {
+        "revision": 46,
+        "action": "716f5253853cfb2678d8b93bd11c80bd34e16bddc771d34b3c1cf1fad9799ec6",
+        "choice": ""
+      },
+      "state_hash": "d3755268b29a1f1f1c29101e5c669c9ea973c379c0d3a6e81d29ac2d17582369"
+    },
+    {
+      "player": {
+        "UID": "player-1"
+      },
+      "input": {
+        "revision": 47,
+        "action": "44237815bb23b83446d8d84b691ea568d2229c9cb56862f0bc4f2ae95566c4c5",
+        "choice": ""
+      },
+      "state_hash": "4307f593263e167dd85845724d3e1af17b4eaa30ced18e0d264aa471b3ac9463"
+    },
+    {
+      "player": {
+        "UID": "player-2"
+      },
+      "input": {
+        "revision": 48,
+        "action": "86eee7e966146198e3f3fa0a796358096e2a877d6baa439089c0a0c6cdf66489",
+        "choice": ""
+      },
+      "state_hash": "86e4bf1e5de6e52cf031556be8f12041d6a7aa01480c4e79ba1f294ddc208c43"
+    },
+    {
+      "player": {
+        "UID": "player-1"
+      },
+      "input": {
+        "revision": 49,
+        "action": "93b7c51885a6d1b4d44c3105cb1f2621e49f4c63a1d4b68fd624896d73c669f2",
+        "choice": ""
+      },
+      "state_hash": "d033470983c8ba0c3e963bdedbe0dfbf2e38744fd0753f2cb4281cdf134da259"
+    },
+    {
+      "player": {
+        "UID": "player-1"
+      },
+      "input": {
+        "revision": 50,
+        "action": "",
+        "choice": "182761979e84705cc7c052f02a517523f690144b3ee6f9bb0d89a897d267a701"
+      },
+      "state_hash": "990f9b50ce22e9bff37ce6872024f42bb5674aeaf25e219b8feebc1e70d8c54f"
+    },
+    {
+      "player": {
+        "UID": "player-1"
+      },
+      "input": {
+        "revision": 51,
+        "action": "6aa37e75ca7c9d936802e2ac44974c605e5b288f78737c42b7edf2c9234c8dde",
+        "choice": ""
+      },
+      "state_hash": "2210dced3a0818b3e891f6df69d4d64d3ce78f794176ba3fafe7149bbad1bdc7"
+    },
+    {
+      "player": {
+        "UID": "player-2"
+      },
+      "input": {
+        "revision": 52,
+        "action": "df18ca023d8963268eb0b5c4beaf54c00ee5e9a3ce0da9bbba2483b27565894c",
+        "choice": ""
+      },
+      "state_hash": "94913144b337a45e129c8de99467da5dd5a6c40db9adc4b664225da5d00c5787"
+    },
+    {
+      "player": {
+        "UID": "player-1"
+      },
+      "input": {
+        "revision": 53,
+        "action": "cf1f8b3c67529dea2d8e6b5bd5d7eeb02cd5fad5a1378a42b1faf89c62e02285",
+        "choice": ""
+      },
+      "state_hash": "c26555e30247b5965bc93c7858fbf976db6360bc0386caa616dc02cfb8ef474f"
+    },
+    {
+      "player": {
+        "UID": "player-1"
+      },
+      "input": {
+        "revision": 54,
+        "action": "",
+        "choice": "cd5babb6ff1d5cd959e1879bd8a8da7af818d9c44b5731b05564e435acb906ef"
+      },
+      "state_hash": "5288b0608c260592c7d69d3934c09a4321159f31a34944bfafaa3c952cc51a73"
+    },
+    {
+      "player": {
+        "UID": "player-1"
+      },
+      "input": {
+        "revision": 55,
+        "action": "d5572457c4a34ba17e5d79347714d18ba52abb7e415c4e076d8f51732762e2e1",
+        "choice": ""
+      },
+      "state_hash": "fc619bc5ba80ba72f26a2a4206ef9302ffbca3c5e2ee84bba151f6bb26aeb3c0"
+    },
+    {
+      "player": {
+        "UID": "player-2"
+      },
+      "input": {
+        "revision": 56,
+        "action": "eb5dc3034c4b97a8bf36dc0dc2acf690c1ad901371a245b7a95da147b2c79545",
+        "choice": ""
+      },
+      "state_hash": "af7faad448d4fb6b05437c6b63f93bde71736193c55b3c00daff3d9593d4ff8c"
+    },
+    {
+      "player": {
+        "UID": "player-1"
+      },
+      "input": {
+        "revision": 57,
+        "action": "abfc31a0e750b5be5a1c9810f9543ebf0f83aac27b1ee3e1d81ec81be3ecf3f6",
+        "choice": ""
+      },
+      "state_hash": "9e09df8dda03396f1ee302184861d658d7477bc5fc366973532bf79c856ee826"
+    },
+    {
+      "player": {
+        "UID": "player-2"
+      },
+      "input": {
+        "revision": 58,
+        "action": "76fad7dbebedcbdbfe004323df7eac6b8624cac35b05dc568769bd43d5ebde9d",
+        "choice": ""
+      },
+      "state_hash": "a62e9923e189728f5a424310af4c49359c4a94cf9a8a87c0a5c48cbf82c5f387"
+    },
+    {
+      "player": {
+        "UID": "player-1"
+      },
+      "input": {
+        "revision": 59,
+        "action": "70fdeb345d6074f45427c17bad323a9626cb09842b02e7f26877f70af1f94b99",
+        "choice": ""
+      },
+      "state_hash": "d72c1f8e17314ea9cce05b591fb9a021768a3af2c1fd368a0c29a96f0f2442e1"
+    },
+    {
+      "player": {
+        "UID": "player-2"
+      },
+      "input": {
+        "revision": 60,
+        "action": "d1efdd4837e64a06be042b2e9f94d9eb1ab0df1899cb32f4db8ec076a9bfbb6f",
+        "choice": ""
+      },
+      "state_hash": "96870f58d75a485150dcc9b3d7eb2ad7feb927b63fc46b153f6154b1cb9c7120"
+    },
+    {
+      "player": {
+        "UID": "player-2"
+      },
+      "input": {
+        "revision": 61,
+        "action": "ce845667a03d9c44c650671661677d886f10917321f79277a3aac91b3bf25761",
+        "choice": ""
+      },
+      "state_hash": "775764bfa8e970dd15a2228d881c1d63261952612b3fc86b7dbe46cb49572a3e"
+    },
+    {
+      "player": {
+        "UID": "player-2"
+      },
+      "input": {
+        "revision": 62,
+        "action": "ccd958fece6005d5aee2dc4b295ef6164946587727ca6429b81da6dfb89a627a",
+        "choice": ""
+      },
+      "state_hash": "62755fe5bbf3e87b2eaf69e87c0208e6748609d5ae4a04ad778f82f6d22fe41b"
+    },
+    {
+      "player": {
+        "UID": "player-1"
+      },
+      "input": {
+        "revision": 63,
+        "action": "7e3fd9b89ad9584964fd5f1dc4b9405662536ff039fe3542ad5dd333c1396f0e",
+        "choice": ""
+      },
+      "state_hash": "356c150d9c29f7d1faf7acc6f161dfebd130630bcf7a35dab3f81ebc4a49d893"
+    },
+    {
+      "player": {
+        "UID": "player-2"
+      },
+      "input": {
+        "revision": 64,
+        "action": "f9e114e00600ebb185031f266b1d181083aa4efbb0b0d2661d83d9c604bac212",
+        "choice": ""
+      },
+      "state_hash": "8f2b8e0f6b987668585b16c2405f57230628dc96eba430443e13408afe4bd952"
+    },
+    {
+      "player": {
+        "UID": "player-1"
+      },
+      "input": {
+        "revision": 65,
+        "action": "846457c718b11d2ae8e988304bd377d07cfec763662a4c561eb1a3b15f385c02",
+        "choice": ""
+      },
+      "state_hash": "bb9560b5aba3621edd5cc8aec3d44e77a81315e07b96615bd5815619203327ea"
+    },
+    {
+      "player": {
+        "UID": "player-2"
+      },
+      "input": {
+        "revision": 66,
+        "action": "000a8b410b882ea5f8f8d3fdddc2a87255a8ad2728295f65d19c7a43466a0f3e",
+        "choice": ""
+      },
+      "state_hash": "0ede85af69dd3f3b23945265284eb37b0ace58521e2e9014a529d214002e7dca"
+    },
+    {
+      "player": {
+        "UID": "player-2"
+      },
+      "input": {
+        "revision": 67,
+        "action": "",
+        "choice": "3707dc7a0e86d926cf6ada4937b0dabc30054e268ab36ff848318ac6daef340a"
+      },
+      "state_hash": "d01e321f98f277c142d3e41c4c40f1f7c999a0a79e92952b33b033c9a5b97b7b"
+    },
+    {
+      "player": {
+        "UID": "player-2"
+      },
+      "input": {
+        "revision": 68,
+        "action": "0a3d83bedbb09e0a603d9ec3e14c7fd09e65d6adf768ceddc01d0b2b8c9ec113",
+        "choice": ""
+      },
+      "state_hash": "cac43ba323141a9bea52bdeec1dbb062b14161c2c0604bc60da48c8e1f31ed1e"
+    },
+    {
+      "player": {
+        "UID": "player-1"
+      },
+      "input": {
+        "revision": 69,
+        "action": "9d1c4599bb773f0ed91f27bd16f9c3ab6aacfff45e4a89f506370076c9de5053",
+        "choice": ""
+      },
+      "state_hash": "9b57f0a66a9575b4d01a0776dec739b1b0ba804c0d1d095102a47aab89d50422"
+    },
+    {
+      "player": {
+        "UID": "player-2"
+      },
+      "input": {
+        "revision": 70,
+        "action": "394634b63ae3dde26561c409ca7c786f09ebf3ebec433df0b8df924627545fe2",
+        "choice": ""
+      },
+      "state_hash": "7517e169f5099a01d09abd2332ad69a5507c3ff0de9508c385d2006429707edf"
+    },
+    {
+      "player": {
+        "UID": "player-2"
+      },
+      "input": {
+        "revision": 71,
+        "action": "",
+        "choice": "ada248040992d0c363444ce8df427aae0c8a43834639be71133520e57b615736"
+      },
+      "state_hash": "4c914c08266ffd0be089ec5c05a677cbbdbc463daf85f618b048453601d3362a"
+    },
+    {
+      "player": {
+        "UID": "player-2"
+      },
+      "input": {
+        "revision": 72,
+        "action": "0004578f8ef220dbffe924296ce86fc4ae85471b06973af7f57f27b752d0c742",
+        "choice": ""
+      },
+      "state_hash": "7f0932c44093dc6d68b5a838c030a26b640bfcca69638699f4a2fc48536eb879"
+    },
+    {
+      "player": {
+        "UID": "player-1"
+      },
+      "input": {
+        "revision": 73,
+        "action": "fb2ae3f914a49a48179ac1880c0837d19c0a7fe8efcbcc0d12db7f98d0c8d063",
+        "choice": ""
+      },
+      "state_hash": "75b23073fbc3773c623a2afc07cd31a11a24bda79d082966c388c3ff848b4832"
+    },
+    {
+      "player": {
+        "UID": "player-2"
+      },
+      "input": {
+        "revision": 74,
+        "action": "18a0edf21c783ca40e6c53126a2be38580fb42c45612530a6f07460c2297b8d5",
+        "choice": "",
+        "reserve": [
+          "7817899329b14bdd9b57fb163d1b03cdfb3b8cbc362f931e6ddd3ca402e5b8a2"
+        ]
+      },
+      "state_hash": "a379ed4e8ef765548b06df43a26648920a2526fff0119974a2e6c73a756f670c"
+    },
+    {
+      "player": {
+        "UID": "player-2"
+      },
+      "input": {
+        "revision": 75,
+        "action": "dc15297c46e9bc1a7e494fc6f93091f16fe0ac963dbb153239b9bb2eaaf0bc81",
+        "choice": ""
+      },
+      "state_hash": "86306e4b3c21fc8666cb8b24d4c330fe857a6c8df50222d59db711b5e3c6890d"
+    },
+    {
+      "player": {
+        "UID": "player-1"
+      },
+      "input": {
+        "revision": 76,
+        "action": "eaf7daa37f4b84e83d91b2c34150614e2c5810b73dd2ac02d23aeb139b0394fa",
+        "choice": ""
+      },
+      "state_hash": "adc13787305c83d7ed0d38ddbe24f1cc7f51a1385e107ae1bfe0cd0002618b8b"
+    },
+    {
+      "player": {
+        "UID": "player-2"
+      },
+      "input": {
+        "revision": 77,
+        "action": "cc4602073ff4f2e8c39c42c5bf5d46b355e1461dbc97c0f379628dfbd700fed4",
+        "choice": ""
+      },
+      "state_hash": "887fa2f00cad0280085d50dad9140bc02884827813ea39f1f74d31bb9f416852"
+    },
+    {
+      "player": {
+        "UID": "player-1"
+      },
+      "input": {
+        "revision": 78,
+        "action": "7fb315834d8177523dac474a324a29cd71e1b2b15fe5ed61519804a263eaa7d7",
+        "choice": ""
+      },
+      "state_hash": "649a6f584080aba27330d1cf6ec6332a4798d657b4188597378e28de5dbfce5c"
+    },
+    {
+      "player": {
+        "UID": "player-2"
+      },
+      "input": {
+        "revision": 79,
+        "action": "b95a1f701cb66b12ac41f9ee264835e1573e1f92215b4854040e14c49d2a7858",
+        "choice": ""
+      },
+      "state_hash": "e5e4dc39c11421307eb15af158a6fec4dc06e251723c593c7ef70f4cab1be31e"
+    },
+    {
+      "player": {
+        "UID": "player-2"
+      },
+      "input": {
+        "revision": 80,
+        "action": "",
+        "choice": "532d8aa19406f3f1ccc2ede13b4790a057320fcf66317857abaeb98ca0d58e7e"
+      },
+      "state_hash": "45e96d4de55dfa2dfdf597ec2065306adf814a47cfde53a168b84477c872eeb1"
+    },
+    {
+      "player": {
+        "UID": "player-2"
+      },
+      "input": {
+        "revision": 81,
+        "action": "1bfe3e9e53fdb7ebdba975d6973d597f4605a6e629a4d6cabf506bc92a6f6baa",
+        "choice": ""
+      },
+      "state_hash": "07476132048c2ffe6ffbd58baad756437927b32a90b892bef6d798d9686c2a7c"
+    },
+    {
+      "player": {
+        "UID": "player-1"
+      },
+      "input": {
+        "revision": 82,
+        "action": "2a074d941020d0151d099c9adee27a6493ad9a508a7b734f0c5c559ff546b734",
+        "choice": ""
+      },
+      "state_hash": "5f9001301610676a62a4c5f77f76249185f6e8fe3b146a8cca29dc54a9f33263"
+    },
+    {
+      "player": {
+        "UID": "player-2"
+      },
+      "input": {
+        "revision": 83,
+        "action": "7fe1f3b7784b3c800bcc85de901d2702222c090a7c3ff88df052139ad55b4e3b",
+        "choice": "",
+        "reserve": [
+          "687ffe0ebf8ea9aba8f84a188c2ce91d1a93cb64eb13030ef89bf8f8d61c0e6c"
+        ]
+      },
+      "state_hash": "92f7555366c3e909c0c2f78bf1044e627b56eddb076ab85eeb0f5ab5847e3eaa"
+    },
+    {
+      "player": {
+        "UID": "player-2"
+      },
+      "input": {
+        "revision": 84,
+        "action": "b9dc371b8fa08516c0e481f7f1b74e0a66561b5a4214da64d056c98b3f06b4a2",
+        "choice": ""
+      },
+      "state_hash": "39d982509948b9d859c67efca5a8b7ec4ee0f2422e4bddd36dcb6c0db81da282"
+    },
+    {
+      "player": {
+        "UID": "player-1"
+      },
+      "input": {
+        "revision": 85,
+        "action": "a085bb6ed13afd005cf28ddd0715c4968ba6df649e4d46a859fef4ad9f80b614",
+        "choice": ""
+      },
+      "state_hash": "f01d0d9392a770f55c8bcc329d15b5dd0df7f55ef3c190658d82034b8ebc3ee7"
+    },
+    {
+      "player": {
+        "UID": "player-2"
+      },
+      "input": {
+        "revision": 86,
+        "action": "dd3ba88ad70ea060cc012f3896af4061fb925e60437bdd98e50e99b93b9af791",
+        "choice": ""
+      },
+      "state_hash": "e28f5e8307e90a151281770e2409dea64d92f3936ce8b227aa90110616d5f497"
+    },
+    {
+      "player": {
+        "UID": "player-1"
+      },
+      "input": {
+        "revision": 87,
+        "action": "1d90a78c55da15222016363a77aa9266367fe304162925b17059c3a8a4ac28b2",
+        "choice": ""
+      },
+      "state_hash": "1c5a8f306369bd787cc3cb335b51a34624fac076a69564c76f29bff3b920cda2"
+    },
+    {
+      "player": {
+        "UID": "player-2"
+      },
+      "input": {
+        "revision": 89,
+        "action": "",
+        "choice": "86f8b41fa6f1ebca3fc165e205414a221f45d24275d89af501f9fb387df878a8"
+      },
+      "state_hash": "9b947a8511a8ec3438de0d44ddcff4eaefbd2eff5e640f80ec118302f47a6d03"
+    },
+    {
+      "player": {
+        "UID": "player-2"
+      },
+      "input": {
+        "revision": 90,
+        "action": "0b660692b8642943097663be05923aaedba2a36d69d25fad92780c1359bfaebc",
+        "choice": ""
+      },
+      "state_hash": "4304b06edbeb5a89084d1a34c8f752c0c5d39540131f9f088c413c9d5b70fb80"
+    },
+    {
+      "player": {
+        "UID": "player-1"
+      },
+      "input": {
+        "revision": 91,
+        "action": "506838b918e1a950d2d27fcb784d9b89bd60067570de913018c93ccc5fb25c4b",
+        "choice": ""
+      },
+      "state_hash": "1d8aff4155ba50c68f30aebac8025a2db98c52d1515b37df3b844e7ca02274f2"
+    },
+    {
+      "player": {
+        "UID": "player-2"
+      },
+      "input": {
+        "revision": 92,
+        "action": "91ba6dad8866929de2974c92468eaee8217c391d15b1e72e785861295e2d4c0b",
+        "choice": ""
+      },
+      "state_hash": "7d2d6bf5bd76a59fda576226a034683665725f8181e40ec961f6fb8a3bf817a5"
+    },
+    {
+      "player": {
+        "UID": "player-2"
+      },
+      "input": {
+        "revision": 93,
+        "action": "",
+        "choice": "ce75918561e5fb952019a2a1b07efa629b1e6f5c351daa939e2a9afd089d5213"
+      },
+      "state_hash": "bbd96fd8341c7a729b0c81066920be7ecea2b7a811e7ab84603739c74f15764e"
+    },
+    {
+      "player": {
+        "UID": "player-2"
+      },
+      "input": {
+        "revision": 94,
+        "action": "2d015ed5257a3fee9d43fbf2d2a815cb05ffb137c80eb35fae9e41988f3ab47a",
+        "choice": ""
+      },
+      "state_hash": "9fe7aa1f6ace642e357e06eab1d546ab93778f87716153919dd1bae84e60b04b"
+    },
+    {
+      "player": {
+        "UID": "player-1"
+      },
+      "input": {
+        "revision": 95,
+        "action": "8796b8133a149509c03160010864ada2cae69b09706a89274ada98972f623ea6",
+        "choice": ""
+      },
+      "state_hash": "84085ccde943ca419135a5493246542e72e2f1b353ebe803892f5d6fb0a1fcf7"
+    },
+    {
+      "player": {
+        "UID": "player-2"
+      },
+      "input": {
+        "revision": 96,
+        "action": "86c4d0b5f387c831c1f2d7ec4c34298ce8c78ce57647953bc1ee2fe2774370ac",
+        "choice": ""
+      },
+      "state_hash": "03db5a0b3349a4acf10d694d283d717ed45b8485eea6bbdc0836a1928922b8d5"
+    },
+    {
+      "player": {
+        "UID": "player-1"
+      },
+      "input": {
+        "revision": 97,
+        "action": "8095f9ee5120263b3d88b24122e47594abaf42dbfb3edcef0ba0292954864c87",
+        "choice": ""
+      },
+      "state_hash": "edc74a3d8933afd3bb1c26ae289035ff699e9e21077d74ea9fc9cbffbfaf93fb"
+    },
+    {
+      "player": {
+        "UID": "player-2"
+      },
+      "input": {
+        "revision": 98,
+        "action": "7d785af1919fb6f0831c31ca6bbd12672671f654a37ac5fd5ffcdcd9c0dd2c3f",
+        "choice": ""
+      },
+      "state_hash": "2aa4448bf3a7b4f8a0c8da1e672fbd6fbebed6d7334c7e46a3235bd31d1132c0"
+    },
+    {
+      "player": {
+        "UID": "player-1"
+      },
+      "input": {
+        "revision": 99,
+        "action": "91c95581dfaf6223f59eea0b489b5bda9c2750e0e6f3c9bdf78a8e418d86af47",
+        "choice": ""
+      },
+      "state_hash": "9c635d23236d5ee1af0b027d8e6316f4cfe97d5188cb496c54cbce2b5cf4a29a"
+    },
+    {
+      "player": {
+        "UID": "player-1"
+      },
+      "input": {
+        "revision": 100,
+        "action": "c4bc9be57cb7d7725af3caff66f98c22135121df869f8c754177b431b547e8f0",
+        "choice": ""
+      },
+      "state_hash": "5c2dccfd8392685e9aa05de9033a371a29df350e4e24efe6a3dfdca5521a6ae3"
+    },
+    {
+      "player": {
+        "UID": "player-1"
+      },
+      "input": {
+        "revision": 101,
+        "action": "4da3d37b03eca171be5df01b0c398061175a9c189fd84cb29189755a81fbe5ae",
+        "choice": ""
+      },
+      "state_hash": "39a23314ff009290e8f6ae549bf04d39c75ec60a80f51cc8a14f0b148436ba07"
+    },
+    {
+      "player": {
+        "UID": "player-2"
+      },
+      "input": {
+        "revision": 102,
+        "action": "9e5585e64ff14ce747a1e7d7325f1e9c941e15147d4bdbfa53f78dd2877186fe",
+        "choice": ""
+      },
+      "state_hash": "ba12cd4a09c66528058622d5a50768b618777979192a742ad6e2bea7ec4b331d"
+    },
+    {
+      "player": {
+        "UID": "player-1"
+      },
+      "input": {
+        "revision": 103,
+        "action": "e0c6a63e641cf19e1349f8093387b644b6e3ea5d714d43ba941fa3a56cab9d15",
+        "choice": ""
+      },
+      "state_hash": "3e5b2ee0ada1fe8cea14551fb49a5681d93089c656a3c20b8e05fe44e4024adf"
+    },
+    {
+      "player": {
+        "UID": "player-2"
+      },
+      "input": {
+        "revision": 104,
+        "action": "6764fd0220f265bba98de30ecbf6ce8dca7cc6268a5300a0afb7343538a43ad1",
+        "choice": ""
+      },
+      "state_hash": "2526d82e9a9ea45a40ce0a16d160b32b94a2cbcbb4b601de61f7803019697ab3"
+    },
+    {
+      "player": {
+        "UID": "player-1"
+      },
+      "input": {
+        "revision": 105,
+        "action": "94ec61b7fca94632f1f5598ea5e6d0a48c7011220b783fe13b72af29f8afe651",
+        "choice": ""
+      },
+      "state_hash": "9e5a4b2b6c7ba9a29e6b53383860344bd811d62c1d9a3262d8f68f8f8fc2a4d8"
+    },
+    {
+      "player": {
+        "UID": "player-1"
+      },
+      "input": {
+        "revision": 106,
+        "action": "",
+        "choice": "53cf4361a2ff8316277caf8773b9ec9b009fe6f8fcb5d1299b20edfb954f5563"
+      },
+      "state_hash": "7fc4217876897ef72aa7ea081f12e0382c97e5e13f3bae3f01df3fed23f6c277"
+    },
+    {
+      "player": {
+        "UID": "player-1"
+      },
+      "input": {
+        "revision": 107,
+        "action": "9dac847c2e4569c3f655d177351cfe8f7d0eeb826f757cf8eb114a8ff0b0fd5e",
+        "choice": ""
+      },
+      "state_hash": "3f293bb4426072fc273c6ab232919c9c9b5fbdebfb945bb543f066708e04cb18"
+    },
+    {
+      "player": {
+        "UID": "player-2"
+      },
+      "input": {
+        "revision": 108,
+        "action": "50e961fc68f1df5b82c2332895797b24a198818211852e7dd83a2ff7ad4b00d5",
+        "choice": ""
+      },
+      "state_hash": "e1dc437b9ad21010db0b30fb9b79448befc43f5254d526d684d524e539eb9d2b"
+    },
+    {
+      "player": {
+        "UID": "player-1"
+      },
+      "input": {
+        "revision": 109,
+        "action": "3656f48ec1c8db5da9e79489dabf0fd2e4c56171703123e6e91c098e35308865",
+        "choice": ""
+      },
+      "state_hash": "3cd438312f9285f873069244af58ac8c42c208a5c26f65aef27143b855a14ad8"
+    },
+    {
+      "player": {
+        "UID": "player-1"
+      },
+      "input": {
+        "revision": 110,
+        "action": "",
+        "choice": "7d3c665c7b91dcd2ef2e15a2b5ddf99a6c99fd8c72ab2e1b548976ea1a07a3e3"
+      },
+      "state_hash": "3ee485188338fcda4d7673539b89a50b248e5b6b65dcb561369276db6a2f1eb2"
+    },
+    {
+      "player": {
+        "UID": "player-1"
+      },
+      "input": {
+        "revision": 111,
+        "action": "07cf72e77bacabbae2611c48b5273111bd9c165b85ac8911e6adb82dbf84edcb",
+        "choice": ""
+      },
+      "state_hash": "88075d334b54b947e7a5d30cf8ad83caabb60d319fbe8053c211f8aa053c3e5e"
+    },
+    {
+      "player": {
+        "UID": "player-2"
+      },
+      "input": {
+        "revision": 112,
+        "action": "5c4b0ae2a6abbb818219067e8af7374586d9696a0587be409d4511fb15559d00",
+        "choice": ""
+      },
+      "state_hash": "64a20da8713d473f831370e270a8a0434d13deda947f79b37d13f90c0d7cccd7"
+    },
+    {
+      "player": {
+        "UID": "player-1"
+      },
+      "input": {
+        "revision": 113,
+        "action": "e810bcd1386f9d62b6ec1f5ee8bc01fee59185cb5b6272df8ddc617ae27cd31b",
+        "choice": ""
+      },
+      "state_hash": "444918a2ca357122631083213a250809928ca55ee39db6ab58f750e1901dfc8c"
+    }
+  ]
+}

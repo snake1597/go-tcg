@@ -9,6 +9,8 @@ import (
 	tcgErrors "go-tcg/internal/tcg_errors"
 	"maps"
 	"sort"
+	"strconv"
+	"strings"
 )
 
 type entityID string
@@ -200,11 +202,19 @@ func (g *Game) legalActions(player *model.Player) []LegalAction {
 			},
 		)
 	}
-	for handle := range g.state.Knowledge.Attacks[player.UID] {
-		legalActions = append(legalActions, LegalAction{
-			Handle: handle,
-			Kind:   constants.ActionAttack,
-		})
+	for handle, attacker := range g.state.Knowledge.Attacks[player.UID] {
+		card, exists := g.cardForObject(attacker)
+		if !exists {
+			continue
+		}
+		legalActions = append(
+			legalActions,
+			LegalAction{
+				Handle:   handle,
+				Kind:     constants.ActionAttack,
+				CardName: g.cardName(card.ID),
+			},
+		)
 	}
 	for handle, weapon := range g.state.Knowledge.Wields[player.UID] {
 		legalActions = append(legalActions, LegalAction{
@@ -467,32 +477,71 @@ func (g *Game) visibleHand(player *model.Player) []VisibleCard {
 }
 
 // visibleField 投影所有公開場上物件，並複製可變欄位以隔離呼叫端修改。
-// 輸入不含外部參數；輸出為依名稱與擁有者排序的公開物件，無副作用且不暴露 object ID。
+// 輸入不含外部參數；輸出為依玩家座位與進場順序排序的公開物件，無副作用且不暴露 object ID。
 func (g *Game) visibleField() []VisibleFieldObject {
-	field := make([]VisibleFieldObject, 0, len(g.state.Objects))
-	for _, object := range g.state.Objects {
-		field = append(
-			field,
-			VisibleFieldObject{
-				Owner:    object.Owner,
-				CardName: g.cardName(object.Card),
-				Types:    append([]string(nil), object.Types...),
-				Rested:   object.Rested,
-				Damage:   object.Damage,
-				Counters: maps.Clone(object.Counters),
+	type orderedFieldObject struct {
+		object      VisibleFieldObject
+		id          objectID
+		playerOrder int
+		playOrder   uint64
+	}
+	playerOrders := make(map[string]int, len(g.players))
+	for index, player := range g.players {
+		playerOrders[player.UID] = index
+	}
+	objects := make([]orderedFieldObject, 0, len(g.state.Objects))
+	for id, object := range g.state.Objects {
+		objects = append(
+			objects,
+			orderedFieldObject{
+				object: VisibleFieldObject{
+					Owner:    object.Owner,
+					CardName: g.cardName(object.Card),
+					Types:    append([]string(nil), object.Types...),
+					Rested:   object.Rested,
+					Damage:   object.Damage,
+					Counters: maps.Clone(object.Counters),
+				},
+				id:          id,
+				playerOrder: playerOrders[object.Owner.UID],
+				playOrder:   fieldPlayOrder(id),
 			},
 		)
 	}
 	sort.Slice(
-		field,
+		objects,
 		func(first, second int) bool {
-			if field[first].CardName == field[second].CardName {
-				return field[first].Owner.UID < field[second].Owner.UID
+			if objects[first].playerOrder != objects[second].playerOrder {
+				return objects[first].playerOrder < objects[second].playerOrder
 			}
-			return field[first].CardName < field[second].CardName
+			if objects[first].playOrder != objects[second].playOrder {
+				return objects[first].playOrder < objects[second].playOrder
+			}
+			return objects[first].id < objects[second].id
 		},
 	)
+	field := make([]VisibleFieldObject, 0, len(objects))
+	for _, object := range objects {
+		field = append(
+			field,
+			object.object,
+		)
+	}
 	return field
+}
+
+// fieldPlayOrder 從由 putFieldObject 建立的物件 ID 取回單局遞增進場順序。
+// 輸入為場上物件 ID；輸出為建立順序，格式不符時以零作為穩定排序的後備值，無副作用。
+func fieldPlayOrder(id objectID) uint64 {
+	separator := strings.LastIndex(string(id), ":")
+	if separator == -1 || separator == len(id)-1 {
+		return 0
+	}
+	order, err := strconv.ParseUint(string(id[separator+1:]), 10, 64)
+	if err != nil {
+		return 0
+	}
+	return order
 }
 
 // visibleEffectsStack 投影公開效果堆疊，保留由底到頂的引擎順序。
@@ -565,6 +614,8 @@ func (g *Game) pendingChoice(player *model.Player) *PendingChoice {
 		cardName := ""
 		if _, visible := g.state.Knowledge.Cards[player.UID][subject]; visible {
 			cardName = g.state.Entities[subject].Name
+		} else if card, objectExists := g.cardForObject(objectID(subject)); objectExists {
+			cardName = g.state.Entities[entityID(card.ID)].Name
 		}
 		choices = append(
 			choices,

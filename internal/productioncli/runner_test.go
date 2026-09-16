@@ -308,6 +308,67 @@ func TestReadSelectionUsesEngineProvidedPassAndFloatingMemoryOptions(t *testing.
 	}
 }
 
+// TestRenderViewExplainsDrawChoiceDamageAndStackTiming 驗證 CLI 清楚呈現自動抽牌、攻擊目標、剩餘生命與 Effects Stack 限制。
+// 輸入為含抽牌事件、受傷 Champion、待選目標與 Effects Stack 的玩家視圖；輸出為含各項中文提示的終端文字。
+func TestRenderViewExplainsDrawChoiceDamageAndStackTiming(t *testing.T) {
+	var output bytes.Buffer
+	renderView(
+		&output,
+		model.PlayerOne,
+		game.PlayerView{
+			Phase: game.PhaseMain,
+			Champions: []game.VisibleChampion{
+				{
+					Owner:    model.PlayerOne,
+					CardName: "Spirit of Fire",
+					Life:     15,
+					Damage:   2,
+				},
+			},
+			EffectsStack: []game.VisibleEffectStackItem{
+				{
+					Kind:       "ability",
+					Controller: model.PlayerOne,
+					SourceName: "Four of Hearts",
+				},
+			},
+			VisibleEvents: []game.VisibleEvent{
+				{
+					Kind:     "draw",
+					CardName: "Fiery Interference",
+				},
+				{
+					Kind:     "materialize-banish-memory",
+					CardName: "Four of Hearts",
+				},
+			},
+			PendingChoice: &game.PendingChoice{
+				Options: []game.ViewHandle{
+					"target",
+				},
+				Choices: []game.VisibleChoice{
+					{
+						Handle:   "target",
+						CardName: "Spirit of Fire",
+					},
+				},
+			},
+		},
+	)
+	text := output.String()
+	for _, want := range []string{
+		"0/13（生命上限 15，傷害 2）",
+		"抽牌階段：抽到 Fiery Interference",
+		"物質化付款：隨機放逐 Four of Hearts",
+		"Effects Stack 尚未清空；只能啟動 Fast 卡或 pass。",
+		"1. Spirit of Fire",
+	} {
+		if !strings.Contains(text, want) {
+			t.Fatalf("renderView() output missing %q:\n%s", want, text)
+		}
+	}
+}
+
 // TestReadReserveValidatesNumberedSelections 驗證公開 Reserve 選單只接受正確張數、唯一且範圍內的十進位編號。
 // 輸入為正確、重複、越界、格式錯誤、張數錯誤與 EOF 腳本；輸出為合法 handles 或 EOF，副作用僅為消耗 scanner 並寫入提示。
 func TestReadReserveValidatesNumberedSelections(t *testing.T) {

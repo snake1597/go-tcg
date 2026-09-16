@@ -716,6 +716,20 @@ func TestMaterializingTonorisLevelsUpChampionAndGrantsTaunt(t *testing.T) {
 	if len(game.state.EffectSources) != 1 {
 		t.Fatalf("EffectSources = %#v, want one source card", game.state.EffectSources)
 	}
+	paymentView, err := game.PlayerView(player)
+	if err != nil {
+		t.Fatalf("PlayerView() after materialization payment error = %v", err)
+	}
+	hasBanishMemoryEvent := false
+	for _, event := range paymentView.VisibleEvents {
+		if event.Kind == "materialize-banish-memory" && event.CardName != "" {
+			hasBanishMemoryEvent = true
+			break
+		}
+	}
+	if !hasBanishMemoryEvent {
+		t.Fatalf("PlayerView().VisibleEvents = %#v, want named random materialization payment", paymentView.VisibleEvents)
+	}
 
 	passOpportunityRound(t, game, player)
 	championAfterLevelUp := game.state.Champions[player.UID]
@@ -1183,7 +1197,7 @@ func assertTurnView(
 	}
 	if samePlayer(player, wantOpportunity) {
 		allowedActions[constants.ActionActivate] = true
-		if samePlayer(player, wantTurnPlayer) && wantPhase == PhaseMain && len(game.state.EffectsStack) == 0 {
+		if game.state.Scheduler.TurnNumber > 1 && samePlayer(player, wantTurnPlayer) && wantPhase == PhaseMain && len(game.state.EffectsStack) == 0 {
 			allowedActions[constants.ActionAttack] = true
 			allowedActions[constants.ActionWield] = true
 		}

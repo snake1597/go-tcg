@@ -444,7 +444,8 @@ func renderView(output io.Writer, player *model.Player, view game.PlayerView) {
 	fmt.Fprintf(output, "回合玩家：%s　等待輸入：%s\n", playerName(view.TurnPlayer), playerName(view.DecisionPlayer))
 	fmt.Fprintln(output, "Champion：")
 	for _, champion := range view.Champions {
-		fmt.Fprintf(output, "- %s：%s %d/%d，傷害 %d，rested=%t，taunt=%t\n", playerName(champion.Owner), champion.CardName, champion.Power, champion.Life, champion.Damage, champion.Rested, champion.Taunt)
+		remainingLife := max(0, champion.Life-champion.Damage)
+		fmt.Fprintf(output, "- %s：%s %d/%d（生命上限 %d，傷害 %d），rested=%t，taunt=%t\n", playerName(champion.Owner), champion.CardName, champion.Power, remainingLife, champion.Life, champion.Damage, champion.Rested, champion.Taunt)
 	}
 	fmt.Fprintln(output, "自己手牌：")
 	for _, card := range view.Hand {
@@ -458,9 +459,20 @@ func renderView(output io.Writer, player *model.Player, view game.PlayerView) {
 	for _, item := range view.EffectsStack {
 		fmt.Fprintf(output, "- %s：%s（控制者 %s）\n", item.Kind, item.SourceName, playerName(item.Controller))
 	}
+	if len(view.EffectsStack) > 0 {
+		fmt.Fprintln(output, "Effects Stack 尚未清空；只能啟動 Fast 卡或 pass。")
+	}
 	fmt.Fprintln(output, "最近事件：")
 	start := max(0, len(view.VisibleEvents)-recentEventLimit)
 	for _, event := range view.VisibleEvents[start:] {
+		if event.Kind == "draw" {
+			fmt.Fprintf(output, "- 抽牌階段：抽到 %s\n", event.CardName)
+			continue
+		}
+		if event.Kind == "materialize-banish-memory" {
+			fmt.Fprintf(output, "- 物質化付款：隨機放逐 %s\n", event.CardName)
+			continue
+		}
 		fmt.Fprintf(output, "- %s：%s\n", event.Kind, event.CardName)
 	}
 	if view.PendingChoice != nil {

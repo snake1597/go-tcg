@@ -1,2 +1,3 @@
 allow if command.has_prefix("go test")
 allow if command.has_prefix("gofmt")
+allow if command.has_prefix("npx gitnexus analyze")
