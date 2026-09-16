@@ -7,6 +7,7 @@ import (
 	"go-tcg/internal/constants"
 	"go-tcg/internal/model"
 	tcgErrors "go-tcg/internal/tcg_errors"
+	"maps"
 	"sort"
 )
 
@@ -32,6 +33,7 @@ type knowledgeState struct {
 	Attack           *attackDeclaration                             `json:"attack,omitempty"`
 	Wield            *wieldDeclaration                              `json:"wield,omitempty"`
 	ObjectAbility    *objectAbilityDeclaration                      `json:"object_ability,omitempty"`
+	VeritaCost       *veritaAlternativeCostDeclaration              `json:"verita_cost,omitempty"`
 }
 
 type pendingChoice struct {
@@ -124,15 +126,12 @@ func (g *Game) refreshLegalActions() {
 					handle := g.newViewHandle(player, "action:cardistry:"+string(source))
 					cardistries[handle] = source
 				}
-				for source, object := range g.state.Objects {
-					definition := g.state.Cards[object.Card].Definition
-					if samePlayer(object.Owner, player) && ((definition == duchessThornesCardID && !object.Rested) || definition == smokeBombsCardID) {
-						handle := g.newViewHandle(player, "action:ability:"+string(source))
-						objectAbilities[handle] = source
-					}
+				for _, source := range g.legalObjectAbilities(player) {
+					handle := g.newViewHandle(player, "action:ability:"+string(source))
+					objectAbilities[handle] = source
 				}
 			case samePlayer(player, g.state.Scheduler.TurnPlayer) && g.state.Scheduler.Phase == PhaseMaterialize:
-				for _, card := range g.legalChampionMaterializations(player) {
+				for _, card := range g.legalMaterializations(player) {
 					handle := g.newViewHandle(
 						player,
 						"action:materialize:"+string(card),
@@ -146,7 +145,7 @@ func (g *Game) refreshLegalActions() {
 				actions[handle] = constants.ActionSkipMaterialize
 			}
 		}
-		if g.state.Knowledge.Choice != nil && g.state.AbilityChoice != nil && g.state.AbilityChoice.CanPass && samePlayer(g.state.AbilityChoice.Instance.Controller, player) {
+		if g.state.Knowledge.Choice != nil && ((g.state.AbilityChoice != nil && g.state.AbilityChoice.CanPass && samePlayer(g.state.AbilityChoice.Instance.Controller, player)) || (g.state.Knowledge.VeritaCost != nil && g.state.Knowledge.Choice.CanPass && samePlayer(g.state.Knowledge.VeritaCost.Controller, player))) {
 			handle := g.newViewHandle(
 				player,
 				"action:pass",
@@ -165,6 +164,8 @@ func (g *Game) hasAction(player *model.Player, kind constants.ActionKind) bool {
 	return false
 }
 
+// legalActions 將引擎目前允許的所有行動投影為指定玩家可提交的穩定編號順序。
+// 輸入為檢視玩家；輸出為先按行動種類、再按不透明 handle 排序的合法行動，無副作用。
 func (g *Game) legalActions(player *model.Player) []LegalAction {
 	actions := g.state.Knowledge.Actions[player.UID]
 	legalActions := make([]LegalAction, 0, len(actions))
@@ -191,9 +192,11 @@ func (g *Game) legalActions(player *model.Player) []LegalAction {
 		legalActions = append(
 			legalActions,
 			LegalAction{
-				Handle:   handle,
-				Kind:     constants.ActionActivate,
-				CardName: g.state.Entities[entityID(card)].Name,
+				Handle:         handle,
+				Kind:           constants.ActionActivate,
+				CardName:       g.state.Entities[entityID(card)].Name,
+				ReserveCost:    g.activationReserveCost(player, card),
+				ReserveOptions: g.visibleReserveCards(player, card),
 			},
 		)
 	}
@@ -211,25 +214,160 @@ func (g *Game) legalActions(player *model.Player) []LegalAction {
 		})
 	}
 	for handle, source := range g.state.Knowledge.Cardistries[player.UID] {
+		card := g.state.Objects[source].Card
+		baseCost, _ := g.cardistryBaseCost(card)
+		cost := g.cardistryCost(player, baseCost)
+		memoryCount := len(g.state.Zones[player.UID].Memory)
+		floatingMemoryRequired := max(cost-memoryCount, 0)
 		legalActions = append(
 			legalActions,
 			LegalAction{
-				Handle:   handle,
-				Kind:     constants.ActionActivate,
-				CardName: g.state.Entities[entityID(g.state.Objects[source].Card)].Name,
+				Handle:                 handle,
+				Kind:                   constants.ActionActivate,
+				CardName:               g.cardName(card),
+				FloatingMemoryRequired: floatingMemoryRequired,
+				FloatingMemoryOptions:  g.visibleFloatingMemory(player),
 			},
 		)
 	}
 	for handle, source := range g.state.Knowledge.ObjectAbilities[player.UID] {
 		legalActions = append(legalActions, LegalAction{Handle: handle, Kind: constants.ActionActivate, CardName: g.state.Entities[entityID(g.state.Objects[source].Card)].Name})
 	}
+	for index := range legalActions {
+		legalActions[index].HeuristicRank = g.heuristicRank(
+			player,
+			legalActions[index],
+		)
+	}
 	sort.Slice(
 		legalActions,
 		func(first, second int) bool {
+			if legalActions[first].Kind == legalActions[second].Kind {
+				return legalActions[first].Handle < legalActions[second].Handle
+			}
 			return legalActions[first].Kind < legalActions[second].Kind
 		},
 	)
 	return legalActions
+}
+
+// activationReserveCost 回傳 PlayerView 與 Input payload 契約共同使用的實際 Reserve 張數。
+// 輸入為啟動玩家與手牌卡牌；輸出為一般 reserve cost，或 Verita 可用替代費用時的零，無副作用。
+func (g *Game) activationReserveCost(player *model.Player, card cardInstanceID) int {
+	alternativeCostCards := g.veritaAlternativeCostCards(player)
+	if g.state.Cards[card].Definition == veritaCardID && len(alternativeCostCards) > 0 {
+		return 0
+	}
+	return g.actionReserveCost(player, card)
+}
+
+// visibleReserveCards 投影可支付指定行動 reserve cost 的其他手牌。
+// 輸入為玩家與正在啟動的手牌；輸出為可選的不透明 handles，無副作用且不暴露對手資訊。
+func (g *Game) visibleReserveCards(player *model.Player, source cardInstanceID) []VisibleCard {
+	zones := g.state.Zones[player.UID]
+	optionCapacity := len(zones.Hand)
+	options := make([]VisibleCard, 0, optionCapacity)
+	for _, card := range zones.Hand {
+		if card == source {
+			continue
+		}
+		handle, exists := g.state.Knowledge.Cards[player.UID][entityID(card)]
+		if !exists {
+			continue
+		}
+		options = append(
+			options,
+			VisibleCard{
+				Handle: handle,
+				Name:   g.cardName(card),
+			},
+		)
+	}
+	return options
+}
+
+// visibleFloatingMemory 投影目前可作為 Cardistry Floating Memory 的已追蹤墓地卡牌。
+// 輸入為付款玩家；輸出為引擎已驗證可選的卡牌 handle，無副作用且不重新判定 Cardistry 成本。
+func (g *Game) visibleFloatingMemory(player *model.Player) []VisibleCard {
+	cards := g.floatingMemoryCards(player)
+	options := make([]VisibleCard, 0, len(cards))
+	for _, card := range cards {
+		handle, exists := g.state.Knowledge.Cards[player.UID][entityID(card)]
+		if !exists {
+			continue
+		}
+		options = append(
+			options,
+			VisibleCard{
+				Handle: handle,
+				Name:   g.cardName(card),
+			},
+		)
+	}
+	sort.Slice(
+		options,
+		func(first, second int) bool {
+			return options[first].Handle < options[second].Handle
+		},
+	)
+	return options
+}
+
+// heuristicRank 依公開 Champion 狀態與已合法的 action 建立 bot 可消費的固定戰術優先級。
+// 輸入為決策玩家與合法 action；輸出為越小越優先的 rank，無副作用且不讀取隱藏區域資料。
+func (g *Game) heuristicRank(player *model.Player, action LegalAction) int {
+	if action.Kind == constants.ActionAttack && g.attackWinsGame(player, action.Handle) {
+		return 0
+	}
+	switch action.Kind {
+	case constants.ActionAttack:
+		return 1
+	case constants.ActionActivate:
+		if action.CardName == "Red Hare, Unrivaled Stallion" {
+			return 2
+		}
+		if action.CardName == "Duchess, Six of Hearts" {
+			return 2
+		}
+		if action.FloatingMemoryOptions != nil {
+			return 2
+		}
+		return 3
+	case constants.ActionWield:
+		return 3
+	case constants.ActionMaterialize:
+		return 4
+	case constants.ActionSkipMaterialize:
+		return 5
+	case constants.ActionPass:
+		return 5
+	case constants.ActionConcede:
+		return 6
+	default:
+		return 7
+	}
+}
+
+// attackWinsGame 判斷指定合法攻擊是否能以公開攻擊力擊敗任一可攻擊對方 Champion。
+// 輸入為攻擊玩家與 action handle；輸出為是否有立即獲勝目標，無副作用且僅檢查公開場上物件。
+func (g *Game) attackWinsGame(player *model.Player, handle ViewHandle) bool {
+	attacker, exists := g.state.Knowledge.Attacks[player.UID][handle]
+	if !exists {
+		return false
+	}
+	power := g.characteristicsFor(attacker).Power
+	for _, target := range g.attackTargets(player, attacker) {
+		for _, opponent := range g.players {
+			champion, championExists := g.state.Champions[opponent.UID]
+			if !championExists || samePlayer(opponent, player) || champion.ID != target {
+				continue
+			}
+			if power >= g.characteristicsFor(champion.ID).Life-champion.Damage {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func (g *Game) visibleChampions(_ *model.Player) []VisibleChampion {
@@ -246,6 +384,7 @@ func (g *Game) visibleChampions(_ *model.Player) []VisibleChampion {
 				CardName: g.state.Entities[entityID(champion.Card)].Name,
 				Power:    g.characteristicsFor(champion.ID).Power,
 				Life:     g.characteristicsFor(champion.ID).Life,
+				Damage:   champion.Damage,
 				Rested:   champion.Rested,
 				Taunt:    champion.TauntUntilTurn > g.state.Scheduler.TurnNumber,
 			},
@@ -306,6 +445,83 @@ func (g *Game) visibleCards(player *model.Player) []VisibleCard {
 	return visibleCards
 }
 
+// visibleHand 投影指定玩家目前在 Hand zone 且仍具追蹤權的卡牌。
+// 輸入為玩家；輸出為該玩家可見的手牌與既有不透明 handle，無副作用且不讀取對手手牌。
+func (g *Game) visibleHand(player *model.Player) []VisibleCard {
+	zones := g.state.Zones[player.UID]
+	hand := make([]VisibleCard, 0, len(zones.Hand))
+	for _, card := range zones.Hand {
+		handle, exists := g.state.Knowledge.Cards[player.UID][entityID(card)]
+		if !exists {
+			continue
+		}
+		hand = append(
+			hand,
+			VisibleCard{
+				Handle: handle,
+				Name:   g.cardName(card),
+			},
+		)
+	}
+	return hand
+}
+
+// visibleField 投影所有公開場上物件，並複製可變欄位以隔離呼叫端修改。
+// 輸入不含外部參數；輸出為依名稱與擁有者排序的公開物件，無副作用且不暴露 object ID。
+func (g *Game) visibleField() []VisibleFieldObject {
+	field := make([]VisibleFieldObject, 0, len(g.state.Objects))
+	for _, object := range g.state.Objects {
+		field = append(
+			field,
+			VisibleFieldObject{
+				Owner:    object.Owner,
+				CardName: g.cardName(object.Card),
+				Types:    append([]string(nil), object.Types...),
+				Rested:   object.Rested,
+				Damage:   object.Damage,
+				Counters: maps.Clone(object.Counters),
+			},
+		)
+	}
+	sort.Slice(
+		field,
+		func(first, second int) bool {
+			if field[first].CardName == field[second].CardName {
+				return field[first].Owner.UID < field[second].Owner.UID
+			}
+			return field[first].CardName < field[second].CardName
+		},
+	)
+	return field
+}
+
+// visibleEffectsStack 投影公開效果堆疊，保留由底到頂的引擎順序。
+// 輸入不含外部參數；輸出為每個 StackItem 的種類、控制者與公開來源名稱，無副作用且不暴露內部 ID。
+func (g *Game) visibleEffectsStack() []VisibleEffectStackItem {
+	stack := make([]VisibleEffectStackItem, 0, len(g.state.EffectsStack))
+	for _, item := range g.state.EffectsStack {
+		source := item.Source
+		if source == "" {
+			source = item.SourceLKI
+		}
+		stack = append(
+			stack,
+			VisibleEffectStackItem{
+				Kind:       string(item.Kind),
+				Controller: item.Controller,
+				SourceName: g.cardName(source),
+			},
+		)
+	}
+	return stack
+}
+
+// cardName 取得卡牌實例對應的公開名稱，缺少實例時回傳空字串。
+// 輸入為內部卡牌識別；輸出為僅供既有可見投影使用的名稱，無副作用且不將識別本身交給呼叫端。
+func (g *Game) cardName(card cardInstanceID) string {
+	return g.state.Entities[entityID(card)].Name
+}
+
 func (g *Game) recordVisibleEvent(player *model.Player, kind string, card entityID) {
 	event := VisibleEvent{
 		Kind:     kind,
@@ -343,8 +559,24 @@ func (g *Game) pendingChoice(player *model.Player) *PendingChoice {
 		return nil
 	}
 	options := make([]ViewHandle, 0, len(choice.Options))
-	for handle := range choice.Options {
+	choices := make([]VisibleChoice, 0, len(choice.Options))
+	for handle, subject := range choice.Options {
 		options = append(options, handle)
+		cardName := ""
+		if _, visible := g.state.Knowledge.Cards[player.UID][subject]; visible {
+			cardName = g.state.Entities[subject].Name
+		}
+		choices = append(
+			choices,
+			VisibleChoice{
+				Handle:   handle,
+				CardName: cardName,
+				HeuristicRank: g.choiceHeuristicRank(
+					player,
+					subject,
+				),
+			},
+		)
 	}
 	sort.Slice(
 		options,
@@ -352,10 +584,36 @@ func (g *Game) pendingChoice(player *model.Player) *PendingChoice {
 			return options[first] < options[second]
 		},
 	)
+	sort.Slice(
+		choices,
+		func(first, second int) bool {
+			return choices[first].Handle < choices[second].Handle
+		},
+	)
 	return &PendingChoice{
 		Options: options,
+		Choices: choices,
 		CanPass: choice.CanPass,
 	}
+}
+
+// choiceHeuristicRank 對攻擊目標優先選取可立即擊敗的公開 Champion，其餘 choice 保持同分。
+// 輸入為選擇玩家與已合法的選項 subject；輸出為越小越優先的 rank，無副作用且不讀取隱藏區域資料。
+func (g *Game) choiceHeuristicRank(player *model.Player, subject entityID) int {
+	attack := g.state.Knowledge.Attack
+	if attack == nil || !samePlayer(attack.Controller, player) {
+		return 0
+	}
+	for _, opponent := range g.players {
+		champion, exists := g.state.Champions[opponent.UID]
+		if !exists || samePlayer(opponent, player) || champion.ID != objectID(subject) {
+			continue
+		}
+		if g.characteristicsFor(attack.Attacker).Power >= g.characteristicsFor(champion.ID).Life-champion.Damage {
+			return 0
+		}
+	}
+	return 2
 }
 
 // submitChoice 先驗證選擇者與待選 handle，再依目前宣告、觸發排序或能力狀態分派。
@@ -404,11 +662,25 @@ func (g *Game) submitChoice(player *model.Player, input Input) error {
 		g.advanceKnowledgeRevision()
 		return nil
 	}
+	if g.state.Knowledge.VeritaCost != nil {
+		if err := g.submitVeritaAlternativeCostChoice(
+			player,
+			cardInstanceID(subject),
+		); err != nil {
+			return err
+		}
+		g.advanceKnowledgeRevision()
+		return nil
+	}
+	if g.state.ReplacementChoice != nil {
+		if err := g.submitReplacementChoice(player, objectID(subject)); err != nil {
+			return err
+		}
+		g.advanceKnowledgeRevision()
+		return nil
+	}
 	if g.state.AbilityChoice != nil {
 		continuation := g.state.AbilityChoice
-		if continuation.CanPass && !g.isLegalTarget(objectID(subject)) {
-			return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, subject)
-		}
 		continuation.Instance.Target = objectID(subject)
 		continuation.Instance.Operations = continuation.Operations
 		g.state.AbilityChoice = nil

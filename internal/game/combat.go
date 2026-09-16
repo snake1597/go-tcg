@@ -17,28 +17,76 @@ type wieldDeclaration struct {
 	Weapon     objectID      `json:"weapon"`
 }
 
+// legalAttackers 分別評估回合玩家目前可宣告攻擊的 Champion 與支援攻擊的 Ally。
+// 輸入為持有行動機會的玩家；輸出為合法攻擊者的內部識別，無副作用。
 func (g *Game) legalAttackers(player *model.Player) []objectID {
 	scheduler := g.state.Scheduler
 	if !samePlayer(scheduler.TurnPlayer, player) || scheduler.Phase != PhaseMain || len(g.state.EffectsStack) != 0 {
 		return nil
 	}
+	attackers := make([]objectID, 0, 1)
 	champion, exists := g.state.Champions[player.UID]
-	if !exists || champion.Rested || g.characteristicsFor(champion.ID).Power <= 0 || len(g.legalAttackTargets(player)) == 0 {
-		return nil
+	if exists && !champion.Rested {
+		championCharacteristics := g.characteristicsFor(champion.ID)
+		championTargets := g.attackTargets(player, champion.ID)
+		if championCharacteristics.Power > 0 && len(championTargets) > 0 {
+			attackers = append(attackers, champion.ID)
+		}
 	}
-	attackers := []objectID{champion.ID}
 	for id, object := range g.state.Objects {
-		if samePlayer(object.Owner, player) && !object.Rested && g.state.Cards[object.Card].Definition == redHareCardID && g.redHareObeys(player, id) {
+		if !samePlayer(object.Owner, player) || !g.canAttackWith(player, id) {
+			continue
+		}
+		targets := g.attackTargets(player, id)
+		if len(targets) > 0 {
 			attackers = append(attackers, id)
 		}
 	}
+	sort.Slice(
+		attackers,
+		func(first, second int) bool {
+			return attackers[first] < attackers[second]
+		},
+	)
 	return attackers
 }
 
+// canAttackWith 是所有 Ally 攻擊的中央 permission query；卡牌特例只透過 derived characteristics 改變 Pride 等限制。
+// 輸入為控制者與候選 object；輸出為其是否為受控、awake、正 power 且 obey 的 Ally，無副作用。
+func (g *Game) canAttackWith(player *model.Player, attacker objectID) bool {
+	object, exists := g.state.Objects[attacker]
+	if !exists || !samePlayer(object.Owner, player) || object.Rested || !containsString(object.Types, "ALLY") {
+		return false
+	}
+	return g.characteristicsFor(attacker).Power > 0 && g.obeys(player, attacker)
+}
+
+func (g *Game) obeys(player *model.Player, ally objectID) bool {
+	pride := g.characteristicsFor(ally).Pride
+	if pride == 0 {
+		return true
+	}
+	champion, exists := g.state.Champions[player.UID]
+	return exists && g.state.Cards[champion.Card].Level >= int64(pride)
+}
+
 func (g *Game) legalAttackTargets(player *model.Player) []objectID {
+	champion, exists := g.state.Champions[player.UID]
+	if !exists {
+		return nil
+	}
+	return g.attackTargets(player, champion.ID)
+}
+
+// attackTargets 以 attacker 的目前特性計算 player 可宣告或保留的攻擊目標。
+// 回傳值已套用 stealth、true sight 與醒著 Taunt 的限制；查詢本身不改變遊戲狀態。
+func (g *Game) attackTargets(player *model.Player, attacker objectID) []objectID {
 	targets := make([]objectID, 0, len(g.state.Champions))
-	champion, championExists := g.state.Champions[player.UID]
-	attackerHasTrueSight := championExists && g.characteristicsFor(champion.ID).TrueSight
+	if _, exists := g.cardForObject(attacker); !exists {
+		return nil
+	}
+	attackerHasTrueSight := g.characteristicsFor(attacker).TrueSight
+	tauntTargets := make([]objectID, 0, len(g.players))
 	for _, opponent := range g.players {
 		if samePlayer(opponent, player) {
 			continue
@@ -46,6 +94,9 @@ func (g *Game) legalAttackTargets(player *model.Player) []objectID {
 		champion, exists := g.state.Champions[opponent.UID]
 		if exists {
 			targets = append(targets, champion.ID)
+			if !champion.Rested && champion.TauntUntilTurn > g.state.Scheduler.TurnNumber {
+				tauntTargets = append(tauntTargets, champion.ID)
+			}
 		}
 	}
 	for id, object := range g.state.Objects {
@@ -60,7 +111,22 @@ func (g *Game) legalAttackTargets(player *model.Player) []objectID {
 			return targets[first] < targets[second]
 		},
 	)
+	if len(tauntTargets) > 0 {
+		sort.Slice(
+			tauntTargets,
+			func(first, second int) bool {
+				return tauntTargets[first] < tauntTargets[second]
+			},
+		)
+		return tauntTargets
+	}
 	return targets
+}
+
+// isLegalAttackTarget 回傳 target 是否仍在 attacker 的目前合法攻擊目標集合中。
+// 它不改變遊戲狀態，供宣告、重導與 combat resolution 共用相同規則。
+func (g *Game) isLegalAttackTarget(player *model.Player, attacker, target objectID) bool {
+	return containsObject(g.attackTargets(player, attacker), target)
 }
 
 func (g *Game) beginAttack(player *model.Player, attacker objectID) error {
@@ -68,12 +134,25 @@ func (g *Game) beginAttack(player *model.Player, attacker objectID) error {
 		return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, attacker)
 	}
 	g.state.Knowledge.Attack = &attackDeclaration{Controller: player, Attacker: attacker}
-	g.setDeclarationChoice(player, g.legalAttackTargets(player))
+	g.setDeclarationChoice(player, g.attackTargets(player, attacker))
 	return nil
 }
 
 func (g *Game) canWield(player *model.Player, weapon objectID) bool {
-	return samePlayer(g.state.Scheduler.OpportunityHolder, player) && g.isLegalWeapon(player, weapon) && len(g.legalTargets()) > 0 && len(g.state.Zones[player.UID].Memory) >= g.wieldReserveCost(weapon)
+	scheduler := g.state.Scheduler
+	if !samePlayer(scheduler.OpportunityHolder, player) ||
+		!samePlayer(scheduler.TurnPlayer, player) ||
+		scheduler.Phase != PhaseMain ||
+		len(g.state.EffectsStack) != 0 ||
+		!g.isLegalWeapon(player, weapon) {
+		return false
+	}
+	legalTargets := g.legalTargets()
+	if len(legalTargets) == 0 {
+		return false
+	}
+	reserveCost := g.wieldReserveCost(weapon)
+	return len(g.state.Zones[player.UID].Memory) >= reserveCost
 }
 
 func (g *Game) wieldReserveCost(weapon objectID) int {
@@ -95,7 +174,7 @@ func (g *Game) beginWield(player *model.Player, weapon objectID) error {
 func (g *Game) submitAttackChoice(player *model.Player, subject entityID) error {
 	attack := g.state.Knowledge.Attack
 	target := objectID(subject)
-	if attack == nil || !samePlayer(attack.Controller, player) || !containsObject(g.legalAttackTargets(player), target) || !containsObject(g.legalAttackers(player), attack.Attacker) {
+	if attack == nil || !samePlayer(attack.Controller, player) || !g.isLegalAttackTarget(player, attack.Attacker, target) || !containsObject(g.legalAttackers(player), attack.Attacker) {
 		return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, subject)
 	}
 	attacker, exists := g.cardForObject(attack.Attacker)
@@ -118,29 +197,82 @@ func (g *Game) submitAttackChoice(player *model.Player, subject entityID) error 
 		Target:     target,
 		Attacker:   attack.Attacker,
 	})
-	if attacker.Definition == redHareCardID && len(g.state.Zones[player.UID].Hand) > 0 {
-		g.pushAbility(g.newAbilityInstance(
-			player,
-			attacker.ID,
-			"",
-			[]effectOperation{
-				{
-					Kind: effectOperationChooseHandCard,
-				},
-				{
-					Kind: effectOperationDiscard,
-				},
-				{
-					Kind:   effectOperationDraw,
-					Amount: 1,
-				},
-			},
-		))
-	}
 	g.state.Knowledge.Attack = nil
 	g.state.Knowledge.Choice = nil
-	g.grantOpportunity(player)
+	g.flushTriggers(g.onAttackTriggers(player, attack.Attacker))
+	if len(g.state.EffectsStack) == 1 {
+		g.grantOpportunity(player)
+	}
 	return nil
+}
+
+func (g *Game) onAttackTriggers(player *model.Player, attacker objectID) []effectStackItem {
+	card, exists := g.cardForObject(attacker)
+	if !exists {
+		return nil
+	}
+	if card.Definition == heatedVengeanceCardID && g.championHasClass(player, card.Classes) {
+		champion, championExists := g.state.Champions[player.UID]
+		if !championExists {
+			return nil
+		}
+		ability := g.newAbilityInstance(
+			player,
+			card.ID,
+			champion.ID,
+			[]effectOperation{
+				{
+					Kind:    effectOperationChoose,
+					Options: []objectID{champion.ID},
+					CanPass: true,
+				},
+				{
+					Kind:   effectOperationDamage,
+					Amount: 3,
+				},
+			},
+		)
+		return []effectStackItem{
+			{
+				Kind:       effectStackAbility,
+				Controller: player,
+				Source:     card.ID,
+				SourceLKI:  card.ID,
+				Target:     champion.ID,
+				Ability:    &ability,
+			},
+		}
+	}
+	if card.Definition != redHareCardID || !g.characteristicsFor(attacker).GrantedOnAttack || len(g.state.Zones[player.UID].Hand) == 0 {
+		return nil
+	}
+	ability := g.newAbilityInstance(
+		player,
+		card.ID,
+		"",
+		[]effectOperation{
+			{
+				Kind:    effectOperationChooseHandCard,
+				CanPass: true,
+			},
+			{
+				Kind: effectOperationDiscard,
+			},
+			{
+				Kind:   effectOperationDraw,
+				Amount: 1,
+			},
+		},
+	)
+	return []effectStackItem{
+		{
+			Kind:       effectStackAbility,
+			Controller: player,
+			Source:     card.ID,
+			SourceLKI:  card.ID,
+			Ability:    &ability,
+		},
+	}
 }
 
 func (g *Game) submitWieldChoice(player *model.Player, subject entityID) error {
@@ -178,7 +310,7 @@ func (g *Game) resolveCombat(item effectStackItem) {
 	}
 	attacker, attackerExists := g.cardForObject(attackerID)
 	target, targetExists := g.cardForObject(item.Target)
-	if !attackerExists || !targetExists || attackerID == item.Target {
+	if !attackerExists || !targetExists || attackerID == item.Target || !g.isLegalAttackTarget(item.Controller, attackerID, item.Target) {
 		return
 	}
 	attackerPower := g.characteristicsFor(attackerID).Power

@@ -76,6 +76,17 @@
 
 查證記錄（2026-09-02；規則 commit `5ab1f61`）：已查 Game Zones 與明確 zone 列舉。搜尋詞：`9 zones`, `Effects Stack`, `Pantheon`。同一句的完整列舉唯一決定 vocabulary；後續只需在官方修改 zone 列舉時重查。
 
+## 首版發布規則核對（不構成規則歧義）
+
+以下行為已依首版鎖定規則快照 `602c917f2f8fd4df7198429a72eb596bf7f647c6` 核對。來源對結果均有唯一描述，因此不新增 `RUL-*` 項目：
+
+- Wake Up Phase 會同時 wake up 回合玩家控制的所有 rested object，不只 Champion。scheduler 以單一 simultaneous event batch 處理 Champion 與 Ally；由 `TestWakeUpPhaseWakesAllControlledRestedObjects` 覆蓋。
+- 一般攻擊權限適用於所有 awake、正 power 且 obey 的 Ally。Red Hare 的卡牌特例只影響其 derived characteristics（例如 Pride），不得成為 `legalAttackers` 的一般資格開關；由 `TestLegalAttackersIncludesEveryObeyingPositivePowerAlly` 覆蓋。
+- 從 Hand play Ally 會先把來源卡作為 activation 放入 Effects Stack，讓玩家取得 fast response window；雙方連續 pass 後才結算並建立 Field object。Action 卡同樣在結算前保留於 `EffectSources`，結算移往 Graveyard 時移除；由 `TestAllyActivationUsesEffectsStackBeforeEnteringField` 與 `TestActionCardsUsePlayerViewDeclarationAndResolveToGraveyard` 覆蓋。
+- Material Deck 的 Champion 與 Regalia 都必須先付款並進入 Effects Stack，再依卡牌類型結算 Level Up 或建立 Field object；The Duchess's Thornes 具有 Hindered，因此以 rested 狀態進場。由 `TestMaterializationExposesEveryEligibleFixedMaterialDeckCard` 與 `TestMaterializingHinderedRegaliaEntersRested` 覆蓋。
+
+規則責任邊界：通用 scheduler 負責 phase-based wake up，通用 combat permission query 負責 Ally 攻擊資格，卡牌 evaluator 只提供卡牌特有的 derived characteristics；activation/runtime 負責所有被 play 卡牌的 Stack 與來源生命週期。
+
 ## 處理流程
 
 1. 每個 vertical slice 在進入 `ready` 前，從規則依賴反查本表。

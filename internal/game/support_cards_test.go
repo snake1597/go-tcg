@@ -3,6 +3,7 @@ package game
 import (
 	"testing"
 
+	"go-tcg/internal/constants"
 	"go-tcg/internal/model"
 )
 
@@ -149,6 +150,133 @@ func TestDuchessCopyAndVeritaAlternativeCostUseZonesAtomically(t *testing.T) {
 	}
 }
 
+// TestVeritaAlternativeCostSelectsCardsBeforeAtomicallyCommitting 驗證逐張付款與取消均不留下部分區域異動。
+func TestVeritaAlternativeCostSelectsCardsBeforeAtomicallyCommitting(t *testing.T) {
+	game := newActionGame(t)
+	player := model.PlayerOne
+	verita := findCard(t, game, player, veritaCardID)
+	zones := game.state.Zones[player.UID]
+	zones.MainDeck = removeCardAt(zones.MainDeck, cardIndex(zones.MainDeck, verita))
+	zones.Hand = append(zones.Hand, verita)
+	game.state.Zones[player.UID] = zones
+	cards := []cardInstanceID{}
+	for _, card := range game.state.Zones[player.UID].MainDeck {
+		candidate := game.state.Cards[card]
+		if !containsString(candidate.Types, "ALLY") || candidate.ReserveCost == 0 {
+			continue
+		}
+		zones := game.state.Zones[player.UID]
+		zones.MainDeck = removeCardAt(zones.MainDeck, cardIndex(zones.MainDeck, card))
+		zones.Graveyard = append(zones.Graveyard, card)
+		game.state.Zones[player.UID] = zones
+		candidate.Subtypes = append(candidate.Subtypes, "SUITED")
+		game.state.Cards[card] = candidate
+		cards = append(cards, card)
+		if len(cards) == 3 {
+			break
+		}
+	}
+	if len(cards) != 3 {
+		t.Fatal("fixture did not contain three ally cards")
+	}
+	for index, cost := range []int{3, 3, 4} {
+		card := game.state.Cards[cards[index]]
+		card.ReserveCost = cost
+		game.state.Cards[cards[index]] = card
+	}
+	if err := game.beginVeritaAlternativeCostDeclaration(player, verita, nil); err != nil {
+		t.Fatalf("beginVeritaAlternativeCostDeclaration() error = %v", err)
+	}
+	if cardIndex(game.state.Zones[player.UID].Hand, verita) < 0 || cardIndex(game.state.Zones[player.UID].Graveyard, cards[0]) < 0 {
+		t.Fatal("starting Verita choice moved a card")
+	}
+	game.advanceKnowledgeRevision()
+	view, err := game.PlayerView(player)
+	if err != nil {
+		t.Fatalf("PlayerView() error = %v", err)
+	}
+	var pass ViewHandle
+	for _, action := range view.LegalActions {
+		if action.Kind == constants.ActionPass {
+			pass = action.Handle
+			break
+		}
+	}
+	if pass == "" {
+		t.Fatal("Verita alternative cost did not expose cancellation")
+	}
+	if err := game.Submit(
+		player,
+		Input{
+			Revision: view.Revision,
+			Action:   pass,
+		},
+	); err != nil {
+		t.Fatalf("Submit() cancel Verita alternative cost error = %v", err)
+	}
+	if game.state.Knowledge.VeritaCost != nil || cardIndex(game.state.Zones[player.UID].Hand, verita) < 0 || cardIndex(game.state.Zones[player.UID].Graveyard, cards[0]) < 0 {
+		t.Fatal("cancelled Verita choice left a partial modification")
+	}
+	if err := game.beginVeritaAlternativeCostDeclaration(player, verita, nil); err != nil {
+		t.Fatalf("beginVeritaAlternativeCostDeclaration() after cancellation error = %v", err)
+	}
+	for _, card := range cards {
+		if err := game.submitVeritaAlternativeCostChoice(player, card); err != nil {
+			t.Fatalf("submitVeritaAlternativeCostChoice() error = %v", err)
+		}
+	}
+	if game.state.Knowledge.VeritaCost != nil || cardIndex(game.state.Zones[player.UID].Hand, verita) >= 0 {
+		t.Fatal("completed Verita selection was not committed")
+	}
+	for _, card := range cards {
+		if cardIndex(game.state.Zones[player.UID].Banishment, card) < 0 {
+			t.Fatalf("Verita payment %q was not banished", card)
+		}
+	}
+}
+
+// TestVeritaAlternativeCostRejectsInexactCardsWithoutMovingThem 驗證找不到精確組合時不會產生部分放逐。
+func TestVeritaAlternativeCostRejectsInexactCardsWithoutMovingThem(t *testing.T) {
+	game := newActionGame(t)
+	player := model.PlayerOne
+	cards := []cardInstanceID{}
+	for _, card := range game.state.Zones[player.UID].MainDeck {
+		candidate := game.state.Cards[card]
+		if !containsString(candidate.Types, "ALLY") || candidate.ReserveCost == 0 {
+			continue
+		}
+		zones := game.state.Zones[player.UID]
+		zones.MainDeck = removeCardAt(zones.MainDeck, cardIndex(zones.MainDeck, card))
+		zones.Graveyard = append(zones.Graveyard, card)
+		game.state.Zones[player.UID] = zones
+		candidate.Subtypes = append(candidate.Subtypes, "SUITED")
+		game.state.Cards[card] = candidate
+		cards = append(cards, card)
+		if len(cards) == 3 {
+			break
+		}
+	}
+	if len(cards) != 3 {
+		t.Fatal("fixture did not contain three ally cards")
+	}
+	for index, cost := range []int{3, 3, 5} {
+		card := game.state.Cards[cards[index]]
+		card.ReserveCost = cost
+		game.state.Cards[cards[index]] = card
+	}
+	if got := game.veritaAlternativeCostCards(player); len(got) != 0 {
+		t.Fatalf("veritaAlternativeCostCards() = %#v, want no exact combination", got)
+	}
+	if err := game.payVeritaAlternativeCost(player, cards); err == nil {
+		t.Fatal("payVeritaAlternativeCost() error = nil, want inexact cost rejection")
+	}
+	for _, card := range cards {
+		if cardIndex(game.state.Zones[player.UID].Graveyard, card) < 0 || cardIndex(game.state.Zones[player.UID].Banishment, card) >= 0 {
+			t.Fatalf("inexact Verita payment %q moved zones", card)
+		}
+	}
+}
+
 func TestSmokeBombsTrumpSetAndPepperedChefApplyTemporaryEffects(t *testing.T) {
 	game := newActionGame(t)
 	player := model.PlayerOne
@@ -214,7 +342,7 @@ func TestSmokeBombsTrumpSetAndPepperedChefApplyTemporaryEffects(t *testing.T) {
 	}
 	game.state.EffectsStack = append(game.state.EffectsStack, effectStackItem{
 		Kind:       effectStackCombat,
-		Controller: player,
+		Controller: model.PlayerTwo,
 		Target:     objectID("champion:" + model.PlayerTwo.UID),
 	})
 	if err := game.retargetAttackWithTrumpSet(player, chef); err != nil {
@@ -228,19 +356,208 @@ func TestSmokeBombsTrumpSetAndPepperedChefApplyTemporaryEffects(t *testing.T) {
 	}
 }
 
+// TestPepperedChefOffersOnlyOtherControlledAlliesAndCanBeSkipped 驗證可略過選擇只暴露合法犧牲目標。
+func TestPepperedChefOffersOnlyOtherControlledAlliesAndCanBeSkipped(t *testing.T) {
+	game := newActionGame(t)
+	player := model.PlayerOne
+	chefCard := findCard(t, game, player, pepperedChefCardID)
+	chef := objectID("ally:chef-choice")
+	legalCard := findCard(t, game, player, twoOfHeartsCardID)
+	legal := objectID("ally:chef-legal")
+	enemyCard := findCard(t, game, model.PlayerTwo, twoOfHeartsCardID)
+	enemy := objectID("ally:chef-enemy")
+	game.state.Objects[chef] = fieldObject{
+		ID:    chef,
+		Card:  chefCard,
+		Owner: player,
+		Types: []string{"ALLY"},
+	}
+	game.state.Objects[legal] = fieldObject{
+		ID:    legal,
+		Card:  legalCard,
+		Owner: player,
+		Types: []string{"ALLY"},
+	}
+	game.state.Objects[enemy] = fieldObject{
+		ID:    enemy,
+		Card:  enemyCard,
+		Owner: model.PlayerTwo,
+		Types: []string{"ALLY"},
+	}
+	game.enqueueSuitedEnterAbility(player, chef, chefCard)
+	game.resolveTopEffectStack()
+	choice := game.state.Knowledge.Choice
+	if choice == nil || !choice.CanPass || len(choice.Options) != 1 {
+		t.Fatalf("Peppered Chef choice = %#v, want one optional legal target", choice)
+	}
+	for _, target := range choice.Options {
+		if target != entityID(legal) {
+			t.Fatalf("Peppered Chef target = %q, want %q", target, legal)
+		}
+	}
+}
+
+func TestSmokeBombsRevalidatesAttackTargetsForStealthAndTrueSight(t *testing.T) {
+	game := newActionGame(t)
+	defender := model.PlayerOne
+	attacker := model.PlayerTwo
+	targetCard := findCard(t, game, defender, duchessCardID)
+	target := objectID("ally:smoke-target")
+	game.state.Objects[target] = fieldObject{
+		ID:    target,
+		Card:  targetCard,
+		Owner: defender,
+		Types: []string{
+			"ALLY",
+		},
+	}
+	smokeCard := findCard(t, game, defender, smokeBombsCardID)
+	smoke := objectID("regalia:smoke")
+	game.state.Objects[smoke] = fieldObject{
+		ID:    smoke,
+		Card:  smokeCard,
+		Owner: defender,
+		Types: []string{
+			"ITEM",
+		},
+	}
+	if err := game.activateSmokeBombs(defender, smoke, target); err != nil {
+		t.Fatalf("activateSmokeBombs() error = %v", err)
+	}
+	attackingChampion := game.state.Champions[attacker.UID]
+	defendingChampion := game.state.Champions[defender.UID]
+	defendingChampion.TauntUntilTurn = 0
+	game.state.Champions[defender.UID] = defendingChampion
+	game.resolveCombat(effectStackItem{
+		Kind:       effectStackCombat,
+		Controller: attacker,
+		Target:     target,
+		Attacker:   attackingChampion.ID,
+	})
+	if got := game.state.Objects[target].Damage; got != 0 {
+		t.Fatalf("stealthed target damage = %d, want 0", got)
+	}
+	if _, exists := game.state.Objects[target]; !exists {
+		t.Fatal("stealthed target left the field")
+	}
+	game.addContinuousEffect(continuousEffect{
+		Target: attackingChampion.ID,
+		Scope:  effectScopeObject,
+		Layer:  effectLayerAbility,
+		Modifier: continuousModifier{
+			GrantTrueSight: true,
+			PowerDelta:     1,
+		},
+	})
+	game.resolveCombat(effectStackItem{
+		Kind:       effectStackCombat,
+		Controller: attacker,
+		Target:     target,
+		Attacker:   attackingChampion.ID,
+	})
+	if got := game.state.Objects[target].Damage; got == 0 {
+		t.Fatalf("true sight attack did not damage the stealthed target; attacker characteristics = %#v, attack targets = %#v", game.characteristicsFor(attackingChampion.ID), game.attackTargets(attacker, attackingChampion.ID))
+	}
+	damageBeforeTaunt := game.state.Objects[target].Damage
+	defendingChampion = game.state.Champions[defender.UID]
+	defendingChampion.TauntUntilTurn = game.state.Scheduler.TurnNumber + 1
+	game.state.Champions[defender.UID] = defendingChampion
+	game.resolveCombat(effectStackItem{
+		Kind:       effectStackCombat,
+		Controller: attacker,
+		Target:     target,
+		Attacker:   attackingChampion.ID,
+	})
+	if got := game.state.Objects[target].Damage; got != damageBeforeTaunt {
+		t.Fatalf("taunt-restricted target damage = %d, want %d", got, damageBeforeTaunt)
+	}
+}
+
+func TestTrumpSetRequiresDifferentLegalSuitedAllyAndFizzlesDeterministically(t *testing.T) {
+	game := newActionGameWithSource(t, trumpSetCardID)
+	defender := model.PlayerOne
+	attacker := model.PlayerTwo
+	firstCard := findCard(t, game, defender, twoOfHeartsCardID)
+	first := objectID("ally:first-suited")
+	game.state.Objects[first] = fieldObject{
+		ID:    first,
+		Card:  firstCard,
+		Owner: defender,
+		Types: []string{
+			"ALLY",
+		},
+	}
+	secondCard := findCard(t, game, defender, threeOfSpadesCardID)
+	second := objectID("ally:second-suited")
+	game.state.Objects[second] = fieldObject{
+		ID:    second,
+		Card:  secondCard,
+		Owner: defender,
+		Types: []string{
+			"ALLY",
+		},
+	}
+	attackingChampion := game.state.Champions[attacker.UID]
+	game.state.EffectsStack = append(game.state.EffectsStack, effectStackItem{
+		Kind:       effectStackCombat,
+		Controller: attacker,
+		Target:     first,
+		Attacker:   attackingChampion.ID,
+	})
+	if got := game.trumpSetTargets(defender); len(got) != 1 || got[0] != second {
+		t.Fatalf("trumpSetTargets() = %#v, want only %q", got, second)
+	}
+	if !game.canActivateAction(defender, findCard(t, game, defender, trumpSetCardID)) {
+		t.Fatal("Trump Set was not legal with a distinct suited ally")
+	}
+	if err := game.retargetAttackWithTrumpSet(defender, second); err != nil {
+		t.Fatalf("retargetAttackWithTrumpSet() error = %v", err)
+	}
+	if got := game.state.EffectsStack[0].Target; got != second {
+		t.Fatalf("retargeted attack target = %q, want %q", got, second)
+	}
+	if got := game.characteristicsFor(second).Power; got != game.state.Cards[secondCard].Power+3 {
+		t.Fatalf("Trump Set power = %d, want +3", got)
+	}
+	game.state.Scheduler.TurnNumber++
+	if got := game.characteristicsFor(second).Power; got != game.state.Cards[secondCard].Power {
+		t.Fatalf("expired Trump Set power = %d, want %d", got, game.state.Cards[secondCard].Power)
+	}
+	delete(game.state.Champions, attacker.UID)
+	trumpCard := findCard(t, game, defender, trumpSetCardID)
+	ability := game.newAbilityInstance(
+		defender,
+		trumpCard,
+		second,
+		[]effectOperation{
+			{
+				Kind: effectOperationRetargetAttack,
+			},
+			{
+				Kind:                  effectOperationMove,
+				MoveSourceToGraveyard: true,
+			},
+		},
+	)
+	game.resolveAbility(ability)
+	if cardIndex(game.state.Zones[defender.UID].Graveyard, trumpCard) < 0 {
+		t.Fatal("Trump Set did not move to the graveyard after its attack source became invalid")
+	}
+}
+
 func TestRedHareAndVeritaContinuousEffects(t *testing.T) {
 	game := newActionGame(t)
 	player := model.PlayerOne
 	redHareCard := findCard(t, game, player, redHareCardID)
 	redHare := objectID("ally:red-hare")
 	game.state.Objects[redHare] = fieldObject{ID: redHare, Card: redHareCard, Owner: player, Types: []string{"ALLY"}}
-	if game.redHareObeys(player, redHare) {
+	if game.canAttackWith(player, redHare) {
 		t.Fatal("Red Hare obeyed without a level-three champion or qualifying ally")
 	}
 	duchessCard := findCard(t, game, player, duchessCardID)
 	duchess := objectID("ally:duchess")
 	game.state.Objects[duchess] = fieldObject{ID: duchess, Card: duchessCard, Owner: player, Types: []string{"ALLY", "UNIQUE"}}
-	if !game.redHareObeys(player, redHare) {
+	if !game.canAttackWith(player, redHare) {
 		t.Fatal("Red Hare did not obey with a fire unique Human ally")
 	}
 	veritaCard := findCard(t, game, player, veritaCardID)
@@ -251,7 +568,157 @@ func TestRedHareAndVeritaContinuousEffects(t *testing.T) {
 	}
 	delete(game.state.Objects, verita)
 	game.enqueueVeritaDeath(player, veritaCard)
+	if len(game.state.EffectsStack) != 1 || game.state.EffectsStack[0].Ability == nil {
+		t.Fatalf("Verita On Death stack = %#v, want one Ability Instance", game.state.EffectsStack)
+	}
+	game.resolveAbility(*game.state.EffectsStack[0].Ability)
 	if got := game.characteristicsFor(duchess).Power; got != game.state.Cards[duchessCard].Power+1 {
 		t.Fatalf("Verita On Death power = %d, want +1", got)
+	}
+	if len(game.state.ContinuousEffects) != 1 || game.state.ContinuousEffects[0].ExpiresAtTurn != game.state.Scheduler.TurnNumber+uint64(len(game.players)) {
+		t.Fatalf("Verita On Death duration = %#v, want end of owner's next turn", game.state.ContinuousEffects)
+	}
+	game.state.Scheduler.TurnNumber = game.state.ContinuousEffects[0].ExpiresAtTurn
+	game.expireContinuousEffects()
+	if got := game.characteristicsFor(duchess).Power; got != game.state.Cards[duchessCard].Power {
+		t.Fatalf("expired Verita On Death power = %d, want base power", got)
+	}
+}
+
+func TestHeatedVengeanceTracksChampionDamageAndResolvesOptionalOnAttack(t *testing.T) {
+	game := newActionGame(t)
+	player := model.PlayerOne
+	heatedCard := findCard(t, game, player, heatedVengeanceCardID)
+	heated := objectID("attack:heated-vengeance")
+	game.state.Objects[heated] = fieldObject{
+		ID:    heated,
+		Card:  heatedCard,
+		Owner: player,
+		Types: []string{
+			"ALLY",
+		},
+	}
+	champion := game.state.Champions[player.UID]
+	championCard := game.state.Cards[champion.Card]
+	championCard.Classes = []string{
+		"WARRIOR",
+	}
+	game.state.Cards[champion.Card] = championCard
+	if got := game.characteristicsFor(heated).Power; got != 2 {
+		t.Fatalf("Heated Vengeance power = %d, want 2 before champion damage", got)
+	}
+	game.damageUnit(champion.ID, 1)
+	if got := game.characteristicsFor(heated).Power; got != 5 {
+		t.Fatalf("Heated Vengeance power = %d, want 5 after champion damage", got)
+	}
+	game.state.Scheduler.TurnNumber++
+	if got := game.characteristicsFor(heated).Power; got != 2 {
+		t.Fatalf("Heated Vengeance power = %d, want 2 after turn change", got)
+	}
+	triggers := game.onAttackTriggers(player, heated)
+	if len(triggers) != 1 || triggers[0].Ability == nil {
+		t.Fatalf("On Attack triggers = %#v, want one Ability Instance", triggers)
+	}
+	game.flushTriggers(triggers)
+	game.resolveTopEffectStack()
+	if game.state.AbilityChoice == nil || !game.state.AbilityChoice.CanPass {
+		t.Fatalf("Heated Vengeance choice = %#v, want optional self-damage choice", game.state.AbilityChoice)
+	}
+	delete(game.state.Objects, heated)
+	selectPendingChoice(t, game, player, 0)
+	game.resolveTopEffectStack()
+	if got := game.state.Champions[player.UID].Damage; got != 4 {
+		t.Fatalf("champion damage = %d, want prior 1 plus 3 from LKI trigger", got)
+	}
+	game.state.Objects[heated] = fieldObject{
+		ID:    heated,
+		Card:  heatedCard,
+		Owner: player,
+		Types: []string{
+			"ALLY",
+		},
+	}
+	game.flushTriggers(game.onAttackTriggers(player, heated))
+	game.resolveTopEffectStack()
+	view, err := game.PlayerView(player)
+	if err != nil {
+		t.Fatalf("PlayerView() error = %v", err)
+	}
+	if err := game.Submit(
+		player,
+		Input{
+			Revision: view.Revision,
+			Action:   actionByKind(t, view, constants.ActionPass).Handle,
+		},
+	); err != nil {
+		t.Fatalf("Submit() optional self-damage pass error = %v", err)
+	}
+	if got := game.state.Champions[player.UID].Damage; got != 4 {
+		t.Fatalf("champion damage = %d, want unchanged after optional pass", got)
+	}
+}
+
+func TestRedHarePermissionAndGrantedAttackAbilityUseDerivedCharacteristics(t *testing.T) {
+	game := newActionGame(t)
+	player := model.PlayerOne
+	redHareCard := findCard(t, game, player, redHareCardID)
+	redHare := objectID("ally:red-hare")
+	game.state.Objects[redHare] = fieldObject{
+		ID:    redHare,
+		Card:  redHareCard,
+		Owner: player,
+		Types: []string{
+			"ALLY",
+		},
+	}
+	if game.canAttackWith(player, redHare) || game.characteristicsFor(redHare).GrantedOnAttack {
+		t.Fatal("Red Hare gained permission or its granted ability without a qualifying Human ally")
+	}
+	duchessCard := findCard(t, game, player, duchessCardID)
+	duchess := objectID("ally:duchess")
+	game.state.Objects[duchess] = fieldObject{
+		ID:    duchess,
+		Card:  duchessCard,
+		Owner: player,
+		Types: []string{
+			"ALLY",
+			"UNIQUE",
+		},
+	}
+	if !game.canAttackWith(player, redHare) || game.characteristicsFor(redHare).Pride != 0 || !game.characteristicsFor(redHare).GrantedOnAttack {
+		t.Fatalf("Red Hare characteristics = %#v, want removed Pride and granted On Attack", game.characteristicsFor(redHare))
+	}
+	triggers := game.onAttackTriggers(player, redHare)
+	if len(triggers) != 1 || triggers[0].Ability == nil || !triggers[0].Ability.Operations[0].CanPass {
+		t.Fatalf("granted On Attack triggers = %#v, want optional Ability Instance", triggers)
+	}
+	game.state.Zones[player.UID] = playerZones{}
+	if got := game.onAttackTriggers(player, redHare); got != nil {
+		t.Fatalf("On Attack triggers without discard options = %#v, want none", got)
+	}
+	delete(game.state.Objects, duchess)
+	if game.canAttackWith(player, redHare) || game.characteristicsFor(redHare).GrantedOnAttack {
+		t.Fatal("Red Hare retained removed Pride or granted ability after source left")
+	}
+	game.state.Objects[duchess] = fieldObject{
+		ID:    duchess,
+		Card:  duchessCard,
+		Owner: player,
+		Types: []string{
+			"ALLY",
+			"UNIQUE",
+		},
+	}
+	delete(game.state.Objects, redHare)
+	game.state.Objects[redHare] = fieldObject{
+		ID:    redHare,
+		Card:  redHareCard,
+		Owner: player,
+		Types: []string{
+			"ALLY",
+		},
+	}
+	if !game.canAttackWith(player, redHare) || !game.characteristicsFor(redHare).GrantedOnAttack {
+		t.Fatal("re-entered Red Hare did not receive fresh derived permission and ability")
 	}
 }

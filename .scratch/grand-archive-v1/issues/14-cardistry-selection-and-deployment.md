@@ -4,7 +4,7 @@
 
 **Blocked by:** 12.5: 建立統一 Ability 與 Effect Runtime; 13: 建立 Cardistry 核心並支援基本 Cardistry 卡牌.
 
-**Status:** in-progress
+**Status:** completed
 
 - [x] 待選內容只以當前玩家可用的 View Handle 呈現，不暴露其他隱藏卡牌。
 - [x] Mandatory discard 與 deployment 使用 typed operation sequence 和可重播 Pending Choice continuation；沒有可合法完成的情況下依法處理，不能留下半完成效果。

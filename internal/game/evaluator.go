@@ -34,16 +34,18 @@ const (
 )
 
 type continuousModifier struct {
-	SetPower         *int `json:"set_power,omitempty"`
-	SetLife          *int `json:"set_life,omitempty"`
-	PowerDelta       int  `json:"power_delta,omitempty"`
-	LifeDelta        int  `json:"life_delta,omitempty"`
-	ReserveCostDelta int  `json:"reserve_cost_delta,omitempty"`
-	GrantImmortality bool `json:"grant_immortality,omitempty"`
-	ProhibitRecover  bool `json:"prohibit_recover,omitempty"`
-	SwitchPowerLife  bool `json:"switch_power_life,omitempty"`
-	GrantStealth     bool `json:"grant_stealth,omitempty"`
-	GrantTrueSight   bool `json:"grant_true_sight,omitempty"`
+	SetPower             *int `json:"set_power,omitempty"`
+	SetLife              *int `json:"set_life,omitempty"`
+	PowerDelta           int  `json:"power_delta,omitempty"`
+	LifeDelta            int  `json:"life_delta,omitempty"`
+	ReserveCostDelta     int  `json:"reserve_cost_delta,omitempty"`
+	GrantImmortality     bool `json:"grant_immortality,omitempty"`
+	ProhibitRecover      bool `json:"prohibit_recover,omitempty"`
+	SwitchPowerLife      bool `json:"switch_power_life,omitempty"`
+	GrantStealth         bool `json:"grant_stealth,omitempty"`
+	GrantTrueSight       bool `json:"grant_true_sight,omitempty"`
+	RemovePride          bool `json:"remove_pride,omitempty"`
+	GrantRedHareOnAttack bool `json:"grant_red_hare_on_attack,omitempty"`
 }
 
 // continuousEffect 保存可序列化的持續效果資料。
@@ -67,10 +69,12 @@ type characteristics struct {
 	Life              int
 	ReserveCost       int
 	MemoryCost        int
+	Pride             int
 	Immortal          bool
 	RecoverProhibited bool
 	Stealth           bool
 	TrueSight         bool
+	GrantedOnAttack   bool
 }
 
 // characteristicsFor 從物件對應牌的基礎值計算目前特性，不改寫牌本身。
@@ -118,12 +122,16 @@ func (g *Game) characteristicsForCard(id cardInstanceID) characteristics {
 }
 
 func characteristicsFromCard(card cardInstance) characteristics {
-	return characteristics{
+	result := characteristics{
 		Power:       card.Power,
 		Life:        card.Life,
 		ReserveCost: card.ReserveCost,
 		MemoryCost:  card.MemoryCost,
 	}
+	if card.Definition == redHareCardID {
+		result.Pride = 3
+	}
+	return result
 }
 
 func applyContinuousModifier(result *characteristics, modifier continuousModifier) {
@@ -140,6 +148,10 @@ func applyContinuousModifier(result *characteristics, modifier continuousModifie
 	result.RecoverProhibited = result.RecoverProhibited || modifier.ProhibitRecover
 	result.Stealth = result.Stealth || modifier.GrantStealth
 	result.TrueSight = result.TrueSight || modifier.GrantTrueSight
+	if modifier.RemovePride {
+		result.Pride = 0
+	}
+	result.GrantedOnAttack = result.GrantedOnAttack || modifier.GrantRedHareOnAttack
 	if modifier.SwitchPowerLife {
 		result.Power, result.Life = result.Life, result.Power
 	}
@@ -279,6 +291,22 @@ func (g *Game) staticEffectsFor(target objectID) []continuousEffect {
 				},
 			)
 		}
+		if sourceID == target && card.Definition == redHareCardID && g.controlsQualifiedHumanAlly(source.Owner, sourceID) {
+			effects = append(
+				effects,
+				continuousEffect{
+					Source:     sourceID,
+					Controller: source.Owner,
+					Scope:      effectScopeObject,
+					Layer:      effectLayerAbility,
+					Timestamp:  uint64(len(effects)),
+					Modifier: continuousModifier{
+						GrantRedHareOnAttack: true,
+						RemovePride:          true,
+					},
+				},
+			)
+		}
 		if card.Definition == veritaCardID && sourceID != target && targetExists && samePlayer(source.Owner, targetObject.Owner) && containsString(targetObject.Types, "ALLY") && g.cardHasSubtype(targetObject.Card, "SUITED") {
 			effects = append(
 				effects,
@@ -296,6 +324,51 @@ func (g *Game) staticEffectsFor(target objectID) []continuousEffect {
 		}
 	}
 	return effects
+}
+
+func (g *Game) controlsQualifiedHumanAlly(player *model.Player, exclude objectID) bool {
+	for id, object := range g.state.Objects {
+		if id == exclude || !samePlayer(object.Owner, player) {
+			continue
+		}
+		if g.objectHasCharacteristics(
+			id,
+			[]string{
+				"ALLY",
+				"UNIQUE",
+			},
+			[]string{
+				"HUMAN",
+			},
+			[]string{
+				"FIRE",
+				"TERA",
+			},
+		) {
+			return true
+		}
+	}
+	return false
+}
+
+// objectHasCharacteristics 是 static ability 與 permission query 共用的卡牌特性查詢。
+// requiredTypes 與 requiredSubtypes 必須全部符合；elements 則只要符合其中一個即可。
+func (g *Game) objectHasCharacteristics(id objectID, requiredTypes, requiredSubtypes, elements []string) bool {
+	card, exists := g.cardForObject(id)
+	if !exists {
+		return false
+	}
+	for _, requiredType := range requiredTypes {
+		if !containsString(card.Types, requiredType) {
+			return false
+		}
+	}
+	for _, requiredSubtype := range requiredSubtypes {
+		if !containsString(card.Subtypes, requiredSubtype) {
+			return false
+		}
+	}
+	return len(elements) == 0 || containsAny(card.Elements, elements)
 }
 
 func (g *Game) championDamagedThisTurn(player *model.Player) bool {

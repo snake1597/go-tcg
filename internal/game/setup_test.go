@@ -8,6 +8,19 @@ import (
 	"testing"
 )
 
+// materializationActionByCardName 從玩家視圖取得指定卡名的 materialize action，避免測試依賴 handle 順序。
+// 輸入為測試、PlayerView 與卡名；輸出為唯一同名 materialize action，找不到時使測試失敗且不改變遊戲狀態。
+func materializationActionByCardName(t *testing.T, view PlayerView, name string) LegalAction {
+	t.Helper()
+	for _, action := range view.LegalActions {
+		if action.Kind == constants.ActionMaterialize && action.CardName == name {
+			return action
+		}
+	}
+	t.Fatalf("materialization action %q not found in %#v", name, view.LegalActions)
+	return LegalAction{}
+}
+
 // Rules: 602c917f2f8fd4df7198429a72eb596bf7f647c6,
 // general-rules-starting-the-game.md § Standard Game Setup;
 // turn-order-main-phase.md § General Rules.
@@ -20,9 +33,9 @@ func TestStandardSetupStartsFirstTurnAtMainAndPassesToSecondPlayersDraw(t *testi
 		RepositoryRoot: filepath.Clean("../.."),
 		Seed:           42,
 	}
-	game, err := NewStandardSetup(configuration)
+	game, err := NewStandardGame(configuration)
 	if err != nil {
-		t.Fatalf("NewStandardSetup() error = %v", err)
+		t.Fatalf("NewStandardGame() error = %v", err)
 	}
 
 	assertTurnView(
@@ -120,6 +133,60 @@ func TestStandardSetupStartsFirstTurnAtMainAndPassesToSecondPlayersDraw(t *testi
 	)
 }
 
+// TestWakeUpPhaseWakesAllControlledRestedObjects 驗證換回合時 scheduler 同時喚醒回合玩家的 Champion 與 Ally。
+// 輸入為 End Phase 的 Standard 單局及兩次 pass；輸出為醒著的受控 objects 與單一 simultaneous event batch，副作用為推進至下一位玩家的 Main Phase。
+func TestWakeUpPhaseWakesAllControlledRestedObjects(t *testing.T) {
+	game, err := NewStandardGame(
+		StandardGameConfig{
+			Players: [2]*model.Player{
+				model.PlayerOne,
+				model.PlayerTwo,
+			},
+			RepositoryRoot: filepath.Clean("../.."),
+			Seed:           42,
+		},
+	)
+	if err != nil {
+		t.Fatalf("NewStandardGame() error = %v", err)
+	}
+	zones := game.state.Zones[model.PlayerTwo.UID]
+	allyCard := zones.MainDeck[0]
+	zones.MainDeck = removeCardAt(zones.MainDeck, 0)
+	game.state.Zones[model.PlayerTwo.UID] = zones
+	ally := objectID("ally:wake-up-test")
+	game.state.Objects[ally] = fieldObject{
+		ID:    ally,
+		Card:  allyCard,
+		Owner: model.PlayerTwo,
+		Types: []string{
+			"ALLY",
+		},
+		Rested: true,
+	}
+	champion := game.state.Champions[model.PlayerTwo.UID]
+	champion.Rested = true
+	game.state.Champions[model.PlayerTwo.UID] = champion
+	game.state.Scheduler.Phase = PhaseEnd
+	game.state.Scheduler.OpportunityHolder = model.PlayerOne
+	game.advanceKnowledgeRevision()
+
+	passOpportunityRound(t, game, model.PlayerOne)
+
+	if game.state.Champions[model.PlayerTwo.UID].Rested || game.state.Objects[ally].Rested {
+		t.Fatalf("wake state = champion rested %t, ally rested %t; want both awake", game.state.Champions[model.PlayerTwo.UID].Rested, game.state.Objects[ally].Rested)
+	}
+	for _, batch := range game.state.Events {
+		if batch.Cause != "turn:wake-up" {
+			continue
+		}
+		if !batch.Simultaneous || len(batch.Events) != 2 {
+			t.Fatalf("wake batch = %#v, want two simultaneous events", batch)
+		}
+		return
+	}
+	t.Fatal("wake-up event batch not found")
+}
+
 // Rules: 602c917f2f8fd4df7198429a72eb596bf7f647c6,
 // game-mechanics-timing-and-permissions.md § Opportunity;
 // turn-order-recollection-phase.md § General Rules.
@@ -132,13 +199,13 @@ func TestStandardPassesDeterministicallyReachRecollectionOnTheNextTurn(t *testin
 		RepositoryRoot: filepath.Clean("../.."),
 		Seed:           42,
 	}
-	first, err := NewStandardSetup(configuration)
+	first, err := NewStandardGame(configuration)
 	if err != nil {
-		t.Fatalf("first NewStandardSetup() error = %v", err)
+		t.Fatalf("first NewStandardGame() error = %v", err)
 	}
-	second, err := NewStandardSetup(configuration)
+	second, err := NewStandardGame(configuration)
 	if err != nil {
-		t.Fatalf("second NewStandardSetup() error = %v", err)
+		t.Fatalf("second NewStandardGame() error = %v", err)
 	}
 
 	for step := 0; step < 8; step++ {
@@ -166,6 +233,7 @@ func TestStandardPassesDeterministicallyReachRecollectionOnTheNextTurn(t *testin
 		nil,
 		[]constants.ActionKind{
 			constants.ActionConcede,
+			constants.ActionMaterialize,
 			constants.ActionSkipMaterialize,
 		},
 	)
@@ -199,9 +267,9 @@ func TestStandardTurnStopsAtMaterializeUntilTurnPlayerSkipsIt(t *testing.T) {
 		RepositoryRoot: filepath.Clean("../.."),
 		Seed:           42,
 	}
-	game, err := NewStandardSetup(configuration)
+	game, err := NewStandardGame(configuration)
 	if err != nil {
-		t.Fatalf("NewStandardSetup() error = %v", err)
+		t.Fatalf("NewStandardGame() error = %v", err)
 	}
 	for step := 0; step < 15; step++ {
 		view, err := game.PlayerView(model.PlayerOne)
@@ -220,6 +288,7 @@ func TestStandardTurnStopsAtMaterializeUntilTurnPlayerSkipsIt(t *testing.T) {
 		nil,
 		[]constants.ActionKind{
 			constants.ActionConcede,
+			constants.ActionMaterialize,
 			constants.ActionSkipMaterialize,
 		},
 	)
@@ -262,14 +331,7 @@ func TestMaterializingTonorisLevelsUpChampionAndGrantsTaunt(t *testing.T) {
 	if err != nil {
 		t.Fatalf("PlayerView() error = %v", err)
 	}
-	materialize := actionByKind(
-		t,
-		view,
-		constants.ActionMaterialize,
-	)
-	if materialize.CardName != "Tonoris, Lone Mercenary" {
-		t.Fatalf("materialize CardName = %q, want Tonoris, Lone Mercenary", materialize.CardName)
-	}
+	materialize := materializationActionByCardName(t, view, "Tonoris, Lone Mercenary")
 	if err := game.Submit(
 		player,
 		Input{
@@ -359,6 +421,80 @@ func TestMaterializingTonorisLevelsUpChampionAndGrantsTaunt(t *testing.T) {
 	}
 }
 
+// TestMaterializationExposesEveryEligibleFixedMaterialDeckCard 驗證固定 Material Deck 的所有非起始卡都可透過 PlayerView materialize。
+// 輸入為進入第二位玩家 Materialize Phase 的正式 Standard 單局；輸出為 Tonoris 與十張 Regalia 的 materialize actions，副作用僅為建立隔離測試單局與付款用 Memory。
+func TestMaterializationExposesEveryEligibleFixedMaterialDeckCard(t *testing.T) {
+	game := newTonorisMaterializationGame(t)
+	view, err := game.PlayerView(model.PlayerTwo)
+	if err != nil {
+		t.Fatalf("PlayerView() error = %v", err)
+	}
+	actualNames := make(map[string]bool)
+	for _, action := range view.LegalActions {
+		if action.Kind == constants.ActionMaterialize {
+			actualNames[action.CardName] = true
+		}
+	}
+	wantNames := []string{
+		"Tonoris, Lone Mercenary",
+		"Bulwark Sword",
+		"Grand Crusader's Ring",
+		"Safeguard Amulet",
+		"Smoke Bombs",
+		"Viridian Protective Trinket",
+		"Water Resonance Bauble",
+		"Wind Resonance Bauble",
+		"Impact Hammer",
+		"Infernal Vessel",
+		"The Duchess's Thornes",
+	}
+	for _, wantName := range wantNames {
+		if !actualNames[wantName] {
+			t.Fatalf("PlayerView().LegalActions = %#v, missing materialize action %q", view.LegalActions, wantName)
+		}
+	}
+}
+
+// TestMaterializingHinderedRegaliaEntersRested 驗證 Hindered Regalia 經正式 materialization Stack 結算後才進場，且進場即 rested。
+// 輸入為 The Duchess's Thornes 的 PlayerView materialize action 與雙方 pass；輸出為場上的 rested Regalia object，副作用為移除 Material Deck 來源、建立 Effects Stack item、記錄公開事件與 replay。
+func TestMaterializingHinderedRegaliaEntersRested(t *testing.T) {
+	game := newTonorisMaterializationGame(t)
+	player := model.PlayerTwo
+	view, err := game.PlayerView(player)
+	if err != nil {
+		t.Fatalf("PlayerView() error = %v", err)
+	}
+	materialize := materializationActionByCardName(t, view, "The Duchess's Thornes")
+	source := game.state.Knowledge.Materializations[player.UID][materialize.Handle]
+	if err := game.Submit(
+		player,
+		Input{
+			Revision: view.Revision,
+			Action:   materialize.Handle,
+		},
+	); err != nil {
+		t.Fatalf("Submit() error = %v", err)
+	}
+	if len(game.state.EffectsStack) != 1 || game.state.EffectsStack[0].Source != source {
+		t.Fatalf("EffectsStack = %#v, want Duchess's Thornes materialization", game.state.EffectsStack)
+	}
+	passOpportunityRound(t, game, player)
+	objectID, exists := objectIDForCard(game, source)
+	if !exists {
+		t.Fatalf("Objects = %#v, want materialized Duchess's Thornes", game.state.Objects)
+	}
+	object := game.state.Objects[objectID]
+	if !object.Rested || !containsString(object.Types, "REGALIA") || !containsString(object.Types, "ITEM") {
+		t.Fatalf("materialized object = %#v, want rested Regalia Item", object)
+	}
+	if containsCard(game.state.EffectSources, source) {
+		t.Fatalf("EffectSources = %#v, want resolved source removed", game.state.EffectSources)
+	}
+	if err := game.Replay().Verify(); err != nil {
+		t.Fatalf("Replay().Verify() error = %v", err)
+	}
+}
+
 func TestMaterializingTonorisRejectsInsufficientPaymentWithoutChangingState(t *testing.T) {
 	game := newTonorisMaterializationGame(t)
 	player := model.PlayerTwo
@@ -392,11 +528,7 @@ func TestMaterializingTonorisRejectsIllegalLineageWithoutChangingState(t *testin
 	if err != nil {
 		t.Fatalf("PlayerView() error = %v", err)
 	}
-	materialize := actionByKind(
-		t,
-		view,
-		constants.ActionMaterialize,
-	)
+	materialize := materializationActionByCardName(t, view, "Tonoris, Lone Mercenary")
 	champion := game.state.Champions[player.UID]
 	card := game.state.Cards[champion.Card]
 	card.Definition = tonorisCardID
@@ -423,11 +555,7 @@ func TestMaterializingTonorisRejectsIllegalTimingWithoutChangingState(t *testing
 	if err != nil {
 		t.Fatalf("PlayerView() error = %v", err)
 	}
-	materialize := actionByKind(
-		t,
-		view,
-		constants.ActionMaterialize,
-	)
+	materialize := materializationActionByCardName(t, view, "Tonoris, Lone Mercenary")
 	game.state.Scheduler.Phase = PhaseMain
 	before := game.StateHash()
 	if err := game.Submit(
@@ -452,11 +580,7 @@ func TestMaterializingTonorisFizzlesWhenLineageBecomesIllegalBeforeResolution(t 
 	if err != nil {
 		t.Fatalf("PlayerView() error = %v", err)
 	}
-	materialize := actionByKind(
-		t,
-		view,
-		constants.ActionMaterialize,
-	)
+	materialize := materializationActionByCardName(t, view, "Tonoris, Lone Mercenary")
 	if err := game.Submit(
 		player,
 		Input{
@@ -486,7 +610,7 @@ func TestMaterializingTonorisFizzlesWhenLineageBecomesIllegalBeforeResolution(t 
 	}
 }
 
-func TestNewStandardSetupCreatesMirroredOpeningState(t *testing.T) {
+func TestNewStandardGameCreatesMirroredOpeningState(t *testing.T) {
 	configuration := StandardGameConfig{
 		Players: [2]*model.Player{
 			&model.Player{
@@ -503,9 +627,9 @@ func TestNewStandardSetupCreatesMirroredOpeningState(t *testing.T) {
 		Seed: 42,
 	}
 
-	game, err := NewStandardSetup(configuration)
+	game, err := NewStandardGame(configuration)
 	if err != nil {
-		t.Fatalf("NewStandardSetup() error = %v", err)
+		t.Fatalf("NewStandardGame() error = %v", err)
 	}
 	if game.state.Finished {
 		t.Fatal("setup game finished unexpectedly")
@@ -620,7 +744,7 @@ func TestStandardSetupEndsWhenStartingHandDrawDecksOut(t *testing.T) {
 	}
 }
 
-func TestNewStandardSetupIsReproducibleForTheSameSeed(t *testing.T) {
+func TestNewStandardGameIsReproducibleForTheSameSeed(t *testing.T) {
 	configuration := StandardGameConfig{
 		Players: [2]*model.Player{
 			&model.Player{
@@ -636,13 +760,13 @@ func TestNewStandardSetupIsReproducibleForTheSameSeed(t *testing.T) {
 		),
 		Seed: 42,
 	}
-	first, err := NewStandardSetup(configuration)
+	first, err := NewStandardGame(configuration)
 	if err != nil {
-		t.Fatalf("first NewStandardSetup() error = %v", err)
+		t.Fatalf("first NewStandardGame() error = %v", err)
 	}
-	second, err := NewStandardSetup(configuration)
+	second, err := NewStandardGame(configuration)
 	if err != nil {
-		t.Fatalf("second NewStandardSetup() error = %v", err)
+		t.Fatalf("second NewStandardGame() error = %v", err)
 	}
 	firstHash := first.StateHash()
 	secondHash := second.StateHash()
@@ -650,9 +774,9 @@ func TestNewStandardSetupIsReproducibleForTheSameSeed(t *testing.T) {
 		t.Fatalf("same-seed setup hashes differ: %q != %q", firstHash, secondHash)
 	}
 	configuration.Seed = 43
-	other, err := NewStandardSetup(configuration)
+	other, err := NewStandardGame(configuration)
 	if err != nil {
-		t.Fatalf("different-seed NewStandardSetup() error = %v", err)
+		t.Fatalf("different-seed NewStandardGame() error = %v", err)
 	}
 	otherHash := other.StateHash()
 	if firstHash == otherHash {
@@ -683,12 +807,33 @@ func assertTurnView(
 	if view.OpportunityHolder != wantOpportunity {
 		t.Fatalf("PlayerView().OpportunityHolder = %q, want %q", view.OpportunityHolder, wantOpportunity)
 	}
-	if len(view.LegalActions) != len(wantActions) {
-		t.Fatalf("PlayerView().LegalActions = %#v, want %d actions", view.LegalActions, len(wantActions))
+	allowedActionCapacity := len(wantActions) + 3
+	allowedActions := make(map[constants.ActionKind]bool, allowedActionCapacity)
+	for _, wantAction := range wantActions {
+		allowedActions[wantAction] = true
 	}
-	for index, wantAction := range wantActions {
-		if view.LegalActions[index].Kind != wantAction {
-			t.Fatalf("PlayerView().LegalActions[%d].Kind = %q, want %q", index, view.LegalActions[index].Kind, wantAction)
+	if samePlayer(player, wantOpportunity) {
+		allowedActions[constants.ActionActivate] = true
+		if samePlayer(player, wantTurnPlayer) && wantPhase == PhaseMain && len(game.state.EffectsStack) == 0 {
+			allowedActions[constants.ActionAttack] = true
+			allowedActions[constants.ActionWield] = true
+		}
+	}
+	for _, action := range view.LegalActions {
+		if !allowedActions[action.Kind] {
+			t.Fatalf("PlayerView().LegalActions = %#v, unexpected %q", view.LegalActions, action.Kind)
+		}
+	}
+	for _, wantAction := range wantActions {
+		found := false
+		for _, action := range view.LegalActions {
+			if action.Kind == wantAction {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("PlayerView().LegalActions = %#v, missing %q", view.LegalActions, wantAction)
 		}
 	}
 }
@@ -750,9 +895,9 @@ func newTonorisMaterializationGame(t *testing.T) *Game {
 		RepositoryRoot: repositoryRoot,
 		Seed:           42,
 	}
-	game, err := NewStandardSetup(configuration)
+	game, err := NewStandardGame(configuration)
 	if err != nil {
-		t.Fatalf("NewStandardSetup() error = %v", err)
+		t.Fatalf("NewStandardGame() error = %v", err)
 	}
 	for game.state.Scheduler.TurnPlayer != model.PlayerTwo || game.state.Scheduler.Phase != PhaseMaterialize {
 		view, err := game.PlayerView(model.PlayerOne)

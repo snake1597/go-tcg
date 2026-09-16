@@ -21,17 +21,19 @@ type abilityInstance struct {
 type effectOperationKind string
 
 const (
-	effectOperationChoose                effectOperationKind = "choose"
-	effectOperationMove                  effectOperationKind = "move"
-	effectOperationDraw                  effectOperationKind = "draw"
-	effectOperationDrawToMemory          effectOperationKind = "draw_to_memory"
-	effectOperationCounter               effectOperationKind = "counter"
-	effectOperationDamage                effectOperationKind = "damage"
-	effectOperationContinuousModifier    effectOperationKind = "continuous_modifier"
-	effectOperationChooseHandCard        effectOperationKind = "choose_hand_card"
-	effectOperationChooseMemoryAlly      effectOperationKind = "choose_memory_ally"
-	effectOperationDiscard               effectOperationKind = "discard"
-	effectOperationDeploy                effectOperationKind = "deploy"
+	effectOperationChoose             effectOperationKind = "choose"
+	effectOperationMove               effectOperationKind = "move"
+	effectOperationDraw               effectOperationKind = "draw"
+	effectOperationDrawToMemory       effectOperationKind = "draw_to_memory"
+	effectOperationCounter            effectOperationKind = "counter"
+	effectOperationDamage             effectOperationKind = "damage"
+	effectOperationContinuousModifier effectOperationKind = "continuous_modifier"
+	effectOperationChooseHandCard     effectOperationKind = "choose_hand_card"
+	effectOperationChooseMemoryAlly   effectOperationKind = "choose_memory_ally"
+	effectOperationDiscard            effectOperationKind = "discard"
+	effectOperationDeploy             effectOperationKind = "deploy"
+	// effectOperationPutAllyOnField 以通用 ability runtime 結算被 play 的 Ally source。
+	effectOperationPutAllyOnField        effectOperationKind = "put_ally_on_field"
 	effectOperationSuitedThresholdDamage effectOperationKind = "suited_threshold_damage"
 	effectOperationChooseDuchessCopy     effectOperationKind = "choose_duchess_copy"
 	effectOperationCopyDuchessAction     effectOperationKind = "copy_duchess_action"
@@ -49,6 +51,7 @@ type effectOperation struct {
 	Counter                   string              `json:"counter,omitempty"`
 	MoveSourceToGraveyard     bool                `json:"move_source_to_graveyard,omitempty"`
 	DistinctSuitedCostsDamage bool                `json:"distinct_suited_costs_damage,omitempty"`
+	CanPass                   bool                `json:"can_pass,omitempty"`
 	ContinuousEffect          continuousEffect    `json:"continuous_effect,omitempty"`
 	Options                   []objectID          `json:"options,omitempty"`
 }
@@ -106,8 +109,15 @@ func (g *Game) resolveAbility(instance abilityInstance) {
 				amount += g.distinctSuitedPrintedReserveCosts(instance.Controller)
 			}
 			if g.isLegalTarget(target) {
-				g.damageUnit(target, amount)
-				g.recordPublicEvent(instance.Controller, "ability", "damage", instance.SourceLKI)
+				continuation := instance
+				continuation.Operations = append(
+					[]effectOperation(nil),
+					instance.Operations[operationIndex+1:]...,
+				)
+				if !g.damageNonCombat(target, amount, instance.SourceLKI, &continuation) {
+					completed = false
+					return
+				}
 			}
 		case effectOperationContinuousModifier:
 			if !g.isLegalTarget(target) {
@@ -133,7 +143,11 @@ func (g *Game) resolveAbility(instance abilityInstance) {
 				operationIndex,
 				instance.Controller,
 				g.state.Zones[instance.Controller.UID].Hand,
+				operation.CanPass,
 			)
+			if g.state.AbilityChoice != nil {
+				g.advanceKnowledgeRevision()
+			}
 			return
 		case effectOperationChooseMemoryAlly:
 			g.beginAbilityCardChoice(
@@ -141,7 +155,11 @@ func (g *Game) resolveAbility(instance abilityInstance) {
 				operationIndex,
 				instance.Controller,
 				g.qualifiedMemoryAllies(instance.Controller),
+				operation.CanPass,
 			)
+			if g.state.AbilityChoice != nil {
+				g.advanceKnowledgeRevision()
+			}
 			return
 		case effectOperationChooseDuchessCopy:
 			g.beginAbilityCardChoice(
@@ -149,7 +167,11 @@ func (g *Game) resolveAbility(instance abilityInstance) {
 				operationIndex,
 				instance.Controller,
 				g.eligibleDuchessCopies(instance.Controller),
+				operation.CanPass,
 			)
+			if g.state.AbilityChoice != nil {
+				g.advanceKnowledgeRevision()
+			}
 			return
 		case effectOperationCopyDuchessAction:
 			copied, err := g.copyDuchessAction(
@@ -181,21 +203,42 @@ func (g *Game) resolveAbility(instance abilityInstance) {
 				return
 			}
 		case effectOperationRetargetAttack:
-			if err := g.retargetAttackWithTrumpSet(instance.Controller, target); err != nil {
-				return
-			}
+			// 重導失敗時此牌照常結算後續移動；已支付的費用不會退回。
+			_ = g.retargetAttackWithTrumpSet(instance.Controller, target)
 		case effectOperationDiscard:
 			g.discardCard(instance.Controller, cardInstanceID(target))
 		case effectOperationDeploy:
 			g.deployAlly(instance.Controller, cardInstanceID(target))
+		case effectOperationPutAllyOnField:
+			sourceIndex := cardIndex(g.state.EffectSources, instance.Source)
+			if sourceIndex < 0 {
+				return
+			}
+			g.state.EffectSources = removeCardAt(g.state.EffectSources, sourceIndex)
+			source, exists := g.state.Cards[instance.Source]
+			if !exists || !samePlayer(source.Owner, instance.Controller) || !containsString(source.Types, "ALLY") {
+				if exists {
+					g.putInGraveyard(instance.Source)
+				}
+				return
+			}
+			g.putAllyOnField(instance.Controller, instance.Source)
 		case effectOperationSuitedThresholdDamage:
 			amount := suitedThresholdAmount(g.suitedReserveTotal(instance.Controller)) * 2
 			if amount > 0 && g.isLegalTarget(target) {
-				g.damageUnit(target, amount)
-				g.recordPublicEvent(instance.Controller, "ability", "damage", instance.SourceLKI)
+				continuation := instance
+				continuation.Operations = append(
+					[]effectOperation(nil),
+					instance.Operations[operationIndex+1:]...,
+				)
+				if !g.damageNonCombat(target, amount, instance.SourceLKI, &continuation) {
+					completed = false
+					return
+				}
 			}
 		case effectOperationMove:
 			if operation.MoveSourceToGraveyard {
+				g.removeEffectSource(instance.Source)
 				g.putInGraveyard(instance.Source)
 			}
 		case effectOperationChoose:
@@ -203,13 +246,15 @@ func (g *Game) resolveAbility(instance abilityInstance) {
 				return
 			}
 			completed = false
+			canPass := operation.CanPass || instance.RuntimeCopy
 			g.state.AbilityChoice = &abilityChoice{
 				Instance:   instance,
 				Operations: append([]effectOperation(nil), instance.Operations[operationIndex+1:]...),
-				CanPass:    instance.RuntimeCopy,
+				CanPass:    canPass,
 			}
 			g.setDeclarationChoice(instance.Controller, operation.Options)
-			g.state.Knowledge.Choice.CanPass = instance.RuntimeCopy
+			g.state.Knowledge.Choice.CanPass = canPass
+			g.advanceKnowledgeRevision()
 			return
 		default:
 			panic(fmt.Sprintf("unknown effect operation %q", operation.Kind))
@@ -224,7 +269,7 @@ func (g *Game) destroyRuntimeCopy(source cardInstanceID) {
 
 // beginAbilityCardChoice 保存選牌後要繼續執行的 operation，並建立玩家專屬選項。
 // 沒有可選牌時不建立選擇；呼叫此函式的結算分支仍會直接返回，不繼續後續操作。
-func (g *Game) beginAbilityCardChoice(instance abilityInstance, operationIndex int, player *model.Player, cards []cardInstanceID) {
+func (g *Game) beginAbilityCardChoice(instance abilityInstance, operationIndex int, player *model.Player, cards []cardInstanceID, canPass bool) {
 	if len(cards) == 0 {
 		return
 	}
@@ -232,8 +277,13 @@ func (g *Game) beginAbilityCardChoice(instance abilityInstance, operationIndex i
 	for _, card := range cards {
 		options = append(options, objectID(card))
 	}
-	g.state.AbilityChoice = &abilityChoice{Instance: instance, Operations: append([]effectOperation(nil), instance.Operations[operationIndex+1:]...)}
+	g.state.AbilityChoice = &abilityChoice{
+		Instance:   instance,
+		Operations: append([]effectOperation(nil), instance.Operations[operationIndex+1:]...),
+		CanPass:    canPass,
+	}
 	g.setDeclarationChoice(player, options)
+	g.state.Knowledge.Choice.CanPass = canPass
 }
 
 func (g *Game) discardCard(player *model.Player, card cardInstanceID) {

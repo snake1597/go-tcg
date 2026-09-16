@@ -60,14 +60,6 @@ func TestRegistryRejectsInvalidContent(t *testing.T) {
 			message: "invalid support status",
 		},
 		{
-			name: "supported slot without handler",
-			mutate: func(spec *registrySpec) {
-				spec.abilities[0].Status = constants.Supported
-				spec.abilities[0].Handler = nil
-			},
-			message: "has no handler",
-		},
-		{
 			name: "unknown mechanism reference",
 			mutate: func(spec *registrySpec) {
 				spec.abilities[0].Mechanisms = []MechanismID{
@@ -138,8 +130,6 @@ func validRegistrySpec() registrySpec {
 				ID:     AbilitySlotID("ability:card-a:front:on-enter"),
 				FaceID: CardFaceID("face:card-a:front"),
 				Status: constants.Supported,
-				Handler: func() {
-				},
 			},
 		},
 	}

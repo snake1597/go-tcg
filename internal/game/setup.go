@@ -85,26 +85,12 @@ type gameEvent struct {
 }
 
 type eventBatch struct {
-	Player       *model.Player `json:"player"`
-	Cause        string        `json:"cause"`
-	ParentFlow   string        `json:"parent_flow,omitempty"`
-	Simultaneous bool          `json:"simultaneous"`
-	Events       []gameEvent   `json:"events"`
-}
-
-// NewStandardSetup 驗證固定牌組與卡牌資料後，建立由 seed 決定的開局狀態。
-// 此入口略過完整 Support Set 檢查；runtime 支援驗證由 NewStandardGame 負責。
-func NewStandardSetup(configuration StandardGameConfig) (*Game, error) {
-	decks, err := loadValidatedStandardDecks(configuration)
-	if err != nil {
-		return nil, err
-	}
-	return newStandardSetup(
-		configuration,
-		decks.Definitions,
-		decks.First,
-		decks.Second,
-	)
+	Player       *model.Player      `json:"player"`
+	Cause        string             `json:"cause"`
+	ParentFlow   string             `json:"parent_flow,omitempty"`
+	Simultaneous bool               `json:"simultaneous"`
+	Events       []gameEvent        `json:"events"`
+	CauseChain   []replacementCause `json:"cause_chain,omitempty"`
 }
 
 // newStandardSetup 使用已驗證的雙方牌組建立卡牌實例，洗牌並處理 Spirit of Fire 開局抽牌。

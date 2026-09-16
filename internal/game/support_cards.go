@@ -8,14 +8,20 @@ import (
 )
 
 const (
-	duchessCardID         CardID = "qzv380ujf5"
-	heatedVengeanceCardID CardID = "td460e8ig0"
-	pepperedChefCardID    CardID = "lcy0lw1veb"
-	redHareCardID         CardID = "5du8f077ua"
-	smokeBombsCardID      CardID = "ScGcOmkoQt"
-	duchessThornesCardID  CardID = "bEXmm4rKOs"
-	trumpSetCardID        CardID = "w7g91ru45w"
-	veritaCardID          CardID = "4qc47amgpp"
+	duchessCardID                   CardID = "qzv380ujf5"
+	heatedVengeanceCardID           CardID = "td460e8ig0"
+	pepperedChefCardID              CardID = "lcy0lw1veb"
+	redHareCardID                   CardID = "5du8f077ua"
+	smokeBombsCardID                CardID = "ScGcOmkoQt"
+	duchessThornesCardID            CardID = "bEXmm4rKOs"
+	trumpSetCardID                  CardID = "w7g91ru45w"
+	veritaCardID                    CardID = "4qc47amgpp"
+	safeguardAmuletCardID           CardID = "yj2rJBREH8"
+	infernalVesselCardID            CardID = "vgWgu1DUYv"
+	grandCrusadersRingCardID        CardID = "2gv7DC0KID"
+	viridianProtectiveTrinketCardID CardID = "s3572j3oda"
+	waterResonanceBaubleCardID      CardID = "dSSRtNnPtw"
+	windResonanceBaubleCardID       CardID = "bHGUNMFLg9"
 )
 
 type objectAbilityDeclaration struct {
@@ -25,21 +31,25 @@ type objectAbilityDeclaration struct {
 
 func (g *Game) beginObjectAbility(player *model.Player, source objectID) error {
 	object, exists := g.state.Objects[source]
-	if !exists || !samePlayer(object.Owner, player) {
+	if !exists || !samePlayer(object.Owner, player) || !g.canActivateObjectAbility(player, source) {
 		return fmt.Errorf("invalid object ability")
 	}
 	if g.state.Cards[object.Card].Definition == duchessThornesCardID {
 		return g.activateDuchessThornes(player, source)
 	}
+	if g.state.Cards[object.Card].Definition == safeguardAmuletCardID {
+		return g.activateSafeguardAmulet(player, source)
+	}
+	if g.state.Cards[object.Card].Definition == grandCrusadersRingCardID {
+		return g.activateBanishDrawAbility(player, source)
+	}
+	if g.state.Cards[object.Card].Definition == waterResonanceBaubleCardID || g.state.Cards[object.Card].Definition == windResonanceBaubleCardID {
+		return g.activateBanishDrawAbility(player, source)
+	}
 	if g.state.Cards[object.Card].Definition != smokeBombsCardID {
 		return fmt.Errorf("unsupported object ability")
 	}
-	options := []objectID{}
-	for id, target := range g.state.Objects {
-		if containsString(target.Types, "ALLY") {
-			options = append(options, id)
-		}
-	}
+	options := g.smokeBombsTargets()
 	if len(options) == 0 {
 		return fmt.Errorf("Smoke Bombs has no ally target")
 	}
@@ -49,6 +59,88 @@ func (g *Game) beginObjectAbility(player *model.Player, source objectID) error {
 	}
 	g.setDeclarationChoice(player, options)
 	return nil
+}
+
+// legalObjectAbilities 回傳目前玩家可啟動的場上物件能力，並以物件 ID 穩定排序。
+// 輸入為玩家；輸出為合法能力來源，副作用為零。
+func (g *Game) legalObjectAbilities(player *model.Player) []objectID {
+	sources := make([]objectID, 0, len(g.state.Objects))
+	for source := range g.state.Objects {
+		if g.canActivateObjectAbility(player, source) {
+			sources = append(sources, source)
+		}
+	}
+	sort.Slice(sources, func(first, second int) bool {
+		return sources[first] < sources[second]
+	})
+	return sources
+}
+
+// canActivateObjectAbility 驗證受控物件是否有已實作且當下可啟動的能力。
+// 輸入為玩家與物件來源；輸出為合法性，副作用為零。
+func (g *Game) canActivateObjectAbility(player *model.Player, source objectID) bool {
+	object, exists := g.state.Objects[source]
+	if !exists || !samePlayer(object.Owner, player) {
+		return false
+	}
+	switch g.state.Cards[object.Card].Definition {
+	case duchessThornesCardID:
+		return !object.Rested
+	case smokeBombsCardID:
+		return len(g.smokeBombsTargets()) > 0
+	case safeguardAmuletCardID, grandCrusadersRingCardID:
+		return true
+	case waterResonanceBaubleCardID:
+		return g.opponentControlsElementChampion(player, "WATER")
+	case windResonanceBaubleCardID:
+		return g.opponentControlsElementChampion(player, "WIND")
+	default:
+		return false
+	}
+}
+
+// opponentControlsElementChampion 檢查任一對手目前的 Champion 是否具有指定元素。
+// 輸入為檢查者與元素名稱；輸出為條件是否成立，副作用為零。
+func (g *Game) opponentControlsElementChampion(player *model.Player, element string) bool {
+	for _, champion := range g.state.Champions {
+		if samePlayer(champion.Owner, player) || !containsString(g.state.Cards[champion.Card].Elements, element) {
+			continue
+		}
+		return true
+	}
+	return false
+}
+
+// activateBanishDrawAbility 原子地放逐能力來源並將抽一張牌的能力推入 Effects Stack。
+// 輸入為控制者與可啟動的 Regalia 物件；成功時改變場上物件、放逐區、堆疊與公開事件，錯誤時不改變狀態。
+func (g *Game) activateBanishDrawAbility(player *model.Player, source objectID) error {
+	object, err := g.banishObjectForAbility(player, source)
+	if err != nil {
+		return err
+	}
+	g.pushAbility(g.newAbilityInstance(player, object.Card, "", []effectOperation{
+		{
+			Kind:   effectOperationDraw,
+			Amount: 1,
+		},
+	}))
+	g.grantOpportunity(player)
+	return nil
+}
+
+// banishObjectForAbility 驗證並一次提交場上物件移除與其卡牌放逐。
+// 輸入為控制者與物件來源；輸出為移除前物件或錯誤，成功時更新 Objects、Banishment 與公開事件。
+func (g *Game) banishObjectForAbility(player *model.Player, source objectID) (fieldObject, error) {
+	object, exists := g.state.Objects[source]
+	if !exists || !samePlayer(object.Owner, player) {
+		return fieldObject{}, fmt.Errorf("invalid object ability")
+	}
+	delete(g.state.Objects, source)
+	zones := g.state.Zones[player.UID]
+	zones.Banishment = append(zones.Banishment, object.Card)
+	g.state.Zones[player.UID] = zones
+	g.recordPublicEvent(player, "ability", "banish", object.Card)
+	return object, nil
 }
 
 func (g *Game) submitObjectAbilityChoice(player *model.Player, target objectID) error {
@@ -201,24 +293,10 @@ func (g *Game) payVeritaAlternativeCost(player *model.Player, cards []cardInstan
 	return nil
 }
 
-func (g *Game) redHareObeys(player *model.Player, redHare objectID) bool {
-	champion, exists := g.state.Champions[player.UID]
-	if !exists || g.state.Cards[champion.Card].Level >= 3 {
-		return true
-	}
-	for id, object := range g.state.Objects {
-		card := g.state.Cards[object.Card]
-		if id != redHare && samePlayer(object.Owner, player) && containsString(card.Types, "UNIQUE") && containsString(card.Types, "ALLY") && containsString(card.Subtypes, "HUMAN") && (containsString(card.Elements, "FIRE") || containsString(card.Elements, "TERA")) {
-			return true
-		}
-	}
-	return false
-}
-
 func (g *Game) activateSmokeBombs(player *model.Player, source, target objectID) error {
 	object, exists := g.state.Objects[source]
 	targetObject, targetExists := g.state.Objects[target]
-	if !exists || !targetExists || !samePlayer(object.Owner, player) || g.state.Cards[object.Card].Definition != smokeBombsCardID || !containsString(targetObject.Types, "ALLY") {
+	if !exists || !targetExists || !samePlayer(object.Owner, player) || g.state.Cards[object.Card].Definition != smokeBombsCardID || !containsObject(g.smokeBombsTargets(), target) || !containsString(targetObject.Types, "ALLY") {
 		return fmt.Errorf("invalid Smoke Bombs activation")
 	}
 	delete(g.state.Objects, source)
@@ -230,14 +308,60 @@ func (g *Game) activateSmokeBombs(player *model.Player, source, target objectID)
 	return nil
 }
 
-func (g *Game) retargetAttackWithTrumpSet(player *model.Player, target objectID) error {
-	if !g.isLegalTarget(target) || !samePlayer(g.state.Objects[target].Owner, player) || !g.cardHasSubtype(g.state.Objects[target].Card, "SUITED") {
-		return fmt.Errorf("invalid Trump Set target")
+// smokeBombsTargets 回傳場上全部可作為 Smoke Bombs 目標的 Ally，依物件 ID 排序。
+// 此查詢不改變遊戲狀態，並排除 Champion 與非 Ally 物件。
+func (g *Game) smokeBombsTargets() []objectID {
+	targets := make([]objectID, 0, len(g.state.Objects))
+	for id, object := range g.state.Objects {
+		if containsString(object.Types, "ALLY") {
+			targets = append(targets, id)
+		}
 	}
+	sort.Slice(
+		targets,
+		func(first, second int) bool {
+			return targets[first] < targets[second]
+		},
+	)
+	return targets
+}
+
+// trumpSetTargets 將目前 attack 的可重導目標限制為控制者的 Suited ally，且不得維持原目標。
+// 此查詢同時使用攻擊目標的共用合法性規則，避免在 stealth、taunt 或 true sight 改變後提供過期選項。
+func (g *Game) trumpSetTargets(player *model.Player) []objectID {
+	for _, item := range g.state.EffectsStack {
+		if item.Kind != effectStackCombat {
+			continue
+		}
+		attacker := item.Attacker
+		if attacker == "" {
+			champion, exists := g.state.Champions[item.Controller.UID]
+			if !exists {
+				return nil
+			}
+			attacker = champion.ID
+		}
+		targets := make([]objectID, 0)
+		for _, target := range g.controlledSuitedAllies(player) {
+			if target != item.Target && g.isLegalAttackTarget(item.Controller, attacker, target) {
+				targets = append(targets, target)
+			}
+		}
+		return targets
+	}
+	return nil
+}
+
+// retargetAttackWithTrumpSet 將 active attack 的目標改為 player 控制的合格 Suited Ally。
+// 成功時為新目標加入到回合結束的 +3 power／+3 life；目標、攻擊或攻擊來源失效時回傳錯誤且不改變狀態。
+func (g *Game) retargetAttackWithTrumpSet(player *model.Player, target objectID) error {
 	for index := len(g.state.EffectsStack) - 1; index >= 0; index-- {
 		item := &g.state.EffectsStack[index]
-		if item.Kind != effectStackCombat || item.Target == target {
+		if item.Kind != effectStackCombat {
 			continue
+		}
+		if !containsObject(g.trumpSetTargets(player), target) {
+			return fmt.Errorf("invalid Trump Set target")
 		}
 		item.Target = target
 		g.addContinuousEffect(continuousEffect{Controller: player, Target: target, Scope: effectScopeObject, Layer: effectLayerModifier, PowerLife: powerLifeModify, ExpiresAtTurn: g.state.Scheduler.TurnNumber + 1, Modifier: continuousModifier{PowerDelta: 3, LifeDelta: 3}})
@@ -264,9 +388,52 @@ func (g *Game) enqueueVeritaDeath(player *model.Player, card cardInstanceID) {
 	if g.state.Cards[card].Definition != veritaCardID {
 		return
 	}
-	for target, object := range g.state.Objects {
-		if samePlayer(object.Owner, player) && containsString(object.Types, "ALLY") && g.cardHasSubtype(object.Card, "SUITED") {
-			g.addContinuousEffect(continuousEffect{Controller: player, Target: target, Scope: effectScopeObject, Layer: effectLayerModifier, PowerLife: powerLifeModify, ExpiresAtTurn: g.state.Scheduler.TurnNumber + uint64(len(g.players)), Modifier: continuousModifier{PowerDelta: 1}})
+	operations := make([]effectOperation, 0)
+	for _, target := range g.controlledSuitedAllies(player) {
+		operations = append(operations, effectOperation{
+			Kind:   effectOperationContinuousModifier,
+			Target: target,
+			ContinuousEffect: continuousEffect{
+				Scope:         effectScopeObject,
+				Layer:         effectLayerModifier,
+				PowerLife:     powerLifeModify,
+				ExpiresAtTurn: g.endOfNextTurn(player),
+				Modifier: continuousModifier{
+					PowerDelta: 1,
+				},
+			},
+		})
+	}
+	if len(operations) == 0 {
+		return
+	}
+	ability := g.newAbilityInstance(
+		player,
+		card,
+		"",
+		operations,
+	)
+	g.flushTriggers([]effectStackItem{
+		{
+			Kind:       effectStackAbility,
+			Controller: player,
+			Source:     card,
+			SourceLKI:  card,
+			Ability:    &ability,
+		},
+	})
+}
+
+// endOfNextTurn 回傳指定玩家下個回合結束後的過期回合編號。
+// 輸入為效果控制者；輸出供 evaluator 的 ExpiresAtTurn 使用，副作用為零。
+func (g *Game) endOfNextTurn(player *model.Player) uint64 {
+	turns := uint64(0)
+	current := g.state.Scheduler.TurnPlayer
+	for {
+		turns++
+		current = g.nextPlayer(current)
+		if samePlayer(current, player) {
+			return g.state.Scheduler.TurnNumber + turns
 		}
 	}
 }

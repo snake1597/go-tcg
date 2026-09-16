@@ -142,6 +142,8 @@
 ### GAME-03 回合與階段
 
 - Wake Up、Materialize、Recollection、Draw、Main 與 End。
+- Wake Up 由 scheduler 同時喚醒回合玩家控制的所有 rested objects，不只 Champion，且以單一 simultaneous EventBatch 記錄。
+- Materialize 在 Effects Stack 建立獨立來源與 StackItem；固定 Material Deck 中符合付款條件的 Champion 與 Regalia 都經同一流程結算。具有 Hindered 的 The Duchess's Thornes 以 rested 狀態進場。
 - 區分回合玩家與非回合玩家可開始的行動。
 - 階段推進由玩家行動與 scheduler 共同控制，不由 CLI 直接修改階段。
 - 回合切換時處理到期效果、戰鬥狀態及每回合使用次數。
@@ -167,6 +169,7 @@
 - 依指定 PlayerView 與 revision 列出可開始的打牌、啟動能力、攻擊、推進階段、讓過及投降等行動。
 - 合法選項只能包含該玩家當下可見且可選的 ViewHandle。
 - CLI 與 bot 消費相同的合法行動資料，不各自重算規則。
+- `Input` 依 action kind 驗證 payload：手牌 activation 才能提交恰好張數的 Reserve，Cardistry 才能提交 Floating Memory，choice 與其他 action 拒絕未使用欄位且不改變 state hash。
 
 ### ACTION-02 DeclarationTransaction
 
@@ -204,6 +207,7 @@
 - 所有玩家讓過後以 FILO 結算頂端 StackItem。
 - 結算可建立子 ResolutionFrame、事件、觸發與 PendingChoice。
 - 最後一個關聯 StackItem 離開後，state-based checks 才移動 Source Card 或建立 Field Object。
+- Ally activation 支付後先保留 Source Card 並建立 StackItem；所有玩家取得 fast response window 且連續讓過後，Ally 才進入 Field。
 - 支援 negate、copy 與來源消失後的處理；只實作 Support Set 實際需要的 typed operation。
 
 ### STACK-03 Fizzle 與部分目標失效
@@ -375,6 +379,7 @@
 
 ### REPLAY-01 Replay 格式
 
+- 目前 replay format version 為 `4`；`Input.reserve` 是 v4 契約的一部分，不讀取或遷移舊格式。
 - 記錄引擎、規則 commit、卡面資料、固定牌組及 PRNG 的版本。
 - 記錄初始 seed、依序成功提交的玩家行動與所有 PendingChoice 回答。
 - 記錄 trigger ordering、mode、target、replacement ordering 及必要 chance outcome。
@@ -389,6 +394,7 @@
 
 ### REPLAY-03 Canonical state hash
 
+- 目前 canonical state schema version 為 `4`；action declaration 的 `reserved` 付款欄位屬於 canonical state，Input 欄位本身不屬於 state schema。
 - 為所有影響未來規則結果的權威狀態建立穩定序列化。
 - 排除 CLI 文字、非規則性 cache 及不穩定記憶體資訊。
 - derived view 若可由 canonical state 重算，不作為獨立真相來源。
@@ -400,6 +406,7 @@
 - 只接收 bot 自己的 PlayerView、合法行動及 PendingChoice。
 - 每次提交攜帶該 view 的 revision 與 ViewHandle。
 - 不得讀取 GameState、對手手牌、牌庫順序或 canonical replay。
+- `ReserveCost` 為零時不得提交 Reserve handle，即使 PlayerView 同時列出可供其他付款路徑使用的 ReserveOptions。
 
 ### BOT-02 決策策略
 
@@ -413,7 +420,7 @@
 ### CLI-01 單局啟動
 
 - 啟動唯一固定牌組的人類對 bot Standard 單局。
-- 支援 `--seed` 與 `--replay-out`。
+- 支援 `--seed`、必填的 `--replay-out` 與正整數 `--submission-limit`；提交上限預設為 1000。
 - 開局 gate 失敗時列出缺少的 Content ID、Ability Slot、typed operation 或 RUL issue。
 - replay 輸出時提示檔案可能包含隱藏資訊，不適合公開分享。
 
@@ -428,6 +435,7 @@
 
 - 非法／過期輸入顯示原因並重新取得最新 PlayerView，不自行修補行動。
 - NeedsRuling、scheduler 不收斂或 replay 分歧時輸出可追查的 issue、state hash 與診斷檔位置。
+- 達到整局 submission limit 時立即停止，並輸出 seed、step、診斷、replay 路徑與最終 state hash。
 - EOF／中斷不可留下半提交的 DeclarationTransaction。
 
 ## GOVERN：規則治理、支援 gate 與品質

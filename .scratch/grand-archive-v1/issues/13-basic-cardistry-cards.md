@@ -4,7 +4,7 @@
 
 **Blocked by:** 07: 以 Blazing Throw 建立第一條完整卡牌宣告與 Stack 路徑; 09: 以 Straight Flare 建立 Suited 查詢與動態傷害; 12: 以 Arthur 與 Bulwark Sword 建立中央衍生特徵求值器; 12.5: 建立統一 Ability 與 Effect Runtime.
 
-**Status:** in-progress
+**Status:** completed
 
 - [x] Cardistry 是統一 activated ability runtime 的第一條縱切；cost 使用共用 Suited distinct-cost query 與中央 cost evaluator，不建立 Action 專用路徑。
 - [x] Once-per-instance 依 Ability Instance 的正確 lifetime 記錄，離場再進場的新 Object 不沿用舊狀態。

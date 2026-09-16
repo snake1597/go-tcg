@@ -5,9 +5,25 @@ import (
 	"go-tcg/internal/constants"
 	"go-tcg/internal/model"
 	"path/filepath"
-	"slices"
+	"strings"
 	"testing"
 )
+
+// standardGameConfiguration 建立正式固定牌組測試使用的雙方玩家與 repository 路徑。
+// 輸入為無；輸出為可建立單局的 StandardGameConfig，副作用為零。
+func standardGameConfiguration() StandardGameConfig {
+	repositoryRoot := filepath.Join(
+		"..",
+		"..",
+	)
+	return StandardGameConfig{
+		Players: [2]*model.Player{
+			model.PlayerOne,
+			model.PlayerTwo,
+		},
+		RepositoryRoot: repositoryRoot,
+	}
+}
 
 func TestProductionSupportSetIsCompleteAndClosed(t *testing.T) {
 	registry, err := productionRegistry()
@@ -28,32 +44,130 @@ func TestProductionSupportSetIsCompleteAndClosed(t *testing.T) {
 	if !closure.contents[ContentID("runtime:copied-action")] {
 		t.Fatal("Support Set does not recursively include runtime:copied-action")
 	}
-	if len(diagnostics) == 0 {
-		t.Fatal("unsupported production content unexpectedly passed the gate")
+	if len(diagnostics) != 0 {
+		t.Fatalf("complete production Support Set diagnostics = %+v, want none", diagnostics)
 	}
-	if !slices.IsSortedFunc(diagnostics, compareGateDiagnostic) {
-		t.Fatalf("gate diagnostics are not sorted: %+v", diagnostics)
+}
+
+// TestNewStandardGameRejectsMissingRequiredRegistration 驗證正式建局入口對每種可達支援節點的缺失皆回傳具體 gate 診斷。
+// 輸入為移除必要節點的 production registry；輸出為 GateError 內對應節點的診斷，副作用為零。
+func TestNewStandardGameRejectsMissingRequiredRegistration(t *testing.T) {
+	configuration := standardGameConfiguration()
+	tests := []struct {
+		name       string
+		remove     func(*contentRegistry)
+		diagnostic GateDiagnostic
+	}{
+		{
+			name: "content",
+			remove: func(registry *contentRegistry) {
+				delete(registry.contents, ContentID("runtime:copied-action"))
+			},
+			diagnostic: GateDiagnostic{
+				Kind: constants.GateContent,
+				ID:   "runtime:copied-action",
+			},
+		},
+		{
+			name: "ability",
+			remove: func(registry *contentRegistry) {
+				delete(registry.abilities, AbilitySlotID("ability:qzv380ujf5:front:cardistry-copy-action"))
+			},
+			diagnostic: GateDiagnostic{
+				Kind: constants.GateAbility,
+				ID:   "ability:qzv380ujf5:front:cardistry-copy-action",
+			},
+		},
+		{
+			name: "mechanism",
+			remove: func(registry *contentRegistry) {
+				delete(registry.mechanisms, MechanismID("MEC-009"))
+			},
+			diagnostic: GateDiagnostic{
+				Kind: constants.GateMechanism,
+				ID:   "MEC-009",
+			},
+		},
+		{
+			name: "operation",
+			remove: func(registry *contentRegistry) {
+				delete(registry.operations, OperationID("copy-object"))
+			},
+			diagnostic: GateDiagnostic{
+				Kind: constants.GateOperation,
+				ID:   "copy-object",
+			},
+		},
+		{
+			name: "ruling",
+			remove: func(registry *contentRegistry) {
+				delete(registry.rulings, RulingID("RUL-002"))
+			},
+			diagnostic: GateDiagnostic{
+				Kind: constants.GateRuling,
+				ID:   "RUL-002",
+			},
+		},
 	}
-	assertDiagnostic(t, diagnostics, GateDiagnostic{
-		Kind: constants.GateAbility,
-		ID:   "ability:qzv380ujf5:front:cardistry-copy-action",
-	})
-	assertDiagnostic(t, diagnostics, GateDiagnostic{
-		Kind: constants.GateContent,
-		ID:   "runtime:copied-action",
-	})
-	assertDiagnostic(t, diagnostics, GateDiagnostic{
-		Kind: constants.GateMechanism,
-		ID:   "MEC-009",
-	})
-	assertDiagnostic(t, diagnostics, GateDiagnostic{
-		Kind: constants.GateOperation,
-		ID:   "copy-object",
-	})
-	for _, diagnostic := range diagnostics {
-		if diagnostic.Kind == constants.GateRuling {
-			t.Fatalf("resolved or approved ruling was reported as missing: %+v", diagnostic)
-		}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			registry, err := productionRegistry()
+			if err != nil {
+				t.Fatalf("productionRegistry() error = %v", err)
+			}
+			test.remove(&registry)
+			game, err := newStandardGameWithRegistry(configuration, registry)
+			if game != nil {
+				t.Fatal("newStandardGameWithRegistry() returned a game with missing support")
+			}
+			var gateError *GateError
+			if !errors.As(err, &gateError) {
+				t.Fatalf("newStandardGameWithRegistry() error = %v, want GateError", err)
+			}
+			assertDiagnostic(t, gateError.Diagnostics, test.diagnostic)
+		})
+	}
+}
+
+// TestNewStandardGameRejectsMissingCardOrFace 驗證 immutable card data 與 production registry 不一致時，建局前回傳具體錯誤。
+// 輸入為缺少必要 card 或 face 的 registry；輸出為包含不一致原因的錯誤，副作用為零。
+func TestNewStandardGameRejectsMissingCardOrFace(t *testing.T) {
+	configuration := standardGameConfiguration()
+	tests := []struct {
+		name    string
+		remove  func(*contentRegistry)
+		message string
+	}{
+		{
+			name: "card",
+			remove: func(registry *contentRegistry) {
+				delete(registry.cards, CardID("qzv380ujf5"))
+			},
+			message: "orphaned from the production registry",
+		},
+		{
+			name: "face",
+			remove: func(registry *contentRegistry) {
+				delete(registry.faces, CardFaceID("face:qzv380ujf5:front"))
+			},
+			message: "missing from the production registry",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			registry, err := productionRegistry()
+			if err != nil {
+				t.Fatalf("productionRegistry() error = %v", err)
+			}
+			test.remove(&registry)
+			game, err := newStandardGameWithRegistry(configuration, registry)
+			if game != nil {
+				t.Fatal("newStandardGameWithRegistry() returned a game with missing production content")
+			}
+			if err == nil || !strings.Contains(err.Error(), test.message) {
+				t.Fatalf("newStandardGameWithRegistry() error = %v, want %q", err, test.message)
+			}
+		})
 	}
 }
 
@@ -173,8 +287,6 @@ func TestSupportSetReportsEveryMissingRequirement(t *testing.T) {
 			),
 			FaceID: CardFaceID("face:card-a:front"),
 			Status: constants.Supported,
-			Handler: func() {
-			},
 			Mechanisms: []MechanismID{
 				MechanismID("MEC-missing"),
 			},
@@ -185,8 +297,6 @@ func TestSupportSetReportsEveryMissingRequirement(t *testing.T) {
 			),
 			FaceID: CardFaceID("face:card-a:front"),
 			Status: constants.Supported,
-			Handler: func() {
-			},
 			Mechanisms: []MechanismID{
 				MechanismID("MEC-present"),
 			},
@@ -272,7 +382,9 @@ func TestSupportSetReportsEveryMissingRequirement(t *testing.T) {
 	})
 }
 
-func TestNewStandardGameReturnsCompleteGateFailure(t *testing.T) {
+// TestNewStandardGameCreatesCompleteFixedDeckGame 驗證正式入口在 Support Set 通過後建立完整開局狀態。
+// 輸入為固定牌組設定；輸出為包含雙方 zones 的單局，並確認不會回傳 gate 錯誤。
+func TestNewStandardGameCreatesCompleteFixedDeckGame(t *testing.T) {
 	repositoryRoot := filepath.Join("..", "..")
 	configuration := StandardGameConfig{
 		Players: [2]*model.Player{
@@ -282,24 +394,21 @@ func TestNewStandardGameReturnsCompleteGateFailure(t *testing.T) {
 		RepositoryRoot: repositoryRoot,
 	}
 	game, err := NewStandardGame(configuration)
-	if game != nil {
-		t.Fatal("NewStandardGame() returned a game with unsupported content")
+	if err != nil {
+		t.Fatalf("NewStandardGame() error = %v", err)
 	}
-	var gateError *GateError
-	if !errors.As(err, &gateError) {
-		t.Fatalf("NewStandardGame() error = %v, want GateError", err)
+	if game == nil {
+		t.Fatal("NewStandardGame() returned nil game")
 	}
-	if len(gateError.Diagnostics) < 49 {
-		t.Fatalf("gate returned only %d diagnostics, want a complete list", len(gateError.Diagnostics))
+	for _, player := range configuration.Players {
+		zones, exists := game.state.Zones[player.UID]
+		if !exists {
+			t.Fatalf("NewStandardGame() has no zones for player %q", player.UID)
+		}
+		if len(zones.Hand) != 7 {
+			t.Fatalf("opening hand for player %q = %d, want 7", player.UID, len(zones.Hand))
+		}
 	}
-	assertDiagnostic(t, gateError.Diagnostics, GateDiagnostic{
-		Kind: constants.GateAbility,
-		ID:   "ability:LMyKyVC2O9:front:on-enter-draw-seven",
-	})
-	assertDiagnostic(t, gateError.Diagnostics, GateDiagnostic{
-		Kind: constants.GateMechanism,
-		ID:   "MEC-001",
-	})
 }
 
 func TestDefinitionRegistryValidationRejectsUnknownCardFace(t *testing.T) {
