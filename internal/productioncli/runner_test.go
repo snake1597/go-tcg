@@ -74,6 +74,49 @@ func TestRunRendersNumberedMenuAndWritesReplayOnEOF(t *testing.T) {
 	}
 }
 
+// TestRunExplainsBotSubmissionsAndEffectStackOpportunityFlow 驗證 CLI 區分 bot 行動、選擇與 pass，並說明堆疊逐項結算後重新開啟 Opportunity。
+// 輸入為 seed 7 的 Four of Hearts 與 Fiery Interference 回應流程；輸出為具體提交及流程提示，副作用為建立測試目錄內的 replay。
+func TestRunExplainsBotSubmissionsAndEffectStackOpportunityFlow(t *testing.T) {
+	replayPath := filepath.Join(
+		t.TempDir(),
+		"opportunity-flow.replay.json",
+	)
+	var output bytes.Buffer
+	repositoryRoot := filepath.Clean("../..")
+	input := strings.NewReader("3\n1,2,3,4\n2\n2\n")
+	err := Run(
+		[]string{
+			"--seed",
+			"7",
+			"--replay-out",
+			replayPath,
+		},
+		input,
+		&output,
+		repositoryRoot,
+	)
+	if err == nil || !strings.Contains(err.Error(), "EOF") {
+		t.Fatalf("Run() error = %v, want EOF", err)
+	}
+	text := output.String()
+	for _, want := range []string{
+		"bot player-2 啟動 Fiery Interference。",
+		"Opportunity 仍由 player-2 持有。",
+		"bot player-2 已完成一項選擇。",
+		"bot player-2 選擇 pass，Opportunity 移交給 player-1。",
+		"雙方連續 pass，結算堆疊頂端：Fiery Interference。",
+		"Effects Stack 尚有 1 個項目；重新開啟回應窗口，Opportunity 交給 player-1。",
+		"若所有玩家連續 pass，結算堆疊頂端：Four of Hearts。",
+	} {
+		if !strings.Contains(text, want) {
+			t.Fatalf("CLI output missing %q:\n%s", want, text)
+		}
+	}
+	if strings.Contains(text, "bot player-2 已提交行動。") {
+		t.Fatalf("CLI output retained ambiguous bot submission text:\n%s", text)
+	}
+}
+
 // TestRunCompletesHumanVsBotGameAndWritesVerifiableReplay 驗證 CLI 由真人與 bot 輪流透過各自 PlayerView 提交，並可在真人投降後完成單局。
 // 輸入為真人先讓過再投降的編號輸入、固定 seed 與 replay 路徑；輸出為完成後的畫面與可驗證 replay，副作用為 bot 提交回應並建立 replay 檔案。
 func TestRunCompletesHumanVsBotGameAndWritesVerifiableReplay(t *testing.T) {
@@ -101,7 +144,7 @@ func TestRunCompletesHumanVsBotGameAndWritesVerifiableReplay(t *testing.T) {
 	text := output.String()
 	for _, want := range []string{
 		"真人：player-1　bot：player-2",
-		"bot player-2 已提交行動。",
+		"bot player-2 啟動 Fiery Interference。",
 		"結果：player-2 獲勝",
 	} {
 		if !strings.Contains(text, want) {

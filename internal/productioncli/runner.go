@@ -135,8 +135,19 @@ func Run(arguments []string, input io.Reader, output io.Writer, repositoryRoot s
 				}
 				return fmt.Errorf("submit bot action: %w", submitErr)
 			}
+			afterView, afterViewErr := match.PlayerView(player)
+			if afterViewErr != nil {
+				return fmt.Errorf("get bot view after submission: %w", afterViewErr)
+			}
 			acceptedSubmissions++
-			fmt.Fprintln(output, "bot player-2 已提交行動。")
+			writeSubmissionSummary(
+				output,
+				"bot "+player.UID,
+				player,
+				view,
+				botInput,
+				afterView,
+			)
 			continue
 		}
 		renderView(output, player, view)
@@ -152,8 +163,90 @@ func Run(arguments []string, input io.Reader, output io.Writer, repositoryRoot s
 			fmt.Fprintf(output, "輸入被引擎拒絕：%v\n", submitErr)
 			continue
 		}
+		afterView, afterViewErr := match.PlayerView(player)
+		if afterViewErr != nil {
+			return fmt.Errorf("get player view after submission: %w", afterViewErr)
+		}
 		acceptedSubmissions++
+		writeSubmissionSummary(
+			output,
+			player.UID,
+			player,
+			view,
+			selected,
+			afterView,
+		)
 	}
+}
+
+// writeSubmissionSummary 將成功提交描述為玩家行動、待決選擇或 Opportunity pass，並說明公開的堆疊與 Opportunity 轉移結果。
+// 輸入為輸出串流、顯示名稱、提交玩家、提交前後 PlayerView 與已接受 Input；輸出為零值，副作用僅為寫入公開流程文字。
+func writeSubmissionSummary(output io.Writer, actorLabel string, actor *model.Player, before game.PlayerView, input game.Input, after game.PlayerView) {
+	if before.PendingChoice != nil {
+		if input.Choice != "" {
+			fmt.Fprintf(output, "%s 已完成一項選擇。\n", actorLabel)
+		} else {
+			fmt.Fprintf(output, "%s 略過一項選擇。\n", actorLabel)
+		}
+		writeRetainedOpportunity(output, actor, after)
+		return
+	}
+	action, found := legalActionForInput(before, input)
+	if !found {
+		fmt.Fprintf(output, "%s 已完成一次提交。\n", actorLabel)
+		return
+	}
+	if action.Kind != constants.ActionPass {
+		if action.Kind == constants.ActionActivate && action.CardName != "" {
+			fmt.Fprintf(output, "%s 啟動 %s。\n", actorLabel, action.CardName)
+		} else {
+			fmt.Fprintf(output, "%s 選擇 %s。\n", actorLabel, actionLabel(action))
+		}
+		writeRetainedOpportunity(output, actor, after)
+		return
+	}
+	if len(before.EffectsStack) > len(after.EffectsStack) {
+		top := before.EffectsStack[len(before.EffectsStack)-1]
+		fmt.Fprintf(output, "%s 選擇 pass。\n", actorLabel)
+		fmt.Fprintf(output, "雙方連續 pass，結算堆疊頂端：%s。\n", top.SourceName)
+		if len(after.EffectsStack) > 0 {
+			fmt.Fprintf(
+				output,
+				"Effects Stack 尚有 %d 個項目；重新開啟回應窗口，Opportunity 交給 %s。\n",
+				len(after.EffectsStack),
+				playerName(after.OpportunityHolder),
+			)
+		} else {
+			fmt.Fprintln(output, "Effects Stack 已清空。")
+		}
+		return
+	}
+	fmt.Fprintf(
+		output,
+		"%s 選擇 pass，Opportunity 移交給 %s。\n",
+		actorLabel,
+		playerName(after.OpportunityHolder),
+	)
+}
+
+// legalActionForInput 從提交前 PlayerView 找出已接受 action handle 的公開描述。
+// 輸入為提交前 PlayerView 與 Input；輸出為相符 LegalAction 及是否存在，無副作用。
+func legalActionForInput(view game.PlayerView, input game.Input) (game.LegalAction, bool) {
+	for _, action := range view.LegalActions {
+		if action.Handle == input.Action {
+			return action, true
+		}
+	}
+	return game.LegalAction{}, false
+}
+
+// writeRetainedOpportunity 說明成功行動或選擇後 Opportunity 是否仍由原提交玩家持有。
+// 輸入為輸出串流、提交玩家與提交後 PlayerView；輸出為零值，副作用僅在 Opportunity 保留時寫入提示。
+func writeRetainedOpportunity(output io.Writer, actor *model.Player, after game.PlayerView) {
+	if actor == nil || after.OpportunityHolder == nil || actor.UID != after.OpportunityHolder.UID {
+		return
+	}
+	fmt.Fprintf(output, "Opportunity 仍由 %s 持有。\n", actor.UID)
 }
 
 // currentDecisionPlayer 從公開 PlayerView 的 DecisionPlayer 取得目前應操作終端的玩家。
@@ -368,6 +461,14 @@ func renderView(output io.Writer, player *model.Player, view game.PlayerView) {
 	fmt.Fprintln(output, "可選行動：")
 	for index, action := range view.LegalActions {
 		fmt.Fprintf(output, "%d. %s\n", index+1, actionLabel(action))
+		if action.Kind == constants.ActionPass && len(view.EffectsStack) > 0 {
+			top := view.EffectsStack[len(view.EffectsStack)-1]
+			fmt.Fprintf(
+				output,
+				"   └─ 將 Opportunity 交給下一位玩家；若所有玩家連續 pass，結算堆疊頂端：%s。\n",
+				top.SourceName,
+			)
+		}
 	}
 	if view.Finished {
 		fmt.Fprintf(output, "結果：%s 獲勝\n", playerName(view.Winner))
