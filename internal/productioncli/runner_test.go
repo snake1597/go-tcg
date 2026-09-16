@@ -95,7 +95,11 @@ func TestRunExplainsBotSubmissionsAndEffectStackOpportunityFlow(t *testing.T) {
 		&output,
 		repositoryRoot,
 	)
-	if err == nil || !strings.Contains(err.Error(), "EOF") {
+	errorMessage := ""
+	if err != nil {
+		errorMessage = err.Error()
+	}
+	if err == nil || !strings.Contains(errorMessage, "EOF") {
 		t.Fatalf("Run() error = %v, want EOF", err)
 	}
 	text := output.String()

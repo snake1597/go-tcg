@@ -200,12 +200,18 @@ func writeSubmissionSummary(output io.Writer, actorLabel string, actor *model.Pl
 		if action.Kind == constants.ActionActivate && action.CardName != "" {
 			fmt.Fprintf(output, "%s 啟動 %s。\n", actorLabel, action.CardName)
 		} else {
-			fmt.Fprintf(output, "%s 選擇 %s。\n", actorLabel, actionLabel(action))
+			label := actionLabel(action)
+			fmt.Fprintf(
+				output,
+				"%s 選擇 %s。\n",
+				actorLabel,
+				label,
+			)
 		}
 		writeRetainedOpportunity(output, actor, after)
 		return
 	}
-	if len(before.EffectsStack) > len(after.EffectsStack) {
+	if !sameVisibleEffectsStack(before.EffectsStack, after.EffectsStack) {
 		top := before.EffectsStack[len(before.EffectsStack)-1]
 		fmt.Fprintf(output, "%s 選擇 pass。\n", actorLabel)
 		fmt.Fprintf(output, "雙方連續 pass，結算堆疊頂端：%s。\n", top.SourceName)
@@ -237,7 +243,23 @@ func legalActionForInput(view game.PlayerView, input game.Input) (game.LegalActi
 			return action, true
 		}
 	}
-	return game.LegalAction{}, false
+	var emptyAction game.LegalAction
+	return emptyAction, false
+}
+
+// sameVisibleEffectsStack 比較兩個公開 Effects Stack 投影的順序、種類、來源與控制者。
+// 輸入為提交前後的公開 stack items；輸出為玩家可見內容是否相同，無副作用且不讀取引擎內部身分。
+func sameVisibleEffectsStack(first []game.VisibleEffectStackItem, second []game.VisibleEffectStackItem) bool {
+	if len(first) != len(second) {
+		return false
+	}
+	for index, firstItem := range first {
+		secondItem := second[index]
+		if firstItem.Kind != secondItem.Kind || firstItem.SourceName != secondItem.SourceName || playerName(firstItem.Controller) != playerName(secondItem.Controller) {
+			return false
+		}
+	}
+	return true
 }
 
 // writeRetainedOpportunity 說明成功行動或選擇後 Opportunity 是否仍由原提交玩家持有。
@@ -460,7 +482,8 @@ func renderView(output io.Writer, player *model.Player, view game.PlayerView) {
 	}
 	fmt.Fprintln(output, "可選行動：")
 	for index, action := range view.LegalActions {
-		fmt.Fprintf(output, "%d. %s\n", index+1, actionLabel(action))
+		label := actionLabel(action)
+		fmt.Fprintf(output, "%d. %s\n", index+1, label)
 		if action.Kind == constants.ActionPass && len(view.EffectsStack) > 0 {
 			top := view.EffectsStack[len(view.EffectsStack)-1]
 			fmt.Fprintf(
