@@ -2,6 +2,7 @@ package game
 
 import (
 	"fmt"
+	"go-tcg/internal/constants"
 	"go-tcg/internal/model"
 	tcgErrors "go-tcg/internal/tcg_errors"
 	"sort"
@@ -337,7 +338,7 @@ func (g *Game) submitActionDeclarationChoice(player *model.Player, subject entit
 func (g *Game) setDeclarationChoice(player *model.Player, subjects []objectID) {
 	options := make(map[ViewHandle]entityID, len(subjects))
 	for _, subject := range subjects {
-		handle := g.newViewHandle(player, "choice:"+string(subject))
+		handle := g.newViewHandle(player, constants.ViewHandleSubjectChoicePrefix+string(subject))
 		options[handle] = entityID(subject)
 	}
 	g.state.Knowledge.Choice = &pendingChoice{

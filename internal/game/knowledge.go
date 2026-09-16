@@ -93,7 +93,7 @@ func (g *Game) refreshLegalActions() {
 		}
 		handle := g.newViewHandle(
 			player,
-			"action:concede",
+			constants.ViewHandleSubjectActionConcede,
 		)
 		actions[handle] = constants.ActionConcede
 		if g.state.Knowledge.Choice == nil {
@@ -101,46 +101,46 @@ func (g *Game) refreshLegalActions() {
 			case samePlayer(player, g.state.Scheduler.OpportunityHolder):
 				handle := g.newViewHandle(
 					player,
-					"action:pass",
+					constants.ViewHandleSubjectActionPass,
 				)
 				actions[handle] = constants.ActionPass
 				for _, card := range g.legalActionCards(player) {
 					handle := g.newViewHandle(
 						player,
-						"action:activate:"+string(card),
+						constants.ViewHandleSubjectActionActivatePrefix+string(card),
 					)
 					activations[handle] = card
 				}
 				for _, attacker := range g.legalAttackers(player) {
-					handle := g.newViewHandle(player, "action:attack:"+string(attacker))
+					handle := g.newViewHandle(player, constants.ViewHandleSubjectActionAttackPrefix+string(attacker))
 					attacks[handle] = attacker
 				}
 				for _, weapon := range g.legalWeapons(player) {
 					if !g.canWield(player, weapon) {
 						continue
 					}
-					handle := g.newViewHandle(player, "action:wield:"+string(weapon))
+					handle := g.newViewHandle(player, constants.ViewHandleSubjectActionWieldPrefix+string(weapon))
 					wields[handle] = weapon
 				}
 				for _, source := range g.legalCardistries(player) {
-					handle := g.newViewHandle(player, "action:cardistry:"+string(source))
+					handle := g.newViewHandle(player, constants.ViewHandleSubjectActionCardistryPrefix+string(source))
 					cardistries[handle] = source
 				}
 				for _, source := range g.legalObjectAbilities(player) {
-					handle := g.newViewHandle(player, "action:ability:"+string(source))
+					handle := g.newViewHandle(player, constants.ViewHandleSubjectActionAbilityPrefix+string(source))
 					objectAbilities[handle] = source
 				}
 			case samePlayer(player, g.state.Scheduler.TurnPlayer) && g.state.Scheduler.Phase == PhaseMaterialize:
 				for _, card := range g.legalMaterializations(player) {
 					handle := g.newViewHandle(
 						player,
-						"action:materialize:"+string(card),
+						constants.ViewHandleSubjectMaterializePrefix+string(card),
 					)
 					materializations[handle] = card
 				}
 				handle := g.newViewHandle(
 					player,
-					"action:skip-materialize",
+					constants.ViewHandleSubjectSkipMaterialize,
 				)
 				actions[handle] = constants.ActionSkipMaterialize
 			}
@@ -148,7 +148,7 @@ func (g *Game) refreshLegalActions() {
 		if g.state.Knowledge.Choice != nil && ((g.state.AbilityChoice != nil && g.state.AbilityChoice.CanPass && samePlayer(g.state.AbilityChoice.Instance.Controller, player)) || (g.state.Knowledge.VeritaCost != nil && g.state.Knowledge.Choice.CanPass && samePlayer(g.state.Knowledge.VeritaCost.Controller, player))) {
 			handle := g.newViewHandle(
 				player,
-				"action:pass",
+				constants.ViewHandleSubjectActionPass,
 			)
 			actions[handle] = constants.ActionPass
 		}
@@ -401,7 +401,7 @@ func (g *Game) grantCardTracking(player *model.Player, card entityID) {
 	}
 	handle := g.newViewHandle(
 		player,
-		"card:"+string(card),
+		constants.ViewHandleSubjectCardPrefix+string(card),
 	)
 	g.state.Knowledge.Cards[player.UID][card] = handle
 }

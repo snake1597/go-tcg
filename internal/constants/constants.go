@@ -1,5 +1,20 @@
 package constants
 
+const (
+	ViewHandleSubjectActionConcede         = "action:concede"
+	ViewHandleSubjectActionPass            = "action:pass"
+	ViewHandleSubjectActionActivatePrefix  = "action:activate:"
+	ViewHandleSubjectActionAttackPrefix    = "action:attack:"
+	ViewHandleSubjectActionWieldPrefix     = "action:wield:"
+	ViewHandleSubjectActionCardistryPrefix = "action:cardistry:"
+	ViewHandleSubjectActionAbilityPrefix   = "action:ability:"
+	ViewHandleSubjectMaterializePrefix     = "action:materialize:"
+	ViewHandleSubjectSkipMaterialize       = "action:skip-materialize"
+	ViewHandleSubjectCardPrefix            = "card:"
+	ViewHandleSubjectChoicePrefix          = "choice:"
+	ViewHandleSubjectTriggerOrderPrefix    = "trigger-order:"
+)
+
 type ActionKind string
 
 const (

@@ -2,6 +2,7 @@ package game
 
 import (
 	"fmt"
+	"go-tcg/internal/constants"
 	"go-tcg/internal/model"
 	tcgErrors "go-tcg/internal/tcg_errors"
 )
@@ -91,7 +92,7 @@ func (g *Game) setTriggerOrderChoice() {
 	order := g.state.Knowledge.TriggerOrder
 	options := make(map[ViewHandle]entityID, len(order.Triggers))
 	for _, trigger := range order.Triggers {
-		handle := g.newViewHandle(order.Controller, "trigger-order:"+string(trigger.Source))
+		handle := g.newViewHandle(order.Controller, constants.ViewHandleSubjectTriggerOrderPrefix+string(trigger.Source))
 		options[handle] = entityID(trigger.Source)
 	}
 	g.state.Knowledge.Choice = &pendingChoice{
