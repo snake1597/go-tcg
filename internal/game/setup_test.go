@@ -133,6 +133,375 @@ func TestStandardSetupStartsFirstTurnAtMainAndPassesToSecondPlayersDraw(t *testi
 	)
 }
 
+// TestStandardGameCompletesTurnsAndReplaysWakeUp 驗證完整回合流程會喚醒曾攻擊的 Ally，且 canonical replay 可重播該狀態。
+// 輸入為固定 seed 的 Standard 單局、雙方各一張 Ally 與 Player Two 的一次攻擊；輸出為 wake-up event、醒著的 Ally 與可驗證 replay，副作用為依序提交三個完整回合的公開操作。
+func TestStandardGameCompletesTurnsAndReplaysWakeUp(t *testing.T) {
+	game, err := NewStandardGame(
+		StandardGameConfig{
+			Players: [2]*model.Player{
+				model.PlayerOne,
+				model.PlayerTwo,
+			},
+			RepositoryRoot: filepath.Clean("../.."),
+			Seed:           42,
+		},
+	)
+	if err != nil {
+		t.Fatalf("NewStandardGame() error = %v", err)
+	}
+
+	playTargetedActionAndResolve(
+		t,
+		game,
+		model.PlayerOne,
+		"Straight Flare",
+	)
+	completeMainAndEnd(
+		t,
+		game,
+		model.PlayerOne,
+	)
+	secondView, err := game.PlayerView(model.PlayerTwo)
+	if err != nil {
+		t.Fatalf("PlayerView() error = %v", err)
+	}
+	if secondView.TurnNumber != 2 || secondView.Phase != PhaseMain {
+		t.Fatalf(
+			"Player Two turn = %d phase %q, want turn 2 main after wake-up and draw",
+			secondView.TurnNumber,
+			secondView.Phase,
+		)
+	}
+	drawEventCount := 0
+	for _, event := range secondView.VisibleEvents {
+		if event.Kind == "draw" {
+			drawEventCount++
+		}
+	}
+	if drawEventCount != 8 {
+		t.Fatalf(
+			"Player Two draw events = %d, want seven opening draws and one turn draw before main",
+			drawEventCount,
+		)
+	}
+
+	playAllyAndResolve(
+		t,
+		game,
+		model.PlayerTwo,
+		"Noire, Ace of Spades",
+	)
+	attackWithOnlyLegalAttacker(
+		t,
+		game,
+		model.PlayerTwo,
+	)
+	secondView, err = game.PlayerView(model.PlayerTwo)
+	if err != nil {
+		t.Fatalf("PlayerView() after attack error = %v", err)
+	}
+	attacker := fieldObjectByOwnerAndName(
+		t,
+		secondView,
+		model.PlayerTwo,
+		"Noire, Ace of Spades",
+	)
+	if !attacker.Rested {
+		t.Fatalf("Noire rested = %t, want true after attack", attacker.Rested)
+	}
+	completeMainAndEnd(
+		t,
+		game,
+		model.PlayerTwo,
+	)
+	assertTurnView(
+		t,
+		game,
+		model.PlayerOne,
+		model.PlayerOne,
+		PhaseMaterialize,
+		nil,
+		[]constants.ActionKind{
+			constants.ActionConcede,
+			constants.ActionMaterialize,
+			constants.ActionSkipMaterialize,
+		},
+	)
+	submitActionKind(
+		t,
+		game,
+		model.PlayerOne,
+		constants.ActionSkipMaterialize,
+	)
+	passOpportunityRound(
+		t,
+		game,
+		model.PlayerOne,
+	)
+	completeMainAndEnd(
+		t,
+		game,
+		model.PlayerOne,
+	)
+
+	wakeView, err := game.PlayerView(model.PlayerTwo)
+	if err != nil {
+		t.Fatalf("PlayerView() after wake-up error = %v", err)
+	}
+	woken := fieldObjectByOwnerAndName(
+		t,
+		wakeView,
+		model.PlayerTwo,
+		"Noire, Ace of Spades",
+	)
+	if woken.Rested {
+		t.Fatalf("Noire rested = %t, want false after wake-up", woken.Rested)
+	}
+	if !hasVisibleEvent(wakeView.VisibleEvents, "wake-up", "Noire, Ace of Spades") {
+		t.Fatalf(
+			"PlayerView().VisibleEvents = %#v, want Noire wake-up",
+			wakeView.VisibleEvents,
+		)
+	}
+	replay := game.Replay()
+	if len(replay.Steps) == 0 {
+		t.Fatal("Replay().Steps is empty after completed turns")
+	}
+	lastStep := replay.Steps[len(replay.Steps)-1]
+	if lastStep.StateHash != game.StateHash() {
+		t.Fatalf(
+			"final replay state hash = %q, want wake-up state hash %q",
+			lastStep.StateHash,
+			game.StateHash(),
+		)
+	}
+	if err := replay.Verify(); err != nil {
+		t.Fatalf("Replay().Verify() after wake-up error = %v", err)
+	}
+}
+
+func playTargetedActionAndResolve(
+	t *testing.T,
+	game *Game,
+	player *model.Player,
+	cardName string,
+) {
+	t.Helper()
+	view, err := game.PlayerView(player)
+	if err != nil {
+		t.Fatalf("PlayerView() error = %v", err)
+	}
+	action := actionByCardName(
+		t,
+		view,
+		cardName,
+	)
+	if err := game.Submit(
+		player,
+		Input{
+			Revision: view.Revision,
+			Action:   action.Handle,
+			Reserve:  reserveHandles(action),
+		},
+	); err != nil {
+		t.Fatalf("Submit() activation error = %v", err)
+	}
+	view, err = game.PlayerView(player)
+	if err != nil {
+		t.Fatalf("PlayerView() target error = %v", err)
+	}
+	if view.PendingChoice == nil || len(view.PendingChoice.Options) == 0 {
+		t.Fatalf(
+			"PlayerView().PendingChoice = %#v, want at least one target",
+			view.PendingChoice,
+		)
+	}
+	if err := game.Submit(
+		player,
+		Input{
+			Revision: view.Revision,
+			Choice:   view.PendingChoice.Options[0],
+		},
+	); err != nil {
+		t.Fatalf("Submit() target error = %v", err)
+	}
+	passOpportunityRound(
+		t,
+		game,
+		player,
+	)
+	assertTurnView(
+		t,
+		game,
+		player,
+		player,
+		PhaseMain,
+		player,
+		[]constants.ActionKind{
+			constants.ActionConcede,
+			constants.ActionPass,
+		},
+	)
+}
+
+func playAllyAndResolve(
+	t *testing.T,
+	game *Game,
+	player *model.Player,
+	cardName string,
+) {
+	t.Helper()
+	view, err := game.PlayerView(player)
+	if err != nil {
+		t.Fatalf("PlayerView() error = %v", err)
+	}
+	action := actionByCardName(
+		t,
+		view,
+		cardName,
+	)
+	if err := game.Submit(
+		player,
+		Input{
+			Revision: view.Revision,
+			Action:   action.Handle,
+			Reserve:  reserveHandles(action),
+		},
+	); err != nil {
+		t.Fatalf("Submit() activation error = %v", err)
+	}
+	passOpportunityRound(
+		t,
+		game,
+		player,
+	)
+	assertTurnView(
+		t,
+		game,
+		player,
+		player,
+		PhaseMain,
+		player,
+		[]constants.ActionKind{
+			constants.ActionConcede,
+			constants.ActionPass,
+		},
+	)
+}
+
+func attackWithOnlyLegalAttacker(
+	t *testing.T,
+	game *Game,
+	player *model.Player,
+) {
+	t.Helper()
+	view, err := game.PlayerView(player)
+	if err != nil {
+		t.Fatalf("PlayerView() before attack error = %v", err)
+	}
+	attack := actionByKind(
+		t,
+		view,
+		constants.ActionAttack,
+	)
+	if err := game.Submit(
+		player,
+		Input{
+			Revision: view.Revision,
+			Action:   attack.Handle,
+		},
+	); err != nil {
+		t.Fatalf("Submit() attack error = %v", err)
+	}
+	view, err = game.PlayerView(player)
+	if err != nil {
+		t.Fatalf("PlayerView() attack target error = %v", err)
+	}
+	if view.PendingChoice == nil || len(view.PendingChoice.Options) != 1 {
+		t.Fatalf(
+			"PlayerView().PendingChoice = %#v, want one attack target",
+			view.PendingChoice,
+		)
+	}
+	if err := game.Submit(
+		player,
+		Input{
+			Revision: view.Revision,
+			Choice:   view.PendingChoice.Options[0],
+		},
+	); err != nil {
+		t.Fatalf("Submit() attack target error = %v", err)
+	}
+	passOpportunityRound(
+		t,
+		game,
+		player,
+	)
+}
+
+func completeMainAndEnd(
+	t *testing.T,
+	game *Game,
+	player *model.Player,
+) {
+	t.Helper()
+	assertTurnView(
+		t,
+		game,
+		player,
+		player,
+		PhaseMain,
+		player,
+		[]constants.ActionKind{
+			constants.ActionConcede,
+			constants.ActionPass,
+		},
+	)
+	passOpportunityRound(
+		t,
+		game,
+		player,
+	)
+	assertTurnView(
+		t,
+		game,
+		player,
+		player,
+		PhaseEnd,
+		player,
+		[]constants.ActionKind{
+			constants.ActionConcede,
+			constants.ActionPass,
+		},
+	)
+	passOpportunityRound(
+		t,
+		game,
+		player,
+	)
+}
+
+func fieldObjectByOwnerAndName(
+	t *testing.T,
+	view PlayerView,
+	owner *model.Player,
+	name string,
+) VisibleFieldObject {
+	t.Helper()
+	for _, object := range view.Field {
+		if samePlayer(object.Owner, owner) && object.CardName == name {
+			return object
+		}
+	}
+	t.Fatalf(
+		"PlayerView().Field = %#v, want %s controlled by %q",
+		view.Field,
+		name,
+		owner,
+	)
+	return VisibleFieldObject{}
+}
+
 // TestWakeUpPhaseWakesAllControlledRestedObjects 驗證換回合時 scheduler 同時喚醒回合玩家的 Champion 與 Ally。
 // 輸入為 End Phase 的 Standard 單局及兩次 pass；輸出為醒著的受控 objects 與單一 simultaneous event batch，副作用為推進至下一位玩家的 Main Phase。
 func TestWakeUpPhaseWakesAllControlledRestedObjects(t *testing.T) {
@@ -346,6 +715,20 @@ func TestMaterializingTonorisLevelsUpChampionAndGrantsTaunt(t *testing.T) {
 	}
 	if len(game.state.EffectSources) != 1 {
 		t.Fatalf("EffectSources = %#v, want one source card", game.state.EffectSources)
+	}
+	paymentView, err := game.PlayerView(player)
+	if err != nil {
+		t.Fatalf("PlayerView() after materialization payment error = %v", err)
+	}
+	hasBanishMemoryEvent := false
+	for _, event := range paymentView.VisibleEvents {
+		if event.Kind == "materialize-banish-memory" && event.CardName != "" {
+			hasBanishMemoryEvent = true
+			break
+		}
+	}
+	if !hasBanishMemoryEvent {
+		t.Fatalf("PlayerView().VisibleEvents = %#v, want named random materialization payment", paymentView.VisibleEvents)
 	}
 
 	passOpportunityRound(t, game, player)
@@ -814,7 +1197,7 @@ func assertTurnView(
 	}
 	if samePlayer(player, wantOpportunity) {
 		allowedActions[constants.ActionActivate] = true
-		if samePlayer(player, wantTurnPlayer) && wantPhase == PhaseMain && len(game.state.EffectsStack) == 0 {
+		if game.state.Scheduler.TurnNumber > 1 && samePlayer(player, wantTurnPlayer) && wantPhase == PhaseMain && len(game.state.EffectsStack) == 0 {
 			allowedActions[constants.ActionAttack] = true
 			allowedActions[constants.ActionWield] = true
 		}

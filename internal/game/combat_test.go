@@ -13,6 +13,7 @@ func TestChampionAttackUsesPlayerViewAndDealsSimultaneousCombatDamage(t *testing
 	target := game.state.Champions[model.PlayerTwo.UID]
 	game.state.Cards[attacker.Card] = withCombatStats(game.state.Cards[attacker.Card], 3, 10)
 	game.state.Cards[target.Card] = withCombatStats(game.state.Cards[target.Card], 2, 10)
+	game.state.Scheduler.TurnNumber = 2
 	game.advanceKnowledgeRevision()
 	game.captureReplayInitialState()
 
@@ -21,6 +22,9 @@ func TestChampionAttackUsesPlayerViewAndDealsSimultaneousCombatDamage(t *testing
 		t.Fatalf("PlayerView() error = %v", err)
 	}
 	attack := actionByKind(t, view, constants.ActionAttack)
+	if attack.CardName != game.cardName(attacker.Card) {
+		t.Fatalf("attack action CardName = %q, want %q", attack.CardName, game.cardName(attacker.Card))
+	}
 	if err := game.Submit(model.PlayerOne, Input{
 		Revision: view.Revision,
 		Action:   attack.Handle,
@@ -105,12 +109,61 @@ func TestLegalAttackersIncludesEveryObeyingPositivePowerAlly(t *testing.T) {
 	}
 }
 
+// TestLegalAttackersExcludesFirstTurnChampion 驗證先手玩家首回合不能宣告攻擊。
+// 輸入為首回合 Main Phase 的正 power、醒著 Champion；輸出為沒有 Attack action，副作用僅為重建 PlayerView action handles。
+func TestLegalAttackersExcludesFirstTurnChampion(t *testing.T) {
+	game := NewGame(42)
+	firstChampionCard := cardInstanceID("champion-card:player-1")
+	secondChampionCard := cardInstanceID("champion-card:player-2")
+	game.state.Cards[firstChampionCard] = cardInstance{
+		ID:    firstChampionCard,
+		Owner: model.PlayerOne,
+		Power: 3,
+		Life:  15,
+	}
+	game.state.Cards[secondChampionCard] = cardInstance{
+		ID:    secondChampionCard,
+		Owner: model.PlayerTwo,
+		Power: 0,
+		Life:  15,
+	}
+	game.state.Champions[model.PlayerOne.UID] = championObject{
+		ID:    "champion:player-1",
+		Card:  firstChampionCard,
+		Owner: model.PlayerOne,
+	}
+	game.state.Champions[model.PlayerTwo.UID] = championObject{
+		ID:    "champion:player-2",
+		Card:  secondChampionCard,
+		Owner: model.PlayerTwo,
+	}
+	game.state.Scheduler = schedulerFrame{
+		Kind:              schedulerStable,
+		TurnPlayer:        model.PlayerOne,
+		Phase:             PhaseMain,
+		OpportunityHolder: model.PlayerOne,
+		TurnNumber:        1,
+	}
+	game.advanceKnowledgeRevision()
+
+	view, err := game.PlayerView(model.PlayerOne)
+	if err != nil {
+		t.Fatalf("PlayerView() error = %v", err)
+	}
+	for _, action := range view.LegalActions {
+		if action.Kind == constants.ActionAttack {
+			t.Fatalf("PlayerView().LegalActions = %#v, want no first-turn attack", view.LegalActions)
+		}
+	}
+}
+
 func TestCombatStateBasedCheckEndsGameWhenChampionIsDefeated(t *testing.T) {
 	game := newActionGame(t)
 	attacker := game.state.Champions[model.PlayerOne.UID]
 	target := game.state.Champions[model.PlayerTwo.UID]
 	game.state.Cards[attacker.Card] = withCombatStats(game.state.Cards[attacker.Card], 5, 10)
 	game.state.Cards[target.Card] = withCombatStats(game.state.Cards[target.Card], 1, 3)
+	game.state.Scheduler.TurnNumber = 2
 	game.advanceKnowledgeRevision()
 	game.captureReplayInitialState()
 	view, err := game.PlayerView(model.PlayerOne)
@@ -216,6 +269,7 @@ func TestCombatRecordsSimultaneousHitAndRetaliationEvents(t *testing.T) {
 	target := game.state.Champions[model.PlayerTwo.UID]
 	game.state.Cards[attacker.Card] = withCombatStats(game.state.Cards[attacker.Card], 3, 10)
 	game.state.Cards[target.Card] = withCombatStats(game.state.Cards[target.Card], 2, 10)
+	game.state.Scheduler.TurnNumber = 2
 	game.advanceKnowledgeRevision()
 	view, err := game.PlayerView(model.PlayerOne)
 	if err != nil {

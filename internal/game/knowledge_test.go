@@ -109,6 +109,111 @@ func TestPlayerViewProjectsOwnHandPublicFieldAndEffectStack(t *testing.T) {
 	}
 }
 
+// TestPlayerViewGroupsFieldByPlayerAndPlayOrder 驗證場上卡牌先依玩家座位分組，再依進場順序呈現。
+// 輸入為兩位玩家交錯進場的四張 Ally；輸出為各玩家維持自身出牌順序的公開場上投影，副作用為零。
+func TestPlayerViewGroupsFieldByPlayerAndPlayOrder(t *testing.T) {
+	game := NewGame(42)
+	addCard := func(id cardInstanceID, owner *model.Player, name string) cardInstanceID {
+		game.state.Cards[id] = cardInstance{
+			ID:    id,
+			Owner: owner,
+		}
+		game.state.Entities[entityID(id)] = knowledgeEntity{
+			Name: name,
+		}
+		return id
+	}
+	firstHeart := addCard(
+		"card:first-heart",
+		model.PlayerOne,
+		"First Heart",
+	)
+	secondHeart := addCard(
+		"card:second-heart",
+		model.PlayerTwo,
+		"Second Heart",
+	)
+	firstSpade := addCard(
+		"card:first-spade",
+		model.PlayerOne,
+		"First Spade",
+	)
+	secondNoire := addCard(
+		"card:second-noire",
+		model.PlayerTwo,
+		"Second Noire",
+	)
+	for _, fixture := range []struct {
+		id    objectID
+		card  cardInstanceID
+		owner *model.Player
+	}{
+		{
+			id:    "ally:1",
+			card:  firstHeart,
+			owner: model.PlayerOne,
+		},
+		{
+			id:    "ally:2",
+			card:  secondHeart,
+			owner: model.PlayerTwo,
+		},
+		{
+			id:    "ally:3",
+			card:  firstSpade,
+			owner: model.PlayerOne,
+		},
+		{
+			id:    "ally:4",
+			card:  secondNoire,
+			owner: model.PlayerTwo,
+		},
+	} {
+		game.state.Objects[fixture.id] = fieldObject{
+			ID:    fixture.id,
+			Card:  fixture.card,
+			Owner: fixture.owner,
+			Types: []string{
+				"ALLY",
+			},
+		}
+	}
+
+	view, err := game.PlayerView(model.PlayerOne)
+	if err != nil {
+		t.Fatalf("PlayerView() error = %v", err)
+	}
+	want := []struct {
+		owner string
+		name  string
+	}{
+		{
+			owner: model.PlayerOne.UID,
+			name:  "First Heart",
+		},
+		{
+			owner: model.PlayerOne.UID,
+			name:  "First Spade",
+		},
+		{
+			owner: model.PlayerTwo.UID,
+			name:  "Second Heart",
+		},
+		{
+			owner: model.PlayerTwo.UID,
+			name:  "Second Noire",
+		},
+	}
+	if len(view.Field) != len(want) {
+		t.Fatalf("PlayerView().Field = %#v, want %d objects", view.Field, len(want))
+	}
+	for index, expected := range want {
+		if view.Field[index].Owner.UID != expected.owner || view.Field[index].CardName != expected.name {
+			t.Fatalf("PlayerView().Field[%d] = %#v, want owner %q card %q", index, view.Field[index], expected.owner, expected.name)
+		}
+	}
+}
+
 func TestPlayerViewRevokesTrackingHandleButRetainsRevealHistory(t *testing.T) {
 	game := NewGame(42)
 	secretCard := game.addKnowledgeFixtureCard(
@@ -216,6 +321,40 @@ func TestPendingChoiceAcceptsOnlyCurrentPlayersVisibleHandle(t *testing.T) {
 	}
 	if len(afterChoice.Cards) != 1 || afterChoice.Cards[0].Handle != choice {
 		t.Fatalf("PlayerView().Cards = %#v, want tracked card with stable handle", afterChoice.Cards)
+	}
+}
+
+// TestPendingChoiceNamesChampionTarget 驗證攻擊目標以公開 Champion 卡名投影，而非無意義的通用選項。
+// 輸入為玩家可見的 Champion object 選項；輸出為含卡名的 PendingChoice，副作用僅為建立測試狀態。
+func TestPendingChoiceNamesChampionTarget(t *testing.T) {
+	game := NewGame(42)
+	championCard := cardInstanceID("champion-card:player-2")
+	championID := objectID("champion:player-2")
+	game.state.Cards[championCard] = cardInstance{
+		ID:    championCard,
+		Owner: model.PlayerTwo,
+	}
+	game.state.Entities[entityID(championCard)] = knowledgeEntity{
+		Name: "Spirit of Fire",
+	}
+	game.state.Champions[model.PlayerTwo.UID] = championObject{
+		ID:    championID,
+		Card:  championCard,
+		Owner: model.PlayerTwo,
+	}
+	game.state.Knowledge.Choice = &pendingChoice{
+		Actor: model.PlayerOne,
+		Options: map[ViewHandle]entityID{
+			"target": entityID(championID),
+		},
+	}
+
+	view, err := game.PlayerView(model.PlayerOne)
+	if err != nil {
+		t.Fatalf("PlayerView() error = %v", err)
+	}
+	if view.PendingChoice == nil || len(view.PendingChoice.Choices) != 1 || view.PendingChoice.Choices[0].CardName != "Spirit of Fire" {
+		t.Fatalf("PlayerView().PendingChoice = %#v, want named Champion target", view.PendingChoice)
 	}
 }
 

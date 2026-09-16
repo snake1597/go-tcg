@@ -139,6 +139,7 @@ func (g *Game) payMaterialization(player *model.Player, card cardInstanceID) err
 		payment := zones.Memory[paymentIndex]
 		zones.Memory = removeCardAt(zones.Memory, paymentIndex)
 		zones.Banishment = append(zones.Banishment, payment)
+		g.recordPublicEvent(player, "materialize:payment", "materialize-banish-memory", payment)
 	}
 	g.state.Zones[player.UID] = zones
 	g.state.EffectSources = append(g.state.EffectSources, card)

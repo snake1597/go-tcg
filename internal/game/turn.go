@@ -20,8 +20,8 @@ const (
 )
 
 // passOpportunity 僅接受穩定排程下的行動機會持有者 pass。
-// 所有玩家連續 pass 後只結算堆疊頂的一項；若仍有堆疊項目，重新授予回合玩家行動機會。
-// 堆疊清空後交由 advanceAfterOpportunity 推進階段，結算導致對局結束時直接返回。
+// 所有玩家連續 pass 後只結算堆疊頂的一項；一般行動結算後重新授予回合玩家行動機會。
+// Materialize 結算完畢或在空堆疊上連續 pass 時推進階段，結算導致對局結束時直接返回。
 func (g *Game) passOpportunity(player *model.Player) error {
 	scheduler := &g.state.Scheduler
 	if scheduler.Kind != schedulerStable || !samePlayer(scheduler.OpportunityHolder, player) {
@@ -39,10 +39,12 @@ func (g *Game) passOpportunity(player *model.Player) error {
 		if g.state.Finished {
 			return nil
 		}
-		if len(g.state.EffectsStack) > 0 {
-			g.grantOpportunity(scheduler.TurnPlayer)
+		if len(g.state.EffectsStack) == 0 && scheduler.Phase == PhaseMaterialize {
+			g.advanceAfterOpportunity()
 			return nil
 		}
+		g.grantOpportunity(scheduler.TurnPlayer)
+		return nil
 	}
 	g.advanceAfterOpportunity()
 	return nil
