@@ -26,11 +26,19 @@ func (g *Game) legalAttackers(player *model.Player) []objectID {
 	}
 	attackers := make([]objectID, 0, 1)
 	champion, exists := g.state.Champions[player.UID]
-	if exists && !champion.Rested && g.characteristicsFor(champion.ID).Power > 0 && len(g.attackTargets(player, champion.ID)) > 0 {
-		attackers = append(attackers, champion.ID)
+	if exists && !champion.Rested {
+		championCharacteristics := g.characteristicsFor(champion.ID)
+		championTargets := g.attackTargets(player, champion.ID)
+		if championCharacteristics.Power > 0 && len(championTargets) > 0 {
+			attackers = append(attackers, champion.ID)
+		}
 	}
 	for id, object := range g.state.Objects {
-		if samePlayer(object.Owner, player) && !object.Rested && g.state.Cards[object.Card].Definition == redHareCardID && g.canAttackWith(player, id) && len(g.attackTargets(player, id)) > 0 {
+		if !samePlayer(object.Owner, player) || !g.canAttackWith(player, id) {
+			continue
+		}
+		targets := g.attackTargets(player, id)
+		if len(targets) > 0 {
 			attackers = append(attackers, id)
 		}
 	}
@@ -43,14 +51,14 @@ func (g *Game) legalAttackers(player *model.Player) []objectID {
 	return attackers
 }
 
-// canAttackWith 是 Ally 攻擊的中央 permission query；Pride 只透過 derived
-// characteristics 表示，讓移除 Pride 的 static effect 立即影響合法攻擊。
+// canAttackWith 是所有 Ally 攻擊的中央 permission query；卡牌特例只透過 derived characteristics 改變 Pride 等限制。
+// 輸入為控制者與候選 object；輸出為其是否為受控、awake、正 power 且 obey 的 Ally，無副作用。
 func (g *Game) canAttackWith(player *model.Player, attacker objectID) bool {
 	object, exists := g.state.Objects[attacker]
 	if !exists || !samePlayer(object.Owner, player) || object.Rested || !containsString(object.Types, "ALLY") {
 		return false
 	}
-	return g.obeys(player, attacker)
+	return g.characteristicsFor(attacker).Power > 0 && g.obeys(player, attacker)
 }
 
 func (g *Game) obeys(player *model.Player, ally objectID) bool {
@@ -131,7 +139,20 @@ func (g *Game) beginAttack(player *model.Player, attacker objectID) error {
 }
 
 func (g *Game) canWield(player *model.Player, weapon objectID) bool {
-	return samePlayer(g.state.Scheduler.OpportunityHolder, player) && g.isLegalWeapon(player, weapon) && len(g.legalTargets()) > 0 && len(g.state.Zones[player.UID].Memory) >= g.wieldReserveCost(weapon)
+	scheduler := g.state.Scheduler
+	if !samePlayer(scheduler.OpportunityHolder, player) ||
+		!samePlayer(scheduler.TurnPlayer, player) ||
+		scheduler.Phase != PhaseMain ||
+		len(g.state.EffectsStack) != 0 ||
+		!g.isLegalWeapon(player, weapon) {
+		return false
+	}
+	legalTargets := g.legalTargets()
+	if len(legalTargets) == 0 {
+		return false
+	}
+	reserveCost := g.wieldReserveCost(weapon)
+	return len(g.state.Zones[player.UID].Memory) >= reserveCost
 }
 
 func (g *Game) wieldReserveCost(weapon objectID) int {

@@ -14,10 +14,13 @@ const (
 
 const (
 	CardDataSchemaVersion = 1
-	CardDataSourcePattern = "./card/*.json"
-	ReplayFormatVersion   = 3
-	FixedDeckVersion      = "standard-fire-v2"
-	FixedCardDataVersion  = "card-data-v3"
+	// CanonicalStateSchemaVersion 標示 StateHash 使用的 canonical state 結構版本。
+	CanonicalStateSchemaVersion = 4
+	CardDataSourcePattern       = "./card/*.json"
+	// ReplayFormatVersion 標示包含 Input.Reserve 的 canonical replay 格式版本。
+	ReplayFormatVersion  = 4
+	FixedDeckVersion     = "standard-fire-v2"
+	FixedCardDataVersion = "card-data-v3"
 )
 
 type ReplayFailure string

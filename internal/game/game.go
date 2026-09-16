@@ -13,9 +13,10 @@ import (
 )
 
 type Input struct {
-	Revision       uint64       `json:"revision"`
-	Action         ViewHandle   `json:"action"`
-	Choice         ViewHandle   `json:"choice"`
+	Revision uint64     `json:"revision"`
+	Action   ViewHandle `json:"action"`
+	Choice   ViewHandle `json:"choice"`
+	// Reserve 只接受目前玩家可見的手牌 handles，並由 activation 的 ReserveCost 決定精確張數。
 	Reserve        []ViewHandle `json:"reserve,omitempty"`
 	FloatingMemory []ViewHandle `json:"floating_memory,omitempty"`
 }
@@ -23,13 +24,16 @@ type Input struct {
 type ViewHandle string
 
 type LegalAction struct {
-	Handle                ViewHandle           `json:"handle"`
-	Kind                  constants.ActionKind `json:"kind"`
-	CardName              string               `json:"card_name,omitempty"`
-	ReserveCost           int                  `json:"reserve_cost,omitempty"`
-	ReserveOptions        []VisibleCard        `json:"reserve_options,omitempty"`
-	FloatingMemoryOptions []VisibleCard        `json:"floating_memory_options,omitempty"`
-	HeuristicRank         int                  `json:"heuristic_rank"`
+	Handle   ViewHandle           `json:"handle"`
+	Kind     constants.ActionKind `json:"kind"`
+	CardName string               `json:"card_name,omitempty"`
+	// ReserveCost 與 ReserveOptions 定義 activation 必須提交的手牌付款張數與可選 handles。
+	ReserveCost    int           `json:"reserve_cost,omitempty"`
+	ReserveOptions []VisibleCard `json:"reserve_options,omitempty"`
+	// FloatingMemoryRequired 指出本次 Cardistry 付款至少必須使用的 Floating Memory 張數。
+	FloatingMemoryRequired int           `json:"floating_memory_required,omitempty"`
+	FloatingMemoryOptions  []VisibleCard `json:"floating_memory_options,omitempty"`
+	HeuristicRank          int           `json:"heuristic_rank"`
 }
 
 // VisibleChoice 提供 PendingChoice 選項的玩家可見描述與啟發式優先級。
@@ -219,8 +223,8 @@ func currentVersions() Versions {
 	}
 }
 
-// Submit 以目前 revision 與玩家專屬 handle 驗證輸入，再交給對應行動或選擇流程。
-// 等待選擇時只接受該選擇、投降，以及可略過能力的 pass；Floating Memory 只供 Cardistry 付款。
+// Submit 以目前 revision、action kind 的 payload 契約與玩家專屬 handle 驗證輸入，再交給對應行動或選擇流程。
+// 等待選擇時只接受該選擇、投降，以及可略過能力的 pass；Reserve 只供手牌 activation，Floating Memory 只供 Cardistry 付款。
 // 成功接受輸入後記錄 replay；驗證或子流程失敗時不記錄此步。
 // 此入口沒有統一回滾機制，子流程須自行維持失敗時的狀態契約。
 func (g *Game) Submit(player *model.Player, input Input) error {
@@ -228,13 +232,13 @@ func (g *Game) Submit(player *model.Player, input Input) error {
 		return fmt.Errorf("%w %q", tcgErrors.ErrUnknownPlayer, player)
 	}
 	if g.state.Finished {
-		return tcgErrors.ErrGameFinished
+		return fmt.Errorf("%w", tcgErrors.ErrGameFinished)
 	}
 	if input.Revision != g.state.Revision {
 		return fmt.Errorf("%w: got %d, current %d", tcgErrors.ErrStaleRevision, input.Revision, g.state.Revision)
 	}
-	if (input.Action != "" && input.Choice != "") || (input.Choice != "" && (len(input.Reserve) > 0 || len(input.FloatingMemory) > 0)) {
-		return fmt.Errorf("%w: action and choice cannot be submitted together", tcgErrors.ErrInvalidViewHandle)
+	if err := g.validateInputPayload(player, input); err != nil {
+		return fmt.Errorf("validate input payload: %w", err)
 	}
 	if input.Choice != "" {
 		err := g.submitChoice(
@@ -242,7 +246,7 @@ func (g *Game) Submit(player *model.Player, input Input) error {
 			input,
 		)
 		if err != nil {
-			return err
+			return fmt.Errorf("submit choice: %w", err)
 		}
 		g.recordReplayStep(
 			player,
@@ -279,27 +283,27 @@ func (g *Game) Submit(player *model.Player, input Input) error {
 	if !exists {
 		card, materializeExists := g.state.Knowledge.Materializations[player.UID][input.Action]
 		if materializeExists {
-			if err := g.materializeChampion(
+			if err := g.materialize(
 				player,
 				card,
 			); err != nil {
-				return err
+				return fmt.Errorf("materialize champion: %w", err)
 			}
 		} else {
 			card, activateExists := g.state.Knowledge.Activations[player.UID][input.Action]
 			if activateExists {
 				if containsString(g.state.Cards[card].Types, "ALLY") {
 					if err := g.commitAllyActivation(player, card, input.Reserve); err != nil {
-						return err
+						return fmt.Errorf("commit Ally activation: %w", err)
 					}
 				} else if err := g.beginActionDeclaration(player, card, input.Reserve); err != nil {
-					return err
+					return fmt.Errorf("begin action declaration: %w", err)
 				}
 			} else {
 				attacker, attackExists := g.state.Knowledge.Attacks[player.UID][input.Action]
 				if attackExists {
 					if err := g.beginAttack(player, attacker); err != nil {
-						return err
+						return fmt.Errorf("begin attack: %w", err)
 					}
 				} else {
 					source, cardistryExists := g.state.Knowledge.Cardistries[player.UID][input.Action]
@@ -309,13 +313,13 @@ func (g *Game) Submit(player *model.Player, input Input) error {
 							source,
 							input.FloatingMemory,
 						); err != nil {
-							return err
+							return fmt.Errorf("activate Cardistry: %w", err)
 						}
 					} else {
 						object, objectAbilityExists := g.state.Knowledge.ObjectAbilities[player.UID][input.Action]
 						if objectAbilityExists {
 							if err := g.beginObjectAbility(player, object); err != nil {
-								return err
+								return fmt.Errorf("begin object ability: %w", err)
 							}
 						} else {
 							weapon, wieldExists := g.state.Knowledge.Wields[player.UID][input.Action]
@@ -323,7 +327,7 @@ func (g *Game) Submit(player *model.Player, input Input) error {
 								return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, input.Action)
 							}
 							if err := g.beginWield(player, weapon); err != nil {
-								return err
+								return fmt.Errorf("begin wield: %w", err)
 							}
 						}
 					}
@@ -346,11 +350,11 @@ func (g *Game) Submit(player *model.Player, input Input) error {
 		}
 	case constants.ActionPass:
 		if err := g.passOpportunity(player); err != nil {
-			return err
+			return fmt.Errorf("pass opportunity: %w", err)
 		}
 	case constants.ActionSkipMaterialize:
 		if err := g.skipMaterialize(player); err != nil {
-			return err
+			return fmt.Errorf("skip materialize: %w", err)
 		}
 	default:
 		return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, input.Action)
@@ -360,6 +364,43 @@ func (g *Game) Submit(player *model.Player, input Input) error {
 		player,
 		input,
 	)
+	return nil
+}
+
+// validateInputPayload 依 action handle 所屬種類限制 Input 可攜帶的欄位，並驗證 activation 的 Reserve 張數。
+// 輸入為提交玩家與尚未執行的 Input；輸出為 payload 契約錯誤或 nil，無副作用且不檢查 action 的其餘規則合法性。
+func (g *Game) validateInputPayload(player *model.Player, input Input) error {
+	if input.Choice != "" {
+		if input.Action != "" || len(input.Reserve) > 0 || len(input.FloatingMemory) > 0 {
+			return fmt.Errorf("%w: unused input payload for choice", tcgErrors.ErrInvalidViewHandle)
+		}
+		return nil
+	}
+	if input.Action == "" {
+		return fmt.Errorf("%w: missing action or choice", tcgErrors.ErrInvalidViewHandle)
+	}
+	if card, exists := g.state.Knowledge.Activations[player.UID][input.Action]; exists {
+		if len(input.FloatingMemory) > 0 || len(input.Reserve) != g.activationReserveCost(player, card) {
+			return fmt.Errorf("%w: unused input payload for activation", tcgErrors.ErrInvalidViewHandle)
+		}
+		return nil
+	}
+	if _, exists := g.state.Knowledge.Cardistries[player.UID][input.Action]; exists {
+		if len(input.Reserve) > 0 {
+			return fmt.Errorf("%w: unused input payload for Cardistry", tcgErrors.ErrInvalidViewHandle)
+		}
+		return nil
+	}
+	_, actionExists := g.state.Knowledge.Actions[player.UID][input.Action]
+	_, materializationExists := g.state.Knowledge.Materializations[player.UID][input.Action]
+	_, attackExists := g.state.Knowledge.Attacks[player.UID][input.Action]
+	_, wieldExists := g.state.Knowledge.Wields[player.UID][input.Action]
+	_, abilityExists := g.state.Knowledge.ObjectAbilities[player.UID][input.Action]
+	if actionExists || materializationExists || attackExists || wieldExists || abilityExists {
+		if len(input.Reserve) > 0 || len(input.FloatingMemory) > 0 {
+			return fmt.Errorf("%w: unused input payload for action", tcgErrors.ErrInvalidViewHandle)
+		}
+	}
 	return nil
 }
 
@@ -435,7 +476,7 @@ func (g *Game) decisionPlayer() *model.Player {
 // JSON 編碼失敗代表內部狀態無法序列化，會 panic。
 func (g *Game) StateHash() string {
 	canonical := canonicalState{
-		SchemaVersion:      3,
+		SchemaVersion:      constants.CanonicalStateSchemaVersion,
 		Versions:           g.versions,
 		Players:            g.players,
 		Revision:           g.state.Revision,

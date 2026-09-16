@@ -31,8 +31,14 @@ func TestActionCardsUsePlayerViewDeclarationAndResolveToGraveyard(t *testing.T) 
 	if ability.Controller != player || ability.Source != ability.SourceLKI || ability.Target != objectID("champion:"+model.PlayerTwo.UID) {
 		t.Fatalf("Ability Instance = %#v, want controller, source LKI, and fixed target", ability)
 	}
+	if !containsCard(game.state.EffectSources, ability.Source) {
+		t.Fatalf("EffectSources = %#v, want declared action source %q", game.state.EffectSources, ability.Source)
+	}
 	passOpportunityRound(t, game, player)
 
+	if containsCard(game.state.EffectSources, ability.Source) {
+		t.Fatalf("EffectSources = %#v, want resolved action source removed", game.state.EffectSources)
+	}
 	if got := len(game.state.Zones[player.UID].Graveyard); got != 2 {
 		t.Fatalf("graveyard cards = %d, want sacrificed weapon and action", got)
 	}
@@ -88,6 +94,47 @@ func TestFieryInterferenceCanBeActivatedByNonTurnPlayerAtFastTiming(t *testing.T
 	}
 	if err := game.Replay().Verify(); err != nil {
 		t.Fatalf("Replay().Verify() error = %v", err)
+	}
+}
+
+// TestAllyActivationUsesEffectsStackBeforeEnteringField 驗證 Ally activation 支付後先建立可回應的 Stack item，結算後才成為 Object。
+// 輸入為 Red Hare 的 PlayerView action 與引擎提供的 Reserve handles；輸出為 activation window 及最終 Ally object，副作用為提交 activation 並讓雙方 pass 結算。
+func TestAllyActivationUsesEffectsStackBeforeEnteringField(t *testing.T) {
+	game := newActionGameWithSource(t, redHareCardID)
+	player := model.PlayerOne
+	view, err := game.PlayerView(player)
+	if err != nil {
+		t.Fatalf("PlayerView() error = %v", err)
+	}
+	action := actionByCardName(t, view, "Red Hare, Unrivaled Stallion")
+	source := game.state.Knowledge.Activations[player.UID][action.Handle]
+
+	if err := game.Submit(
+		player,
+		Input{
+			Revision: view.Revision,
+			Action:   action.Handle,
+			Reserve:  reserveHandles(action),
+		},
+	); err != nil {
+		t.Fatalf("Submit() activation error = %v", err)
+	}
+	if _, exists := objectIDForCard(game, source); exists {
+		t.Fatal("Ally entered Field before its activation resolved")
+	}
+	if !containsCard(game.state.EffectSources, source) || len(game.state.EffectsStack) != 1 || game.state.EffectsStack[0].Kind != effectStackAbility || game.state.EffectsStack[0].Ability == nil {
+		t.Fatalf("activation state = sources %#v, stack %#v; want one Ally ability runtime activation", game.state.EffectSources, game.state.EffectsStack)
+	}
+	if game.state.Scheduler.OpportunityHolder != player {
+		t.Fatalf("OpportunityHolder = %q, want activating player", game.state.Scheduler.OpportunityHolder)
+	}
+
+	passOpportunityRound(t, game, player)
+	if _, exists := objectIDForCard(game, source); !exists {
+		t.Fatal("Ally did not enter Field after its activation resolved")
+	}
+	if containsCard(game.state.EffectSources, source) {
+		t.Fatalf("EffectSources = %#v, want resolved source removed", game.state.EffectSources)
 	}
 }
 
@@ -153,6 +200,17 @@ func TestActionFizzleMovesSourceToGraveyardWithoutUndoingCosts(t *testing.T) {
 	if got := len(game.state.EffectsStack); got != 0 {
 		t.Fatalf("EffectsStack after fizzle = %#v, want empty", game.state.EffectsStack)
 	}
+}
+
+// objectIDForCard 尋找目前 Field 上代表指定 CardInstance 的 Ally object。
+// 輸入為測試單局與卡牌實例；輸出為 object ID 與是否存在，無副作用。
+func objectIDForCard(game *Game, card cardInstanceID) (objectID, bool) {
+	for id, object := range game.state.Objects {
+		if object.Card == card {
+			return id, true
+		}
+	}
+	return "", false
 }
 
 func newActionGame(t *testing.T) *Game {

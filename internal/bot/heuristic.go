@@ -3,12 +3,14 @@ package bot
 import (
 	"errors"
 	"fmt"
+	"slices"
+	"sort"
+	"strings"
+
 	"go-tcg/internal/constants"
 	"go-tcg/internal/game"
 	"go-tcg/internal/model"
 	tcgErrors "go-tcg/internal/tcg_errors"
-	"sort"
-	"strings"
 )
 
 const maxCandidatesPerDecision = 128
@@ -43,19 +45,29 @@ func NewHeuristic(random RandomSource) *Heuristic {
 // Decide 從單一 PlayerView 選出附帶該 view revision 的合法 action 或 PendingChoice。
 // 輸入只包含玩家可見資訊；輸出為可直接 Submit 的 Input，副作用僅可能在同分候選時消耗 injected random source。
 func (bot *Heuristic) Decide(view game.PlayerView) (game.Input, error) {
+	var emptyInput game.Input
 	if view.Finished {
-		return game.Input{}, fmt.Errorf("cannot decide for finished game")
+		return emptyInput, fmt.Errorf("cannot decide for finished game")
 	}
 	if view.PendingChoice != nil {
-		return bot.decidePendingChoice(view)
+		input, err := bot.decidePendingChoice(view)
+		if err != nil {
+			return emptyInput, fmt.Errorf("decide pending choice: %w", err)
+		}
+		return input, nil
 	}
 	if len(view.LegalActions) == 0 {
-		return game.Input{}, fmt.Errorf("no legal action in player view")
+		return emptyInput, fmt.Errorf("no legal action in player view")
 	}
-	if len(view.LegalActions) > maxCandidatesPerDecision {
-		return game.Input{}, fmt.Errorf("legal action count %d exceeds decision limit %d", len(view.LegalActions), maxCandidatesPerDecision)
+	actionCount := len(view.LegalActions)
+	if actionCount > maxCandidatesPerDecision {
+		return emptyInput, fmt.Errorf("legal action count %d exceeds decision limit %d", actionCount, maxCandidatesPerDecision)
 	}
-	return bot.decideAction(view)
+	input, err := bot.decideAction(view)
+	if err != nil {
+		return emptyInput, fmt.Errorf("decide action: %w", err)
+	}
+	return input, nil
 }
 
 // Run 反覆讀取最新 PlayerView 並提交 bot 決策，直到遊戲結束或達到提交上限。
@@ -67,7 +79,7 @@ func (bot *Heuristic) Run(controller Controller, player *model.Player, limit int
 	if controller == nil {
 		return fmt.Errorf("controller is required")
 	}
-	seen := make(map[string]struct{}, limit)
+	seen := make(map[string]bool, limit)
 	for attempts := 0; attempts < limit; {
 		view, err := controller.PlayerView(player)
 		if err != nil {
@@ -88,10 +100,10 @@ func (bot *Heuristic) Run(controller Controller, player *model.Player, limit int
 			return fmt.Errorf("submit bot decision: %w", err)
 		}
 		signature := viewSignature(view)
-		if _, exists := seen[signature]; exists {
+		if seen[signature] {
 			return fmt.Errorf("no progress cycle after %d submissions", attempts)
 		}
-		seen[signature] = struct{}{}
+		seen[signature] = true
 	}
 	return fmt.Errorf("decision limit %d reached", limit)
 }
@@ -99,14 +111,16 @@ func (bot *Heuristic) Run(controller Controller, player *model.Player, limit int
 // decidePendingChoice 優先處理引擎要求的 PendingChoice，避免在選擇期間提交一般 action。
 // 輸入為含 PendingChoice 的視圖；輸出為 choice Input 或可略過時的 pass action，副作用僅於多個等價選項時消耗亂數。
 func (bot *Heuristic) decidePendingChoice(view game.PlayerView) (game.Input, error) {
+	var emptyInput game.Input
 	choice := view.PendingChoice
-	if len(choice.Options) > maxCandidatesPerDecision {
-		return game.Input{}, fmt.Errorf("pending choice count %d exceeds decision limit %d", len(choice.Options), maxCandidatesPerDecision)
+	optionCount := len(choice.Options)
+	if optionCount > maxCandidatesPerDecision {
+		return emptyInput, fmt.Errorf("pending choice count %d exceeds decision limit %d", optionCount, maxCandidatesPerDecision)
 	}
 	if len(choice.Choices) > 0 {
 		handle, err := bot.selectChoice(choice.Choices)
 		if err != nil {
-			return game.Input{}, err
+			return emptyInput, fmt.Errorf("select choice: %w", err)
 		}
 		return game.Input{
 			Revision: view.Revision,
@@ -116,7 +130,7 @@ func (bot *Heuristic) decidePendingChoice(view game.PlayerView) (game.Input, err
 	if len(choice.Options) > 0 {
 		option, err := bot.selectHandle(choice.Options)
 		if err != nil {
-			return game.Input{}, fmt.Errorf("select pending choice: %w", err)
+			return emptyInput, fmt.Errorf("select pending choice: %w", err)
 		}
 		return game.Input{
 			Revision: view.Revision,
@@ -133,12 +147,13 @@ func (bot *Heuristic) decidePendingChoice(view game.PlayerView) (game.Input, err
 			}
 		}
 	}
-	return game.Input{}, fmt.Errorf("pending choice has no selectable option")
+	return emptyInput, fmt.Errorf("pending choice has no selectable option")
 }
 
 // decideAction 依攻擊、啟動、裝備、materialize、推進 phase、投降的固定優先級選出 action。
 // 輸入為沒有 PendingChoice 的視圖；輸出為 action Input，副作用僅於最高優先級平手時消耗亂數。
 func (bot *Heuristic) decideAction(view game.PlayerView) (game.Input, error) {
+	var emptyInput game.Input
 	bestPriority := view.LegalActions[0].HeuristicRank
 	candidates := []game.ViewHandle{
 		view.LegalActions[0].Handle,
@@ -157,7 +172,7 @@ func (bot *Heuristic) decideAction(view game.PlayerView) (game.Input, error) {
 	}
 	handle, err := bot.selectHandle(candidates)
 	if err != nil {
-		return game.Input{}, fmt.Errorf("select action: %w", err)
+		return emptyInput, fmt.Errorf("select action: %w", err)
 	}
 	input := game.Input{
 		Revision: view.Revision,
@@ -167,8 +182,18 @@ func (bot *Heuristic) decideAction(view game.PlayerView) (game.Input, error) {
 		if action.Handle != handle {
 			continue
 		}
-		if action.ReserveCost > len(action.ReserveOptions) {
-			return game.Input{}, fmt.Errorf("reserve options = %d, want at least %d", len(action.ReserveOptions), action.ReserveCost)
+		if action.FloatingMemoryRequired > len(action.FloatingMemoryOptions) {
+			return emptyInput, fmt.Errorf("floating memory options = %d, want at least %d", len(action.FloatingMemoryOptions), action.FloatingMemoryRequired)
+		}
+		for index := 0; index < action.FloatingMemoryRequired; index++ {
+			input.FloatingMemory = append(input.FloatingMemory, action.FloatingMemoryOptions[index].Handle)
+		}
+		if action.ReserveCost == 0 {
+			return input, nil
+		}
+		availableOptions := len(action.ReserveOptions)
+		if action.ReserveCost > availableOptions {
+			return emptyInput, fmt.Errorf("reserve options = %d, want at least %d", availableOptions, action.ReserveCost)
 		}
 		for _, option := range action.ReserveOptions {
 			if action.CardName != option.Name && (option.Name == "Red Hare, Unrivaled Stallion" || option.Name == "Duchess, Six of Hearts") {
@@ -180,7 +205,7 @@ func (bot *Heuristic) decideAction(view game.PlayerView) (game.Input, error) {
 			}
 		}
 		for _, option := range action.ReserveOptions {
-			if containsHandle(input.Reserve, option.Handle) {
+			if slices.Contains(input.Reserve, option.Handle) {
 				continue
 			}
 			input.Reserve = append(input.Reserve, option.Handle)
@@ -191,17 +216,6 @@ func (bot *Heuristic) decideAction(view game.PlayerView) (game.Input, error) {
 		break
 	}
 	return input, nil
-}
-
-// containsHandle 回傳 handles 是否含有 candidate，供 bot 避免將同一張 Reserve 卡重複放入提交。
-// 輸入為已選 handles 與候選 handle；輸出為是否存在，無副作用。
-func containsHandle(handles []game.ViewHandle, candidate game.ViewHandle) bool {
-	for _, handle := range handles {
-		if handle == candidate {
-			return true
-		}
-	}
-	return false
 }
 
 // selectChoice 從引擎提供的可見 choice rank 中保留最高優先級候選，再交由平手機制處理。

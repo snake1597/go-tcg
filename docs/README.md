@@ -13,6 +13,7 @@
 | 首版範圍、核心模型或完成門檻 | [`development-plan.md`](./development-plan.md) | 對應 ADR |
 | 規則歧義與採用的裁定 | [`rules-issues.md`](./rules-issues.md) | 官方 `rules/`、對應 ADR |
 | 測試策略與禁止模式 | [`testing.md`](./testing.md) | [`development-plan.md`](./development-plan.md#每個垂直切片的強制流程) |
+| production CLI 如何執行與輸出 replay | [`../README.md`](../README.md#執行-production-cli) | [`testing.md`](./testing.md#首版發布-gate)、[ADR 0008](./adr/0008-record-replays-as-versioned-inputs.md) |
 | 為什麼採用某項架構決策 | [`adr/`](./adr/) | [`development-plan.md`](./development-plan.md) |
 | 研究背景與外部模式 | [`research/`](./research/) | 研究文件引用的一手來源 |
 

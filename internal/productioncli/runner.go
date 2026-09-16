@@ -18,6 +18,9 @@ import (
 
 const recentEventLimit = 8
 
+// defaultSubmissionLimit 限制正式 CLI 單局可接受的提交數，避免無進展對局無限執行。
+const defaultSubmissionLimit = 1000
+
 // Run 建立固定 Standard 單局，以引擎 PlayerView 讓真人與 bot 依序提交行動並輸出私人 canonical replay。
 // 輸入為命令列參數、終端輸入輸出與 repository root；輸出為流程或 I/O 錯誤，副作用為建立 replay、提交真人與 bot 輸入，並將 bot 私密視圖保留在終端外。
 func Run(arguments []string, input io.Reader, output io.Writer, repositoryRoot string) (err error) {
@@ -36,11 +39,19 @@ func Run(arguments []string, input io.Reader, output io.Writer, repositoryRoot s
 		"",
 		"私人 canonical replay 輸出位置",
 	)
+	submissionLimit := flags.Int(
+		"submission-limit",
+		defaultSubmissionLimit,
+		"單局允許的最大成功提交數",
+	)
 	if parseErr := flags.Parse(arguments); parseErr != nil {
 		return fmt.Errorf("parse flags: %w", parseErr)
 	}
 	if *replayPath == "" {
 		return fmt.Errorf("--replay-out is required")
+	}
+	if *submissionLimit <= 0 {
+		return fmt.Errorf("--submission-limit must be positive")
 	}
 
 	match, setupErr := game.NewStandardGame(game.StandardGameConfig{
@@ -82,6 +93,7 @@ func Run(arguments []string, input io.Reader, output io.Writer, repositoryRoot s
 	fmt.Fprintln(output, "隱私警告：canonical replay 可能包含完整隱藏資訊，僅供私人診斷使用，不可公開分享。")
 	fmt.Fprintln(output, "真人：player-1　bot：player-2")
 	scanner := bufio.NewScanner(input)
+	acceptedSubmissions := 0
 	for {
 		player, playerErr := currentDecisionPlayer(match)
 		if playerErr != nil {
@@ -98,6 +110,19 @@ func Run(arguments []string, input io.Reader, output io.Writer, repositoryRoot s
 			}
 			return nil
 		}
+		if acceptedSubmissions >= *submissionLimit {
+			diagnostic := fmt.Sprintf("submission limit %d reached", *submissionLimit)
+			fmt.Fprintf(
+				output,
+				"發布診斷：seed=%d step=%d diagnostic=%s replay=%s state_hash=%s\n",
+				*seed,
+				acceptedSubmissions,
+				diagnostic,
+				*replayPath,
+				match.StateHash(),
+			)
+			return fmt.Errorf("%s", diagnostic)
+		}
 		if player == model.PlayerTwo {
 			botInput, decideErr := opponent.Decide(view)
 			if decideErr != nil {
@@ -110,6 +135,7 @@ func Run(arguments []string, input io.Reader, output io.Writer, repositoryRoot s
 				}
 				return fmt.Errorf("submit bot action: %w", submitErr)
 			}
+			acceptedSubmissions++
 			fmt.Fprintln(output, "bot player-2 已提交行動。")
 			continue
 		}
@@ -124,7 +150,9 @@ func Run(arguments []string, input io.Reader, output io.Writer, repositoryRoot s
 				return fmt.Errorf("rejected input changed game state: %w", submitErr)
 			}
 			fmt.Fprintf(output, "輸入被引擎拒絕：%v\n", submitErr)
+			continue
 		}
+		acceptedSubmissions++
 	}
 }
 
@@ -147,13 +175,14 @@ func currentDecisionPlayer(match *game.Game) (*model.Player, error) {
 // readSelection 讀取一個十進位編號，並將其轉為目前 PlayerView 中的合法 action 或 choice。
 // 輸入為 scanner、輸出與單一玩家視圖；輸出為可直接 Submit 的輸入或 EOF／讀取錯誤，副作用僅為提示與無效輸入訊息。
 func readSelection(scanner *bufio.Scanner, output io.Writer, view game.PlayerView) (game.Input, error) {
+	var emptyInput game.Input
 	for {
 		fmt.Fprint(output, "請輸入編號：")
 		if !scanner.Scan() {
 			if scannerErr := scanner.Err(); scannerErr != nil {
-				return game.Input{}, fmt.Errorf("read input: %w", scannerErr)
+				return emptyInput, fmt.Errorf("read input: %w", scannerErr)
 			}
-			return game.Input{}, fmt.Errorf("%w", io.EOF)
+			return emptyInput, fmt.Errorf("%w", io.EOF)
 		}
 		selected, err := strconv.Atoi(strings.TrimSpace(scanner.Text()))
 		if err != nil || selected <= 0 {
@@ -185,13 +214,13 @@ func readSelection(scanner *bufio.Scanner, output io.Writer, view game.PlayerVie
 			continue
 		}
 		action := view.LegalActions[selected-1]
-		reserve, reserveErr := readReserve(scanner, output, action)
+		reserve, reserveErr := ReadReserve(scanner, output, action)
 		if reserveErr != nil {
-			return game.Input{}, fmt.Errorf("read reserve: %w", reserveErr)
+			return emptyInput, fmt.Errorf("read reserve: %w", reserveErr)
 		}
 		floatingMemory, floatingMemoryErr := readFloatingMemory(scanner, output, action)
 		if floatingMemoryErr != nil {
-			return game.Input{}, fmt.Errorf("read floating memory: %w", floatingMemoryErr)
+			return emptyInput, fmt.Errorf("read floating memory: %w", floatingMemoryErr)
 		}
 		return game.Input{
 			Revision:       view.Revision,
@@ -202,9 +231,9 @@ func readSelection(scanner *bufio.Scanner, output io.Writer, view game.PlayerVie
 	}
 }
 
-// readReserve 讓玩家以引擎提供的編號選擇恰好數量的手牌支付 reserve cost。
+// ReadReserve 讓呼叫端以引擎提供的編號選擇恰好數量的手牌支付 reserve cost。
 // 輸入為 scanner、輸出與合法 action；輸出為 reserve handles 或讀取錯誤，副作用僅為提示與無效輸入訊息。
-func readReserve(scanner *bufio.Scanner, output io.Writer, action game.LegalAction) ([]game.ViewHandle, error) {
+func ReadReserve(scanner *bufio.Scanner, output io.Writer, action game.LegalAction) ([]game.ViewHandle, error) {
 	if action.ReserveCost == 0 {
 		return nil, nil
 	}
@@ -220,32 +249,16 @@ func readReserve(scanner *bufio.Scanner, output io.Writer, action game.LegalActi
 			}
 			return nil, fmt.Errorf("%w", io.EOF)
 		}
-		parts := strings.Split(strings.TrimSpace(scanner.Text()), ",")
-		if len(parts) != action.ReserveCost {
+		inputText := scanner.Text()
+		selected, valid := parseNumberedHandles(
+			inputText,
+			action.ReserveOptions,
+		)
+		if !valid || len(selected) != action.ReserveCost {
 			fmt.Fprintln(output, "無效編號，請重新輸入。")
 			continue
 		}
-		selected := make([]game.ViewHandle, 0, action.ReserveCost)
-		seen := make(map[game.ViewHandle]struct{}, action.ReserveCost)
-		valid := true
-		for _, part := range parts {
-			index, parseErr := strconv.Atoi(strings.TrimSpace(part))
-			if parseErr != nil || index <= 0 || index > len(action.ReserveOptions) {
-				valid = false
-				break
-			}
-			handle := action.ReserveOptions[index-1].Handle
-			if _, exists := seen[handle]; exists {
-				valid = false
-				break
-			}
-			seen[handle] = struct{}{}
-			selected = append(selected, handle)
-		}
-		if valid {
-			return selected, nil
-		}
-		fmt.Fprintln(output, "無效編號，請重新輸入。")
+		return selected, nil
 	}
 }
 
@@ -271,29 +284,42 @@ func readFloatingMemory(scanner *bufio.Scanner, output io.Writer, action game.Le
 		if text == "" {
 			return nil, nil
 		}
-		parts := strings.Split(text, ",")
-		selected := make([]game.ViewHandle, 0, len(parts))
-		seen := make(map[game.ViewHandle]struct{}, len(parts))
-		valid := true
-		for _, part := range parts {
-			index, parseErr := strconv.Atoi(strings.TrimSpace(part))
-			if parseErr != nil || index <= 0 || index > len(action.FloatingMemoryOptions) {
-				valid = false
-				break
-			}
-			handle := action.FloatingMemoryOptions[index-1].Handle
-			if _, exists := seen[handle]; exists {
-				valid = false
-				break
-			}
-			seen[handle] = struct{}{}
-			selected = append(selected, handle)
-		}
+		selected, valid := parseNumberedHandles(
+			text,
+			action.FloatingMemoryOptions,
+		)
 		if valid {
 			return selected, nil
 		}
 		fmt.Fprintln(output, "無效編號，請重新輸入。")
 	}
+}
+
+// parseNumberedHandles 將逗號分隔的十進位選項解析成不重複的 PlayerView handles。
+// 輸入為使用者文字與可見卡牌選項；輸出為依輸入順序排列的 handles 與是否合法，無副作用。
+func parseNumberedHandles(text string, options []game.VisibleCard) ([]game.ViewHandle, bool) {
+	parts := strings.Split(
+		strings.TrimSpace(text),
+		",",
+	)
+	selectedCapacity := len(parts)
+	selected := make([]game.ViewHandle, 0, selectedCapacity)
+	seen := make(map[game.ViewHandle]bool, selectedCapacity)
+	optionCount := len(options)
+	for _, part := range parts {
+		trimmedPart := strings.TrimSpace(part)
+		index, err := strconv.Atoi(trimmedPart)
+		if err != nil || index <= 0 || index > optionCount {
+			return nil, false
+		}
+		handle := options[index-1].Handle
+		if seen[handle] {
+			return nil, false
+		}
+		seen[handle] = true
+		selected = append(selected, handle)
+	}
+	return selected, true
 }
 
 // renderView 將單一玩家依法可見的狀態、最近事件與引擎合法選項寫成終端畫面。

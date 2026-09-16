@@ -258,12 +258,38 @@ func (g *Game) deployAlly(player *model.Player, card cardInstanceID) {
 }
 
 func (g *Game) putAllyOnField(player *model.Player, card cardInstanceID) {
-	g.state.NextObject++
-	id := objectID(fmt.Sprintf("ally:%d", g.state.NextObject))
-	candidate := g.state.Cards[card]
-	g.state.Objects[id] = fieldObject{ID: id, Card: card, Owner: player, Types: candidate.Types}
+	id := g.putFieldObject(player, card, "ally")
 	g.recordPublicEvent(player, "ability", "deploy", card)
 	g.enqueueSuitedEnterAbility(player, id, card)
+}
+
+// putMaterialRegaliaOnField 將已從 Material Deck 付款完成的 Regalia 放入控制者戰場。
+// 輸入為控制者與 Regalia 實例；無輸出；會建立戰場物件、套用 Hindered 並記錄公開事件。
+func (g *Game) putMaterialRegaliaOnField(player *model.Player, card cardInstanceID) {
+	g.putFieldObject(player, card, "regalia")
+	g.recordPublicEvent(player, "materialize", "regalia-entered", card)
+}
+
+// putFieldObject 建立由指定玩家控制的戰場物件，並依卡牌的 Hindered 關鍵字決定初始休息狀態。
+// 輸入為控制者、卡牌實例與穩定的物件種類前綴；輸出為新物件 ID；會遞增 NextObject 並更新 Objects。
+func (g *Game) putFieldObject(player *model.Player, card cardInstanceID, objectKind string) objectID {
+	g.state.NextObject++
+	id := objectID(fmt.Sprintf("%s:%d", objectKind, g.state.NextObject))
+	candidate := g.state.Cards[card]
+	g.state.Objects[id] = fieldObject{
+		ID:     id,
+		Card:   card,
+		Owner:  player,
+		Types:  candidate.Types,
+		Rested: g.hasHindered(card),
+	}
+	return id
+}
+
+// hasHindered 回傳固定支援卡中具有 Hindered 關鍵字、應以 rested 狀態進場的卡牌。
+// 輸入為卡牌實例；輸出為是否 Hindered；不會改變對局狀態。
+func (g *Game) hasHindered(card cardInstanceID) bool {
+	return g.state.Cards[card].Definition == duchessThornesCardID
 }
 
 func (g *Game) suitedReserveTotal(player *model.Player) int {

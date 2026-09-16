@@ -6,6 +6,7 @@ import (
 	"go-tcg/internal/constants"
 	"go-tcg/internal/model"
 	tcgErrors "go-tcg/internal/tcg_errors"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -23,8 +24,11 @@ func TestNewGamePinsReplayVersionsAndSeed(t *testing.T) {
 		Deck:     "standard-fire-v2",
 		PRNG:     "splitmix64-v1",
 	}
-	if replay.FormatVersion != 3 {
-		t.Fatalf("Replay().FormatVersion = %d, want 3", replay.FormatVersion)
+	if replay.FormatVersion != 4 {
+		t.Fatalf("Replay().FormatVersion = %d, want 4", replay.FormatVersion)
+	}
+	if constants.CanonicalStateSchemaVersion != 4 {
+		t.Fatalf("CanonicalStateSchemaVersion = %d, want 4", constants.CanonicalStateSchemaVersion)
 	}
 	if replay.Versions != wantVersions {
 		t.Fatalf("Replay().Versions = %#v, want %#v", replay.Versions, wantVersions)
@@ -162,7 +166,8 @@ func TestSubmitRejectsInvalidActionHandleWithoutChangingGame(t *testing.T) {
 				if err == nil || !strings.Contains(errorMessage, testCase.wantReason) {
 					t.Fatalf("Submit() error = %v, want reason %q", err, testCase.wantReason)
 				}
-				if game.StateHash() != beforeHash {
+				afterHash := game.StateHash()
+				if afterHash != beforeHash {
 					t.Fatalf("StateHash() changed after rejected input")
 				}
 				replayAfterInput := game.Replay()
@@ -172,6 +177,154 @@ func TestSubmitRejectsInvalidActionHandleWithoutChangingGame(t *testing.T) {
 				}
 				if string(afterReplay) != string(beforeReplay) {
 					t.Fatalf("Replay() changed after rejected input: before %s, after %s", beforeReplay, afterReplay)
+				}
+			},
+		)
+	}
+}
+
+// TestSubmitRejectsUnusedPayloadByActionKind 驗證每類合法 handle 只接受該行動實際消費的 Input 欄位。
+// 輸入為帶有 Reserve 或 FloatingMemory 多餘資料的 action／choice；輸出為 ErrInvalidViewHandle，副作用為拒絕後 state hash 與 replay 都不變。
+func TestSubmitRejectsUnusedPayloadByActionKind(t *testing.T) {
+	testCases := []struct {
+		name  string
+		setup func(*Game) Input
+	}{
+		{
+			name: "plain action rejects reserve",
+			setup: func(game *Game) Input {
+				game.state.Knowledge.Actions[model.PlayerOne.UID]["plain"] = constants.ActionPass
+				return Input{
+					Revision: game.state.Revision,
+					Action:   "plain",
+					Reserve: []ViewHandle{
+						"unused",
+					},
+				}
+			},
+		},
+		{
+			name: "materialization rejects reserve",
+			setup: func(game *Game) Input {
+				game.state.Knowledge.Materializations[model.PlayerOne.UID]["materialize"] = "source"
+				return Input{
+					Revision: game.state.Revision,
+					Action:   "materialize",
+					Reserve: []ViewHandle{
+						"unused",
+					},
+				}
+			},
+		},
+		{
+			name: "card activation rejects floating memory",
+			setup: func(game *Game) Input {
+				game.state.Knowledge.Activations[model.PlayerOne.UID]["activate"] = "source"
+				return Input{
+					Revision: game.state.Revision,
+					Action:   "activate",
+					FloatingMemory: []ViewHandle{
+						"unused",
+					},
+				}
+			},
+		},
+		{
+			name: "attack rejects reserve",
+			setup: func(game *Game) Input {
+				game.state.Knowledge.Attacks[model.PlayerOne.UID]["attack"] = "attacker"
+				return Input{
+					Revision: game.state.Revision,
+					Action:   "attack",
+					Reserve: []ViewHandle{
+						"unused",
+					},
+				}
+			},
+		},
+		{
+			name: "wield rejects floating memory",
+			setup: func(game *Game) Input {
+				game.state.Knowledge.Wields[model.PlayerOne.UID]["wield"] = "weapon"
+				return Input{
+					Revision: game.state.Revision,
+					Action:   "wield",
+					FloatingMemory: []ViewHandle{
+						"unused",
+					},
+				}
+			},
+		},
+		{
+			name: "cardistry rejects reserve",
+			setup: func(game *Game) Input {
+				game.state.Knowledge.Cardistries[model.PlayerOne.UID]["cardistry"] = "source"
+				return Input{
+					Revision: game.state.Revision,
+					Action:   "cardistry",
+					Reserve: []ViewHandle{
+						"unused",
+					},
+				}
+			},
+		},
+		{
+			name: "object ability rejects reserve",
+			setup: func(game *Game) Input {
+				game.state.Knowledge.ObjectAbilities[model.PlayerOne.UID]["ability"] = "source"
+				return Input{
+					Revision: game.state.Revision,
+					Action:   "ability",
+					Reserve: []ViewHandle{
+						"unused",
+					},
+				}
+			},
+		},
+		{
+			name: "choice rejects reserve",
+			setup: func(game *Game) Input {
+				game.state.Knowledge.Choice = &pendingChoice{
+					Actor: model.PlayerOne,
+					Options: map[ViewHandle]entityID{
+						"choice": "subject",
+					},
+				}
+				return Input{
+					Revision: game.state.Revision,
+					Choice:   "choice",
+					Reserve: []ViewHandle{
+						"unused",
+					},
+				}
+			},
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(
+			testCase.name,
+			func(t *testing.T) {
+				game := NewGame(42)
+				input := testCase.setup(game)
+				beforeHash := game.StateHash()
+				beforeReplay := game.Replay()
+
+				err := game.Submit(model.PlayerOne, input)
+				if err == nil {
+					t.Fatal("Submit() error = nil, want unused input payload")
+				}
+				errorMessage := err.Error()
+				if !errors.Is(err, tcgErrors.ErrInvalidViewHandle) || !strings.Contains(errorMessage, "unused input payload") {
+					t.Fatalf("Submit() error = %v, want unused input payload", err)
+				}
+				afterHash := game.StateHash()
+				if afterHash != beforeHash {
+					t.Fatal("Submit() changed state hash after rejected payload")
+				}
+				afterReplay := game.Replay()
+				if !reflect.DeepEqual(afterReplay, beforeReplay) {
+					t.Fatal("Submit() changed replay after rejected payload")
 				}
 			},
 		)
@@ -262,7 +415,8 @@ func TestSubmitRejectsActionAfterGameFinishes(t *testing.T) {
 		t.Fatalf("Submit() concede error = %v", err)
 	}
 	finishedHash := match.StateHash()
-	finishedSteps := len(match.Replay().Steps)
+	finishedReplay := match.Replay()
+	finishedSteps := len(finishedReplay.Steps)
 	err = match.Submit(
 		model.PlayerOne,
 		Input{
@@ -273,14 +427,16 @@ func TestSubmitRejectsActionAfterGameFinishes(t *testing.T) {
 	if !errors.Is(err, tcgErrors.ErrGameFinished) {
 		t.Fatalf("Submit() after finish error = %v, want ErrGameFinished", err)
 	}
-	if match.StateHash() != finishedHash || len(match.Replay().Steps) != finishedSteps {
+	afterHash := match.StateHash()
+	afterReplay := match.Replay()
+	if afterHash != finishedHash || len(afterReplay.Steps) != finishedSteps {
 		t.Fatal("rejected post-game action changed state hash or replay")
 	}
 }
 
 func TestStateHashUsesCanonicalVersionedState(t *testing.T) {
 	game := NewGame(42)
-	const want = "64f3d3317a92c0e48ecfb871c902ed2873415933e6c3af028ede6391044bd595"
+	const want = "523e17749e989683c1b634cb83fc9a4ed68f8474dca3c5a7ce036b3fbba51e3e"
 
 	if got := game.StateHash(); got != want {
 		t.Fatalf("StateHash() = %q, want canonical digest %q", got, want)

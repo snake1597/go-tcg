@@ -21,17 +21,19 @@ type abilityInstance struct {
 type effectOperationKind string
 
 const (
-	effectOperationChoose                effectOperationKind = "choose"
-	effectOperationMove                  effectOperationKind = "move"
-	effectOperationDraw                  effectOperationKind = "draw"
-	effectOperationDrawToMemory          effectOperationKind = "draw_to_memory"
-	effectOperationCounter               effectOperationKind = "counter"
-	effectOperationDamage                effectOperationKind = "damage"
-	effectOperationContinuousModifier    effectOperationKind = "continuous_modifier"
-	effectOperationChooseHandCard        effectOperationKind = "choose_hand_card"
-	effectOperationChooseMemoryAlly      effectOperationKind = "choose_memory_ally"
-	effectOperationDiscard               effectOperationKind = "discard"
-	effectOperationDeploy                effectOperationKind = "deploy"
+	effectOperationChoose             effectOperationKind = "choose"
+	effectOperationMove               effectOperationKind = "move"
+	effectOperationDraw               effectOperationKind = "draw"
+	effectOperationDrawToMemory       effectOperationKind = "draw_to_memory"
+	effectOperationCounter            effectOperationKind = "counter"
+	effectOperationDamage             effectOperationKind = "damage"
+	effectOperationContinuousModifier effectOperationKind = "continuous_modifier"
+	effectOperationChooseHandCard     effectOperationKind = "choose_hand_card"
+	effectOperationChooseMemoryAlly   effectOperationKind = "choose_memory_ally"
+	effectOperationDiscard            effectOperationKind = "discard"
+	effectOperationDeploy             effectOperationKind = "deploy"
+	// effectOperationPutAllyOnField 以通用 ability runtime 結算被 play 的 Ally source。
+	effectOperationPutAllyOnField        effectOperationKind = "put_ally_on_field"
 	effectOperationSuitedThresholdDamage effectOperationKind = "suited_threshold_damage"
 	effectOperationChooseDuchessCopy     effectOperationKind = "choose_duchess_copy"
 	effectOperationCopyDuchessAction     effectOperationKind = "copy_duchess_action"
@@ -207,6 +209,20 @@ func (g *Game) resolveAbility(instance abilityInstance) {
 			g.discardCard(instance.Controller, cardInstanceID(target))
 		case effectOperationDeploy:
 			g.deployAlly(instance.Controller, cardInstanceID(target))
+		case effectOperationPutAllyOnField:
+			sourceIndex := cardIndex(g.state.EffectSources, instance.Source)
+			if sourceIndex < 0 {
+				return
+			}
+			g.state.EffectSources = removeCardAt(g.state.EffectSources, sourceIndex)
+			source, exists := g.state.Cards[instance.Source]
+			if !exists || !samePlayer(source.Owner, instance.Controller) || !containsString(source.Types, "ALLY") {
+				if exists {
+					g.putInGraveyard(instance.Source)
+				}
+				return
+			}
+			g.putAllyOnField(instance.Controller, instance.Source)
 		case effectOperationSuitedThresholdDamage:
 			amount := suitedThresholdAmount(g.suitedReserveTotal(instance.Controller)) * 2
 			if amount > 0 && g.isLegalTarget(target) {
@@ -222,6 +238,7 @@ func (g *Game) resolveAbility(instance abilityInstance) {
 			}
 		case effectOperationMove:
 			if operation.MoveSourceToGraveyard {
+				g.removeEffectSource(instance.Source)
 				g.putInGraveyard(instance.Source)
 			}
 		case effectOperationChoose:

@@ -46,6 +46,20 @@
 - 每個涉及規則歧義的案例都必須引用 [`rules-issues.md`](./rules-issues.md) 中已解決的項目；未解決或不適用 Support Set 的項目不得以猜測 expected value 建立測試。
 - 只在真正的系統 seam 替換時間、隨機來源、檔案系統或外部儲存；不 mock 自有的內部 Module。
 
+## 首版發布 gate
+
+在 repository root 依序執行：
+
+```sh
+go test ./...
+go test -race ./...
+go test ./internal/game -run '^$' -fuzz '^FuzzRejectedInputPreservesStateHash$' -fuzztime=10s
+go test ./internal/game -run '^$' -fuzz '^FuzzReplayHashDeterminism$' -fuzztime=10s
+go test ./internal/productioncli -run '^TestMirrorGamesCompleteFor100Seeds$' -count=1
+```
+
+100-seed gate 對 seed 1 至 100 各建立一局，逐局限制 1000 次 action submission 並驗證 replay。失敗訊息固定包含 seed、step、diagnostic 與最終 state hash；Go fuzz 產生的失敗 corpus 必須保留在 `testdata/fuzz/<FuzzName>`，修正後作為永久回歸案例，不得只重跑到成功。
+
 ## 禁止模式
 
 - 測試私有函式、內部呼叫次數或呼叫順序。

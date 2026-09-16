@@ -108,6 +108,38 @@ func TestHeuristicDecideUsesSeededRandomOnlyForTies(t *testing.T) {
 	}
 }
 
+// TestHeuristicDecideOmitsReserveForZeroCostVerita 驗證替代費用已令 ReserveCost 為零時不會提交任何 Reserve handle。
+// 輸入為 ReserveOptions 非空的 Verita 合法行動；輸出為只含 action 與 revision 的 Input，副作用僅可能消耗 bot 平手亂數。
+func TestHeuristicDecideOmitsReserveForZeroCostVerita(t *testing.T) {
+	view := game.PlayerView{
+		Revision: 8,
+		LegalActions: []game.LegalAction{
+			{
+				Handle:      "verita",
+				Kind:        constants.ActionActivate,
+				CardName:    "Verita, Queen of Hearts",
+				ReserveCost: 0,
+				ReserveOptions: []game.VisibleCard{
+					{
+						Handle: "reserve",
+						Name:   "Two of Hearts",
+					},
+				},
+			},
+		},
+	}
+
+	input, err := NewHeuristic(
+		NewSeededRandom(7),
+	).Decide(view)
+	if err != nil {
+		t.Fatalf("Decide() error = %v", err)
+	}
+	if input.Revision != view.Revision || input.Action != "verita" || len(input.Reserve) != 0 {
+		t.Fatalf("Decide() = %#v, want zero-reserve Verita input", input)
+	}
+}
+
 // TestHeuristicRunRefreshesStaleViewAndStopsAtLimit 驗證回合迴圈在過期提交後重新取得 PlayerView，並限制整場提交數。
 // 輸入為第一次提交回傳過期 revision 的可控遊戲邊界；輸出為第二次使用新 revision 的提交，副作用是只呼叫兩次 Submit。
 func TestHeuristicRunRefreshesStaleViewAndStopsAtLimit(t *testing.T) {

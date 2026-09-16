@@ -7,103 +7,159 @@ import (
 	"go-tcg/internal/game"
 	"go-tcg/internal/model"
 	"path/filepath"
-	"reflect"
 	"testing"
 )
 
-// TestMirrorGameCompletesWithRequiredInteractions 驗證兩個僅使用 PlayerView 的決策者可完成固定鏡像單局並覆蓋核心互動。
-// 輸入為固定 seed 的兩次自動決策；輸出為相同結果與逐步相同 replay，副作用為推進兩個測試內單局。
-func TestMirrorGameCompletesWithRequiredInteractions(t *testing.T) {
-	first, firstCoverage, firstWinner, firstErr := runMirrorGame()
-	if firstErr != nil {
-		t.Fatalf("first game error = %v", firstErr)
-	}
-	second, secondCoverage, secondWinner, secondErr := runMirrorGame()
-	if secondErr != nil {
-		t.Fatalf("second game error = %v", secondErr)
-	}
-	for name, covered := range firstCoverage {
-		if !covered {
-			t.Fatalf("mirror game did not cover %s: %#v", name, firstCoverage)
+// mirrorGameActionLimit 為每個 seed 的鏡像發布 gate 提供明確收斂上限。
+const mirrorGameActionLimit = 1000
+
+// mirrorGameResult 保存單一鏡像 gate 的可重現結果與失敗現場。
+// Replay 與 Coverage 供驗收，Seed／Step／Diagnostic／StateHash 供失敗定位；此型別本身無副作用。
+type mirrorGameResult struct {
+	Replay     game.Replay
+	Coverage   map[string]bool
+	Winner     string
+	Seed       uint64
+	Step       int
+	Diagnostic string
+	StateHash  string
+}
+
+// TestMirrorGamesCompleteFor100Seeds 是首版發布 gate，要求 100 個不同 seed 都在固定行動上限內確定結束。
+// 輸入為 seed 1 到 100；輸出為每局有勝者、無 Needs Ruling 且 replay hash 可重播，副作用為依序推進 100 個隔離測試單局。
+func TestMirrorGamesCompleteFor100Seeds(t *testing.T) {
+	for seed := uint64(1); seed <= 100; seed++ {
+		result, err := runMirrorGame(seed, mirrorGameActionLimit)
+		if err != nil {
+			failMirrorGame(t, result, err)
 		}
-	}
-	if firstWinner == "" || firstWinner != secondWinner || !reflect.DeepEqual(firstCoverage, secondCoverage) || !reflect.DeepEqual(first.Steps, second.Steps) {
-		for index := 0; index < len(first.Steps) && index < len(second.Steps); index++ {
-			if reflect.DeepEqual(first.Steps[index], second.Steps[index]) {
-				continue
-			}
-			t.Logf("first different step %d:\nfirst:  %#v\nsecond: %#v", index, first.Steps[index], second.Steps[index])
-			break
+		if result.Winner == "" || result.Diagnostic != "" {
+			failMirrorGame(
+				t,
+				result,
+				fmt.Errorf("finished with winner %q and diagnostic %q", result.Winner, result.Diagnostic),
+			)
 		}
-		t.Fatalf("mirror results differ: winner %q/%q, coverage %#v/%#v, steps %d/%d", firstWinner, secondWinner, firstCoverage, secondCoverage, len(first.Steps), len(second.Steps))
-	}
-	if err := first.Verify(); err != nil {
-		t.Fatalf("first replay.Verify() error = %v", err)
-	}
-	if err := second.Verify(); err != nil {
-		t.Fatalf("second replay.Verify() error = %v", err)
+		if err := result.Replay.Verify(); err != nil {
+			failMirrorGame(
+				t,
+				result,
+				fmt.Errorf("verify replay: %w", err),
+			)
+		}
 	}
 }
 
-// runMirrorGame 執行一局由兩個確定性 bot 代表的 PlayerView 對局並記錄指定互動。
-// 輸入為無；輸出為 replay、互動覆蓋、勝者與錯誤，副作用為建立及推進測試內單局。
-func runMirrorGame() (game.Replay, map[string]bool, string, error) {
-	match, err := game.NewStandardGame(game.StandardGameConfig{
-		Players:        [2]*model.Player{model.PlayerOne, model.PlayerTwo},
-		RepositoryRoot: filepath.Clean("../.."),
-		Seed:           7,
-	})
+// runMirrorGame 執行一局由兩個確定性 bot 代表的 PlayerView 對局，並保留 action limit 或 panic 的診斷現場。
+// 輸入為遊戲 seed 與正整數行動上限；輸出為 replay、互動覆蓋、勝者、步數、診斷、hash 與錯誤，副作用為建立及推進一個測試內單局。
+func runMirrorGame(seed uint64, actionLimit int) (result mirrorGameResult, err error) {
+	result = mirrorGameResult{
+		Coverage: map[string]bool{
+			"card play":      false,
+			"Cardistry":      false,
+			"combat":         false,
+			"Pending Choice": false,
+			"Stack response": false,
+		},
+		Seed: seed,
+	}
+	var match *game.Game
+	defer func() {
+		if match != nil {
+			result.StateHash = match.StateHash()
+			result.Replay = match.Replay()
+		}
+		if recovered := recover(); recovered != nil {
+			err = fmt.Errorf("panic: %v", recovered)
+		}
+	}()
+	repositoryRoot := filepath.Clean("../..")
+	match, err = game.NewStandardGame(
+		game.StandardGameConfig{
+			Players: [2]*model.Player{
+				model.PlayerOne,
+				model.PlayerTwo,
+			},
+			RepositoryRoot: repositoryRoot,
+			Seed:           seed,
+		},
+	)
 	if err != nil {
-		return game.Replay{}, nil, "", fmt.Errorf("start game: %w", err)
+		return result, fmt.Errorf("start game: %w", err)
 	}
 	bots := map[string]*bot.Heuristic{
-		model.PlayerOne.UID: bot.NewHeuristic(bot.NewSeededRandom(7)),
-		model.PlayerTwo.UID: bot.NewHeuristic(bot.NewSeededRandom(8)),
+		model.PlayerOne.UID: bot.NewHeuristic(
+			bot.NewSeededRandom(seed),
+		),
+		model.PlayerTwo.UID: bot.NewHeuristic(
+			bot.NewSeededRandom(seed + 1),
+		),
 	}
-	coverage := map[string]bool{"card play": false, "Cardistry": false, "combat": false, "Pending Choice": false, "Stack response": false}
-	for step := 0; step < 1000; step++ {
-		player, err := currentDecisionPlayer(match)
-		if err != nil {
-			return game.Replay{}, nil, "", err
+	for step := 0; step < actionLimit; step++ {
+		result.Step = step
+		player, playerErr := currentDecisionPlayer(match)
+		if playerErr != nil {
+			return result, fmt.Errorf("current decision player: %w", playerErr)
 		}
-		view, err := match.PlayerView(player)
-		if err != nil {
-			return game.Replay{}, nil, "", err
+		view, viewErr := match.PlayerView(player)
+		if viewErr != nil {
+			return result, fmt.Errorf("read player view: %w", viewErr)
 		}
+		result.Diagnostic = view.Diagnostic
 		if view.Finished {
 			if view.Winner == nil {
-				return game.Replay{}, nil, "", fmt.Errorf("finished without winner")
+				return result, fmt.Errorf("finished without winner")
 			}
-			return match.Replay(), coverage, view.Winner.UID, nil
+			result.Winner = view.Winner.UID
+			return result, nil
 		}
 		if view.PendingChoice != nil {
-			coverage["Pending Choice"] = true
+			result.Coverage["Pending Choice"] = true
 		}
-		input, err := bots[player.UID].Decide(view)
-		if err != nil {
-			return game.Replay{}, nil, "", err
+		input, decideErr := bots[player.UID].Decide(view)
+		if decideErr != nil {
+			return result, fmt.Errorf("decide: %w", decideErr)
 		}
 		for _, action := range view.LegalActions {
 			if action.Handle != input.Action {
 				continue
 			}
 			if action.Kind == constants.ActionAttack {
-				coverage["combat"] = true
+				result.Coverage["combat"] = true
 			}
 			if action.Kind == constants.ActionActivate {
 				if action.FloatingMemoryOptions != nil {
-					coverage["Cardistry"] = true
+					result.Coverage["Cardistry"] = true
 				} else {
-					coverage["card play"] = true
+					result.Coverage["card play"] = true
+				}
+				if len(view.EffectsStack) > 0 {
+					result.Coverage["Stack response"] = true
 				}
 			}
 		}
-		if len(view.EffectsStack) > 0 && input.Action != "" {
-			coverage["Stack response"] = true
-		}
-		if err := match.Submit(player, input); err != nil {
-			return game.Replay{}, nil, "", err
+		beforeHash := match.StateHash()
+		if submitErr := match.Submit(player, input); submitErr != nil {
+			if match.StateHash() != beforeHash {
+				return result, fmt.Errorf("rejected input changed state: %w", submitErr)
+			}
+			return result, fmt.Errorf("submit: %w", submitErr)
 		}
 	}
-	return game.Replay{}, nil, "", fmt.Errorf("game did not finish")
+	result.Step = actionLimit
+	return result, fmt.Errorf("action limit %d reached", actionLimit)
+}
+
+// failMirrorGame 以發布 gate 要求的可重現欄位終止目前測試。
+// 輸入為 testing 邊界、鏡像結果與根因；輸出不返回，副作用為記錄 seed、step、diagnostic、state hash 並標記測試失敗。
+func failMirrorGame(t *testing.T, result mirrorGameResult, err error) {
+	t.Helper()
+	t.Fatalf(
+		"seed=%d step=%d diagnostic=%q state_hash=%s error=%v",
+		result.Seed,
+		result.Step,
+		result.Diagnostic,
+		result.StateHash,
+		err,
+	)
 }

@@ -33,12 +33,14 @@ type effectStackItem struct {
 	Ability    *abilityInstance    `json:"ability,omitempty"`
 }
 
-func (g *Game) legalChampionMaterializations(player *model.Player) []cardInstanceID {
+// legalMaterializations 回傳目前玩家在 Materialize 階段可從 Material Deck 使用的牌。
+// 輸入為目前行動玩家；輸出依 Material Deck 原始順序排列；不會改變對局狀態。
+func (g *Game) legalMaterializations(player *model.Player) []cardInstanceID {
 	zones := g.state.Zones[player.UID]
 	materialDeckSize := len(zones.MaterialDeck)
 	cards := make([]cardInstanceID, 0, materialDeckSize)
 	for _, card := range zones.MaterialDeck {
-		if g.canMaterializeChampion(
+		if g.canMaterialize(
 			player,
 			card,
 		) {
@@ -48,13 +50,30 @@ func (g *Game) legalChampionMaterializations(player *model.Player) []cardInstanc
 	return cards
 }
 
-func (g *Game) canMaterializeChampion(player *model.Player, card cardInstanceID) bool {
+// canMaterialize 判斷指定 Material Deck 牌是否符合目前階段、所有權與牌類型的進場條件。
+// 輸入為玩家與候選牌；輸出為可否 materialize；不會改變對局狀態。
+func (g *Game) canMaterialize(player *model.Player, card cardInstanceID) bool {
 	scheduler := g.state.Scheduler
 	if scheduler.Kind != schedulerStable || scheduler.Phase != PhaseMaterialize || !samePlayer(scheduler.TurnPlayer, player) || scheduler.OpportunityHolder != nil {
 		return false
 	}
 	candidate, exists := g.state.Cards[card]
-	if !exists || !samePlayer(candidate.Owner, player) || candidate.Definition != tonorisCardID {
+	if !exists || !samePlayer(candidate.Owner, player) {
+		return false
+	}
+	if len(g.state.Zones[player.UID].Memory) < g.characteristicsForCard(card).MemoryCost {
+		return false
+	}
+	if containsString(candidate.Types, "REGALIA") {
+		return true
+	}
+	return g.canMaterializeChampionLevelUp(player, candidate)
+}
+
+// canMaterializeChampionLevelUp 判斷候選 Champion 是否能覆蓋目前 Spirit of Fire Champion。
+// 輸入為玩家與候選牌；輸出為是否符合既有 Tonoris 升級條件；不會改變對局狀態。
+func (g *Game) canMaterializeChampionLevelUp(player *model.Player, candidate cardInstance) bool {
+	if candidate.Definition != tonorisCardID {
 		return false
 	}
 	champion, exists := g.state.Champions[player.UID]
@@ -65,11 +84,13 @@ func (g *Game) canMaterializeChampion(player *model.Player, card cardInstanceID)
 	if !exists || current.Definition != spiritOfFireCardID || candidate.Level != current.Level+1 {
 		return false
 	}
-	return len(g.state.Zones[player.UID].Memory) >= g.characteristicsForCard(card).MemoryCost
+	return candidate.Level == current.Level+1
 }
 
-func (g *Game) materializeChampion(player *model.Player, card cardInstanceID) error {
-	if !g.canMaterializeChampion(
+// materialize 驗證玩家對 Material Deck 牌的宣告，並將付款與 Stack 建立交由付款流程處理。
+// 輸入為玩家與其公開的 materialization 牌；輸出為驗證或付款錯誤；成功時會改變區域與 Stack。
+func (g *Game) materialize(player *model.Player, card cardInstanceID) error {
+	if !g.canMaterialize(
 		player,
 		card,
 	) {
@@ -83,13 +104,16 @@ func (g *Game) materializeChampion(player *model.Player, card cardInstanceID) er
 	if materialDeckIndex < 0 {
 		return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, card)
 	}
-	return g.payChampionMaterialization(player, card)
+	if err := g.payMaterialization(player, card); err != nil {
+		return fmt.Errorf("pay materialization: %w", err)
+	}
+	return nil
 }
 
-// payChampionMaterialization 重新檢查升級與付款條件，再移走物質牌並隨機放逐 Memory。
-// 來源保留在 EffectSources，升級效果入堆疊後授予玩家行動機會；此時尚未替換 champion。
-func (g *Game) payChampionMaterialization(player *model.Player, card cardInstanceID) error {
-	if !g.canMaterializeChampion(
+// payMaterialization 重新檢查進場與付款條件，再移走 Material Deck 牌並隨機放逐 Memory。
+// 來源保留在 EffectSources，materialization 效果入堆疊後授予玩家行動機會；此時尚未進場。
+func (g *Game) payMaterialization(player *model.Player, card cardInstanceID) error {
+	if !g.canMaterialize(
 		player,
 		card,
 	) {
@@ -156,7 +180,7 @@ func (g *Game) resolveTopEffectStack() {
 	g.state.EffectsStack = g.state.EffectsStack[:lastIndex]
 	switch item.Kind {
 	case effectStackMaterialization:
-		g.resolveChampionLevelUp(item)
+		g.resolveMaterialization(item)
 	case effectStackTonorisTaunt:
 		g.resolveTonorisTaunt(item)
 	case effectStackCombat:
@@ -168,15 +192,28 @@ func (g *Game) resolveTopEffectStack() {
 	}
 }
 
-// resolveChampionLevelUp 消耗 EffectSources 中的來源並重新檢查升級條件。
-// 來源已消失時不處理；條件失效時將來源放逐，不退回已付費用。
-// 成功時保留原 champion 物件，把舊牌納入 InnerLineage，公開新牌並加入 Tonoris 入場觸發。
-func (g *Game) resolveChampionLevelUp(item effectStackItem) {
+// resolveMaterialization 消耗 Stack 來源，並依牌類型結算 Champion 升級或 Regalia 進場。
+// 輸入為待結算 Stack 項目；無輸出；會移除來源並改變戰場或放逐區。
+func (g *Game) resolveMaterialization(item effectStackItem) {
 	sourceIndex := cardIndex(g.state.EffectSources, item.Source)
 	if sourceIndex < 0 {
 		return
 	}
 	g.state.EffectSources = removeCardAt(g.state.EffectSources, sourceIndex)
+	candidate, exists := g.state.Cards[item.Source]
+	if !exists {
+		return
+	}
+	if containsString(candidate.Types, "REGALIA") {
+		g.putMaterialRegaliaOnField(item.Controller, item.Source)
+		return
+	}
+	g.resolveChampionLevelUp(item)
+}
+
+// resolveChampionLevelUp 重新檢查 Champion 升級條件，失效時將來源放逐且不退回已付費用。
+// 輸入為來源已自 EffectSources 移除的 Stack 項目；無輸出；成功時替換 champion 並加入 Tonoris 入場觸發。
+func (g *Game) resolveChampionLevelUp(item effectStackItem) {
 	if !g.canResolveChampionLevelUp(item) {
 		zones := g.state.Zones[item.Controller.UID]
 		zones.Banishment = append(zones.Banishment, item.Source)

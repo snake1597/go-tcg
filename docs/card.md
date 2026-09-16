@@ -61,11 +61,11 @@ go run ./cmd/tool/card_manifest -write -version card-data-vNEXT
 | 牌組 ID／版本 | `standard-fire-v2` |
 | 規則基準 | 由 [`development-plan.md`](./development-plan.md) 與 [ADR 0003](./adr/0003-pin-rules-snapshot-per-engine-version.md) 固定 |
 | 卡面資料來源／版本 | Repository `./card/*.json`；實際 data version 與 SHA-256 只讀取 [`card-data-manifest.json`](../card-data-manifest.json) |
-| 引擎最低版本 | 未建立 |
+| 引擎最低版本 | `grand-archive-v1`；replay format v4；canonical state schema v4 |
 | 負責人 | 未指定 |
-| 狀態 | `blocked` |
+| 狀態 | `supported` |
 
-阻擋原因：本牌組涉及的卡牌機制尚未完成實作與測試。內容 ID 與閉包已固定，可以依下方 dependency graph 切分正式 slices。
+固定牌組的 32 種內容、49 個 Ability Slot、runtime copy、11 類機制與所有可達 typed operation 均已由 production registry 與 Support Set gate 驗證；正常、非法與邊界案例均有測試覆蓋。
 
 ## 牌組清單（Deck Manifest）
 
@@ -123,8 +123,8 @@ go run ./cmd/tool/card_manifest -write -version card-data-vNEXT
 
 | Content ID | 種類 | 官方 Card UUID／來源 | 從何內容可達 | 可達方式 | 所有 CardFace／Ability Slot | 實作狀態 | 測試狀態 | 阻擋項目 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `card:<Card UUID>`（32 筆，見 Deck Manifest） | card | 對應 Deck Manifest 的 Card UUID | deck root | deck | 見下方完整 inventory | unsupported | missing | registry、mechanics |
-| `runtime:copied-action` | runtime object／stack item | 被複製 CardFace | Duchess Cardistry | copy、optional activate | 沿用來源 face 的 resolution slot | unsupported | missing | copy、object identity、free activation |
+| `card:<Card UUID>`（32 筆，見 Deck Manifest） | card | 對應 Deck Manifest 的 Card UUID | deck root | deck | 見下方完整 inventory | supported | passed | 無 |
+| `runtime:copied-action` | runtime object／stack item | 被複製 CardFace | Duchess Cardistry | copy、optional activate | 沿用來源 face 的 resolution slot | supported | passed | 無 |
 
 ## CardFace 與 Ability Slot inventory
 
@@ -225,21 +225,21 @@ fixed Standard deck
 
 ## 規則與機制覆蓋
 
-以下是完整解析後的新牌組機制範圍；CardFace 與 Ability Slot 已配置，但程式與測試完成前均不視為已支援。
+以下是完整解析後的固定牌組機制範圍；CardFace、Ability Slot、typed operation、正常案例與非法／邊界案例皆已實作並通過測試。
 
 | 機制 ID | 規則來源與條目 | 由哪些內容需要 | 所需 typed operation | 正常案例 | 非法／邊界案例 | 實作狀態 | 測試狀態 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `MEC-001` 開局／抽牌／deckout | `general-rules-starting-the-game.md`；`general-rules-ending-the-game.md` | Spirit、所有 deck card | shuffle、draw、deckout | Spirit 開局效果 | 牌庫不足 | unsupported | missing |
-| `MEC-002` materialize／level up | `playing-cards-card-materialization.md`；`card-types-champion.md` | Spirit、Tonoris、Material Deck | materialize、lineage、payment | Spirit 後合法 materialize | 不合法 lineage／費用 | unsupported | missing |
-| `MEC-003` declaration transaction／activation／target | `playing-cards-card-activation.md`；`player-action-legality.md` | actions、Regalia、activated abilities、Blazing Throw、Verita | declare、choose、target、pay、rollback、resolve、fizzle | 合法 action 與追加／替代費用 | 取消、無合法目標、費用失效 | unsupported | missing |
-| `MEC-004` trigger／duration／granted ability | `abilities-triggered-abilities.md`；`abilities-ability-tracking.md` | Spirit、Tonoris、Arthur、Heated、Impact、Noire、Peppered Chef、Red Hare、Rouge、Thornes、Verita | buffer trigger、order、grant、expire、LKI | On Enter／On Attack／On Death／On Wield | source 離場、跨回合 expiry | unsupported | missing |
-| `MEC-005` continuous effects／characteristic layers | `continuous-effects/README.md` | Arthur、Bulwark、Heated、Noire、Red Hare、Verita、Viridian、Cardistry cards | characteristic query、layer modifier、cost modifier、permission／prohibition | 同 layer 與 dependency 正確套用 | source 失效、timestamp／dependency 衝突 | unsupported | missing |
-| `MEC-006` prevention／replacement | `replacement-effects.md`；`game-mechanics-damage-prevention.md` | Safeguard、Infernal、Fiery Interference | prevent damage、replace recover、prohibit recover、expire | 合法防止、替代與禁止 | 0 或負 recover、非戰鬥／戰鬥分類 | unsupported | missing |
-| `MEC-007` combat／weapon／attack retarget | `combat-phase-attack-declaration.md`；`keywords-and-abilities.md` | Arthur、Bulwark、Heated、Impact、Red Hare、Smoke Bombs、Tonoris、Trump Set | attack declare、wield、taunt、stealth、true sight、retarget、damage | 合法攻擊、wield 與 reaction | 追加費用不足、retarget 原目標、失去目標 | unsupported | missing |
-| `MEC-008` Cardistry／Suited／once tracking | `playing-cards-resolution.md`；`game-terms.md#label-keywords` | Duchess、Wonderland's Reign、Spades／Hearts cards、Thornes | distinct-cost query、discount、rest、banish、once-per-instance、activation event | 合法 Cardistry activation | 同 instance 重複啟動、source 離場後新 instance | unsupported | missing |
-| `MEC-009` copy／source identity | `playing-cards-resolution.md`；[ADR 0012](./adr/0012-separate-card-object-and-stack-identities.md) | Duchess 與三張合格 fire action | copy object、source face、free optional activation、stack identity | copy 後選擇啟動並正確結算 | 不啟動、來源離開 graveyard、target 失效 | unsupported | missing |
-| `MEC-010` counters／draw-discard／zone movement | `game-mechanics-counters.md`；`game-mechanics-drawing-cards.md`；game zones | Noire、Two of Spades、Four of Hearts、Three of Hearts、Red Hare、Grand Crusader's Ring、Baubles | buff counter、draw、draw-to-memory、discard、put、banish、sacrifice | 正常移動與卡牌守恆 | 空牌庫、沒有合法選項、mandatory discard | unsupported | missing |
-| `MEC-011` keyword與格式限制 | `keywords-and-abilities.md`；Standard format rules | Divine Relic、Floating Memory、Fast Activation、Hindered、Immortality、Kindle、Pride、Stealth、Taunt、True Sight | keyword permission／restriction、deck validation | 關鍵字改變合法行動 | 關鍵字來源失效、互斥 permission | unsupported | missing |
+| `MEC-001` 開局／抽牌／deckout | `general-rules-starting-the-game.md`；`general-rules-ending-the-game.md` | Spirit、所有 deck card | shuffle、draw、deckout | Spirit 開局效果 | 牌庫不足 | supported | passed |
+| `MEC-002` materialize／level up | `playing-cards-card-materialization.md`；`card-types-champion.md` | Spirit、Tonoris、Material Deck | materialize、lineage、payment | Spirit 後合法 materialize | 不合法 lineage／費用 | supported | passed |
+| `MEC-003` declaration transaction／activation／target | `playing-cards-card-activation.md`；`player-action-legality.md` | actions、Allies、Regalia、activated abilities、Blazing Throw、Verita | declare、choose、target、pay、rollback、resolve、fizzle | 合法 action、Ally Stack response 與追加／替代費用 | 取消、無合法目標、費用失效、多餘 payload | supported | passed |
+| `MEC-004` trigger／duration／granted ability | `abilities-triggered-abilities.md`；`abilities-ability-tracking.md` | Spirit、Tonoris、Arthur、Heated、Impact、Noire、Peppered Chef、Red Hare、Rouge、Thornes、Verita | buffer trigger、order、grant、expire、LKI | On Enter／On Attack／On Death／On Wield | source 離場、跨回合 expiry | supported | passed |
+| `MEC-005` continuous effects／characteristic layers | `continuous-effects/README.md` | Arthur、Bulwark、Heated、Noire、Red Hare、Verita、Viridian、Cardistry cards | characteristic query、layer modifier、cost modifier、permission／prohibition | 同 layer 與 dependency 正確套用 | source 失效、timestamp／dependency 衝突 | supported | passed |
+| `MEC-006` prevention／replacement | `replacement-effects.md`；`game-mechanics-damage-prevention.md` | Safeguard、Infernal、Fiery Interference | prevent damage、replace recover、prohibit recover、expire | 合法防止、替代與禁止 | 0 或負 recover、非戰鬥／戰鬥分類 | supported | passed |
+| `MEC-007` combat／weapon／attack retarget | `combat-phase-attack-declaration.md`；`keywords-and-abilities.md` | Arthur、全部 Allies、Bulwark、Heated、Impact、Red Hare、Smoke Bombs、Tonoris、Trump Set | attack declare、obey、wield、taunt、stealth、true sight、retarget、damage | 一般 Ally／Champion 合法攻擊、wield 與 reaction | 追加費用不足、零 power／不 obey Ally、retarget 原目標、失去目標 | supported | passed |
+| `MEC-008` Cardistry／Suited／once tracking | `playing-cards-resolution.md`；`game-terms.md#label-keywords` | Duchess、Wonderland's Reign、Spades／Hearts cards、Thornes | distinct-cost query、discount、rest、banish、once-per-instance、activation event | 合法 Cardistry activation | 同 instance 重複啟動、source 離場後新 instance | supported | passed |
+| `MEC-009` copy／source identity | `playing-cards-resolution.md`；[ADR 0012](./adr/0012-separate-card-object-and-stack-identities.md) | Duchess 與三張合格 fire action | copy object、source face、free optional activation、stack identity | copy 後選擇啟動並正確結算 | 不啟動、來源離開 graveyard、target 失效 | supported | passed |
+| `MEC-010` counters／draw-discard／zone movement | `game-mechanics-counters.md`；`game-mechanics-drawing-cards.md`；game zones | Noire、Two of Spades、Four of Hearts、Three of Hearts、Red Hare、Grand Crusader's Ring、Baubles | buff counter、draw、draw-to-memory、discard、put、banish、sacrifice、simultaneous wake | 正常移動、Wake Up 與卡牌守恆 | 空牌庫、沒有合法選項、mandatory discard | supported | passed |
+| `MEC-011` keyword與格式限制 | `keywords-and-abilities.md`；Standard format rules | Divine Relic、Floating Memory、Fast Activation、Hindered、Immortality、Kindle、Pride、Stealth、Taunt、True Sight | keyword permission／restriction、deck validation | 關鍵字改變合法行動 | 關鍵字來源失效、互斥 permission | supported | passed |
 
 ## 規則裁定依賴
 

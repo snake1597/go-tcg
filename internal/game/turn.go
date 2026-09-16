@@ -2,6 +2,8 @@ package game
 
 import (
 	"fmt"
+	"sort"
+
 	"go-tcg/internal/model"
 	tcgErrors "go-tcg/internal/tcg_errors"
 )
@@ -89,7 +91,7 @@ func (g *Game) runStandardScheduler() {
 		scheduler := &g.state.Scheduler
 		switch scheduler.Phase {
 		case PhaseWakeUp:
-			g.wakeUpChampion(scheduler.TurnPlayer)
+			g.wakeUpObjects(scheduler.TurnPlayer)
 			g.expireTimedChampionEffects()
 			scheduler.Phase = PhaseMaterialize
 		case PhaseMaterialize:
@@ -119,19 +121,62 @@ func (g *Game) runStandardScheduler() {
 	}
 }
 
-func (g *Game) wakeUpChampion(player *model.Player) {
-	champion, exists := g.state.Champions[player.UID]
-	if !exists || !champion.Rested {
+// wakeUpObjects 同時喚醒回合玩家控制的所有 rested Champion 與 Field objects，並以穩定順序記錄事件。
+// 輸入為回合玩家；輸出為零值，副作用為清除合格 object 的 Rested 並追加一個公開 simultaneous event batch。
+func (g *Game) wakeUpObjects(player *model.Player) {
+	wokenCapacity := len(g.state.Objects) + 1
+	woken := make([]cardInstanceID, 0, wokenCapacity)
+	champion, championExists := g.state.Champions[player.UID]
+	if championExists && champion.Rested {
+		champion.Rested = false
+		g.state.Champions[player.UID] = champion
+		woken = append(woken, champion.Card)
+	}
+	objectCapacity := len(g.state.Objects)
+	objects := make([]objectID, 0, objectCapacity)
+	for id, object := range g.state.Objects {
+		if samePlayer(object.Owner, player) && object.Rested {
+			objects = append(objects, id)
+		}
+	}
+	sort.Slice(
+		objects,
+		func(first, second int) bool {
+			return objects[first] < objects[second]
+		},
+	)
+	for _, id := range objects {
+		object := g.state.Objects[id]
+		object.Rested = false
+		g.state.Objects[id] = object
+		woken = append(woken, object.Card)
+	}
+	if len(woken) == 0 {
 		return
 	}
-	champion.Rested = false
-	g.state.Champions[player.UID] = champion
-	g.recordPublicEvent(
-		player,
-		"turn:wake-up",
-		"wake-up",
-		champion.Card,
-	)
+	wokenCount := len(woken)
+	batch := eventBatch{
+		Player:       player,
+		Cause:        "turn:wake-up",
+		Simultaneous: wokenCount > 1,
+		Events:       make([]gameEvent, 0, wokenCount),
+	}
+	for _, card := range woken {
+		g.state.NextEvent++
+		batch.Events = append(
+			batch.Events,
+			gameEvent{
+				Sequence: g.state.NextEvent,
+				Kind:     "wake-up",
+				Card:     card,
+			},
+		)
+		for _, viewer := range g.players {
+			cardEntity := entityID(card)
+			g.recordVisibleEvent(viewer, "wake-up", cardEntity)
+		}
+	}
+	g.state.Events = append(g.state.Events, batch)
 }
 
 func (g *Game) recollectMemory(player *model.Player) {

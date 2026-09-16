@@ -20,10 +20,10 @@
 | 3. 第一張可操作卡 | [07](./07-blazing-throw-declaration-stack.md)～[10](./10-impact-hammer-trigger-ordering.md) | declaration、Stack、fast action、動態查詢與 trigger ordering 形成完整路徑 |
 | 4. 戰鬥縱切 | [11](./11-combat-retaliation-and-death.md) | 攻擊、Retaliation、傷害、死亡與敗北完整串接 |
 | 5. 固定牌組擴充 | [12](./12-central-characteristics-with-arthur-and-bulwark.md)、[12.5](./12.5-unified-ability-and-effect-runtime.md)～[23](./23-enable-complete-fixed-deck.md) | 固定牌組所有內容通過 Support Set gate |
-| 6. 首版收尾 | [24](./24-player-view-only-heuristic-bot.md)～[27](./27-v1-release-quality-gate.md) | bot、production CLI、完整對戰與發布品質 gate 完成 |
+| 6. 首版收尾 | [24](./24-player-view-only-heuristic-bot.md)～[27](./27-v1-release-quality-gate.md) | bot、production CLI 與除 100-seed 執行 gate 外的發布品質驗收完成 |
 
 里程碑只用來描述產品完成度，不改變 issue 的實際依賴。工作選擇與解鎖仍以各 issue 的 `Blocked by` 和 `Status` 為準。
 
 ## 目前可執行
 
-依目前狀態，issue 01 至 26 已完成；下一張可執行工作是 [27：首版發布與文件 gate](./27-v1-release-quality-gate.md)。Ticket 26 收尾後確認的測試、收斂性、輸入契約與規則核對工作，均已列在 issue 27 的「已知未完成項目」，完成前不得宣告首版可發布。
+issue 01 至 27 已完成。issue 27 的 100-seed 鏡像執行 gate 經產品負責人核准延後，已保留於該 ticket，執行前不得宣告首版完整發布。

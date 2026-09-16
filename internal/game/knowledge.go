@@ -131,7 +131,7 @@ func (g *Game) refreshLegalActions() {
 					objectAbilities[handle] = source
 				}
 			case samePlayer(player, g.state.Scheduler.TurnPlayer) && g.state.Scheduler.Phase == PhaseMaterialize:
-				for _, card := range g.legalChampionMaterializations(player) {
+				for _, card := range g.legalMaterializations(player) {
 					handle := g.newViewHandle(
 						player,
 						"action:materialize:"+string(card),
@@ -189,17 +189,13 @@ func (g *Game) legalActions(player *model.Player) []LegalAction {
 		)
 	}
 	for handle, card := range g.state.Knowledge.Activations[player.UID] {
-		reserveCost := g.actionReserveCost(player, card)
-		if g.state.Cards[card].Definition == veritaCardID && len(g.veritaAlternativeCostCards(player)) > 0 {
-			reserveCost = 0
-		}
 		legalActions = append(
 			legalActions,
 			LegalAction{
 				Handle:         handle,
 				Kind:           constants.ActionActivate,
 				CardName:       g.state.Entities[entityID(card)].Name,
-				ReserveCost:    reserveCost,
+				ReserveCost:    g.activationReserveCost(player, card),
 				ReserveOptions: g.visibleReserveCards(player, card),
 			},
 		)
@@ -218,13 +214,19 @@ func (g *Game) legalActions(player *model.Player) []LegalAction {
 		})
 	}
 	for handle, source := range g.state.Knowledge.Cardistries[player.UID] {
+		card := g.state.Objects[source].Card
+		baseCost, _ := g.cardistryBaseCost(card)
+		cost := g.cardistryCost(player, baseCost)
+		memoryCount := len(g.state.Zones[player.UID].Memory)
+		floatingMemoryRequired := max(cost-memoryCount, 0)
 		legalActions = append(
 			legalActions,
 			LegalAction{
-				Handle:                handle,
-				Kind:                  constants.ActionActivate,
-				CardName:              g.cardName(g.state.Objects[source].Card),
-				FloatingMemoryOptions: g.visibleFloatingMemory(player),
+				Handle:                 handle,
+				Kind:                   constants.ActionActivate,
+				CardName:               g.cardName(card),
+				FloatingMemoryRequired: floatingMemoryRequired,
+				FloatingMemoryOptions:  g.visibleFloatingMemory(player),
 			},
 		)
 	}
@@ -249,11 +251,22 @@ func (g *Game) legalActions(player *model.Player) []LegalAction {
 	return legalActions
 }
 
+// activationReserveCost 回傳 PlayerView 與 Input payload 契約共同使用的實際 Reserve 張數。
+// 輸入為啟動玩家與手牌卡牌；輸出為一般 reserve cost，或 Verita 可用替代費用時的零，無副作用。
+func (g *Game) activationReserveCost(player *model.Player, card cardInstanceID) int {
+	alternativeCostCards := g.veritaAlternativeCostCards(player)
+	if g.state.Cards[card].Definition == veritaCardID && len(alternativeCostCards) > 0 {
+		return 0
+	}
+	return g.actionReserveCost(player, card)
+}
+
 // visibleReserveCards 投影可支付指定行動 reserve cost 的其他手牌。
 // 輸入為玩家與正在啟動的手牌；輸出為可選的不透明 handles，無副作用且不暴露對手資訊。
 func (g *Game) visibleReserveCards(player *model.Player, source cardInstanceID) []VisibleCard {
 	zones := g.state.Zones[player.UID]
-	options := make([]VisibleCard, 0, len(zones.Hand))
+	optionCapacity := len(zones.Hand)
+	options := make([]VisibleCard, 0, optionCapacity)
 	for _, card := range zones.Hand {
 		if card == source {
 			continue
