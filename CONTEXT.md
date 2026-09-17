@@ -20,7 +20,7 @@ _避免稱為_：Pantheon 單局
 擁有牌組，並在單局中操控 Champion 與其他遊戲物件的參與者。
 
 **Champion**：
-在單局中代表玩家的單位；擊敗對手的所有 Champion 是使該玩家落敗的主要方式。
+在單局中代表玩家、並各自持有生命值的單位；Player 本身不持有生命值，擊敗對手的所有 Champion 是使該玩家落敗的主要方式。
 
 **Lineage**：
 代表一個 Champion 的完整卡牌集合，由目前位於頂端、代表 Champion Object 的卡牌及其下方 Inner Lineage 組成。
@@ -68,6 +68,45 @@ _避免稱為_：StackItem、堆疊層
 位於手牌、牌庫、墓地、Memory、Banishment 或其他卡牌專屬區域中的卡片；卡牌位於場上時由遊戲物件表示。
 _避免稱為_：遊戲物件
 
+**手牌區（Hand）**：
+玩家持有實際手牌的隱藏卡牌區域；它不包含僅因規則允許而可從 Graveyard、Banishment 或其他區域打出的牌。
+_避免稱為_：可使用卡牌集合
+
+**可使用卡牌集合（Playable Cards）**：
+指定玩家依當下單局狀態可合法打出的卡牌集合；成員可以來自 Hand、Graveyard、Banishment 或其他獲規則許可的區域，但它本身不是卡牌區域。
+_避免稱為_：手牌區、Hand
+
+**放逐區（Banishment）**：
+保存被 banish 之卡牌的公開卡牌區域；雙方玩家可查看其內容，區內卡牌不具有 Awake 或 Rested 狀態，其橫向呈現也不代表 Rested。
+_避免稱為_：棄牌區、Graveyard、Banished
+
+**墓地（Graveyard）**：
+保存依法移入墓地之卡牌的公開卡牌區域；雙方玩家可查看其內容，但卡牌位於此處不代表它當下可被打出。
+_避免稱為_：棄牌區、Banishment、可使用卡牌集合
+
+**Memory**：
+玩家各自擁有的私人卡牌區域；owner 可查看其全部內容，其他玩家只能查看規則明確使其公開的卡牌與區域總張數。
+_避免稱為_：公開區域、Graveyard、Banishment
+
+**Reserve Cost**：
+通常由玩家選擇其他 Hand 卡牌並將其面朝下放入 Memory 支付的費用；規則允許的 Reservable Object 等其他來源也可以支付其中一部分。
+_避免稱為_：Memory Cost
+
+**Memory Cost**：
+先套用 Floating Memory 等非隨機支付來源，再由引擎從 Memory 公平隨機選牌並 banish 以支付剩餘數量的費用。
+_避免稱為_：Reserve Cost
+
+**Reservable**：
+允許玩家在支付 Reserve Cost 時 rest 該 Object，以支付其中 1 點的 static ability。
+
+**費用支付（Cost Payment）**：
+宣告流程中依最終費用與合法支付來源完成付款的原子步驟；一般 Memory 的隨機支付由引擎決定，玩家只選擇規則授權的非隨機來源。
+_避免稱為_：支付 Memory
+
+**主牌組（Main Deck）**：
+玩家各自擁有、且 owner 也不能任意查看內容的私人卡牌區域；一般情況只公開剩餘張數，規則明確授權時才提供受限的查看或選擇範圍。
+_避免稱為_：手牌區、Material Deck、公開區域
+
 **卡牌定義（Card Definition）**：
 由穩定 card ID 識別的不可變卡面資料與已註冊行為；它不是單局中的實體卡，也不保存 runtime 狀態。
 
@@ -91,6 +130,22 @@ _避免稱為_：卡牌實例、堆疊項目
 
 **單位（Unit）**：
 遊戲物件的子集合，只包含 Ally 與 Champion。
+
+**Awake**：
+Object 可依規則執行需要 awake 狀態之行動的狀態；介面以直立顯示。
+_避免稱為_：Reset、Ready
+
+**Rested**：
+Object 已被 rest、且尚未 wake up 的狀態；介面以向左旋轉九十度顯示。
+_避免稱為_：Reset、Tapped
+
+**Rest**：
+使 Object 從 Awake 改為 Rested 的遊戲事件。
+_避免稱為_：Reset、Tap
+
+**Wake Up**：
+使 Object 從 Rested 改為 Awake 的遊戲事件。
+_避免稱為_：Reset、Untap
 
 **堆疊項目（Stack Item）**：
 位於 Effects Stack 有序結構上的 activation、Materialization、bestowment 或 ability instance；它不是 Source Card，也不是場上的遊戲物件。
