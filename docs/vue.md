@@ -116,6 +116,8 @@ Store 責任：
 
 只有 API adapter 可呼叫 RPC；component 不持有 RPC client 或規則邏輯。文案使用 i18n key；首版介面為繁體中文，官方術語與卡名可保留英文。介面語言與 Card Catalog 語言分開處理。
 
+實作順序先以 Game Client Interface 隔離 UI，再提供兩個 Adapter：開發與 UI 測試使用 deterministic Fixture Adapter，正式環境使用 ConnectRPC Adapter。Fixture 只播放符合合約的 snapshot、Draft、EventBatch 與錯誤情境，不模擬規則；ConnectRPC Adapter 最後介接，集中處理 generated Protobuf type 與 UI-facing model 的映射。
+
 其他架構限制：
 
 - transport、base URL、bearer interceptor、Connect error 轉換與 stream 生命週期集中在 API adapter。
@@ -166,6 +168,7 @@ Store 責任：
 
 - Vitest：Pinia store、API adapter、accepted revision、重連、接管、Draft invalidation、presentation queue 與 i18n error mapping。
 - Vue Test Utils：Inspector、zone dialog、Declaration step、focus trap／restore、ARIA state、empty／error state 與 reduced motion。
+- Fixture Adapter：在 Go API 完成前驗證 layout、互動與前端狀態機；不得作為規則合法性、資訊隔離或 transport 的驗收證據。
 - Go contract：generated client 經 `httptest`、真實 Connect handler、應用層與 Game Module；不 mock legality 或隱藏資訊。
 - Playwright：built Vue 對真實 Go server，覆蓋 CreatePracticeGame 至 game finished／NeedsRuling，並驗證 response 與 DOM 都沒有對手私密資訊。
 - Release gate：typecheck、lint、production build、三個 browser engine、Go unit／rules／contract／race 與既有 replay verification 全部通過；不得用無限 retry 掩蓋 flaky test。

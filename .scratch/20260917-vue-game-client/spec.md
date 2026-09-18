@@ -80,12 +80,17 @@ Status: ready-for-agent
 - 事件以 cursor 獨立載入，不從 PlayerView 重建歷史。
 - card catalog 與 image assets 由 Go 提供，Vue 以 CardRef 查找。
 - Store 分為 session、catalog、gameView、presentation、declaration、ui；只有 API adapter 接觸 RPC。
+- UI 透過 Game Client Interface 存取遊戲能力；前期使用 deterministic Fixture Adapter，最後再加入 ConnectRPC Adapter。
+- Fixture Adapter 只播放符合正式合約的 PlayerView、Draft step、EventBatch 與錯誤情境，不計算規則、隱藏資訊、cost、target、trigger 或 Bot 行動。
+- UI-facing models 不直接等同 Protobuf message；ConnectRPC Adapter 集中負責 wire format mapping，避免 generated type 滲入 component。
 - loading／error 分為頁面、阻擋、對局覆蓋、局部四級。
 - 所有文案預留 i18n；介面語言與 card catalog 語言彼此獨立。
 
 ## Testing Decisions
 
-- 主要驗收 seam 是 built Vue 對真實本機 Go server 的 Playwright 測試，從 CreatePracticeGame 經 catalog、WatchGame、Declaration、Pay Cost、動畫、重連到對局結束。
+- UI 開發期間以 Game Client Interface 加 Fixture Adapter 為主要 seam，讓 layout、stores、互動、動畫與錯誤狀態能在 Go API 完成前獨立驗證。
+- Fixture 測試只能驗證前端行為，不能宣稱規則合法性、server-side 隱藏資訊、session 接管或 transport resilience 已驗收。
+- 最終 release seam 仍是 built Vue 對真實本機 Go server 的 Playwright 測試，從 CreatePracticeGame 經 catalog、WatchGame、Declaration、Pay Cost、動畫、重連到對局結束。
 - 主要端對端測試使用 Chromium、Firefox 與 WebKit，驗證外部可見行為，不查 component 內部狀態。
 - Vitest 測試 Pinia store、API adapter 狀態機、accepted revision、重連、session takeover、Draft invalidation 與 presentation queue。
 - Vue Test Utils 測試 Card Inspector、區域 dialog、Declaration step、focus recovery、ARIA 狀態與 reduced motion。
