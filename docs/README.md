@@ -11,6 +11,11 @@
 | 現在應該實作什麼 | [Grand Archive v1 工作追蹤](../.scratch/grand-archive-v1/issues/README.md#目前可執行) | [`card.md`](./card.md#support-set-dependency-graph) |
 | 功能是否完成或被什麼阻擋 | [Grand Archive v1 工作追蹤](../.scratch/grand-archive-v1/issues/README.md) | [`implementation-features.md`](./implementation-features.md)、[`rules-issues.md`](./rules-issues.md) |
 | 首版範圍、核心模型或完成門檻 | [`development-plan.md`](./development-plan.md) | 對應 ADR |
+| Vue 對局介面的產品、互動、架構、錯誤、無障礙、效能與測試 | [`vue.md`](./vue.md) | [`specs/player-view-contract.md`](./specs/player-view-contract.md)、[`specs/connectrpc-player-api.md`](./specs/connectrpc-player-api.md) |
+| CardRef、各區域、Effects Stack、Combat 與資訊可見性 | [`specs/player-view-contract.md`](./specs/player-view-contract.md) | [ADR 0006](./adr/0006-expose-player-scoped-views-to-controllers.md)、[ADR 0012](./adr/0012-separate-card-object-and-stack-identities.md)、[ADR 0016](./adr/0016-use-hierarchical-content-ids.md) |
+| 多步驟 Declaration、Pay Cost 與不可用原因 | [`specs/declaration-draft-and-cost-payment.md`](./specs/declaration-draft-and-cost-payment.md) | [ADR 0004](./adr/0004-use-guided-choices-and-atomic-actions.md) |
+| Game Host、ConnectRPC、PlayerSession、stream、事件與本機安全 | [`specs/connectrpc-player-api.md`](./specs/connectrpc-player-api.md) | [ADR 0018](./adr/0018-expose-connectrpc-http-api-to-separate-vue-client.md) |
+| Replay 與 Bot 策略訓練待討論什麼 | [`deferred-replay-and-bot.md`](./deferred-replay-and-bot.md) | [ADR 0008](./adr/0008-record-replays-as-versioned-inputs.md) |
 | 規則歧義與採用的裁定 | [`rules-issues.md`](./rules-issues.md) | 官方 `rules/`、對應 ADR |
 | 測試策略與禁止模式 | [`testing.md`](./testing.md) | [`development-plan.md`](./development-plan.md#每個垂直切片的強制流程) |
 | production CLI 如何執行與輸出 replay | [`../README.md`](../README.md#執行-production-cli) | [`testing.md`](./testing.md#首版發布-gate)、[ADR 0008](./adr/0008-record-replays-as-versioned-inputs.md) |
@@ -27,10 +32,15 @@
 | [Grand Archive v1 工作追蹤](../.scratch/grand-archive-v1/issues/README.md) | 里程碑、issue 執行順序、相依、狀態與逐項驗收結果 | implementation features、card dependency、rules issues | 完整功能規格、牌表、規則裁定內容 |
 | [`rules-issues.md`](./rules-issues.md) | 規則歧義、裁定狀態、證據與處理流程 | 官方 rules、ADR | 牌組清單、實作進度 |
 | [`testing.md`](./testing.md) | 測試層級、情境格式、品質 gate 與禁止模式 | development plan、rules | 功能 backlog、卡牌 registry |
+| [`vue.md`](./vue.md) | Vue 產品、互動、前端架構與品質門檻 | 三份玩家介面合約、ADR | Game Module 內部型別、transport schema、未決 Replay／Bot 設計 |
+| [`specs/player-view-contract.md`](./specs/player-view-contract.md) | PlayerView、CardRef、區域、Stack、Combat 與資訊安全 | KnowledgeState ADR、card data | Vue layout、RPC/session、Declaration transaction |
+| [`specs/declaration-draft-and-cost-payment.md`](./specs/declaration-draft-and-cost-payment.md) | 可取消的宣告交易、步驟、費用與原子提交 | PlayerView、guided choice ADR | Vue component、HTTP、一般區域投影 |
+| [`specs/connectrpc-player-api.md`](./specs/connectrpc-player-api.md) | Game Host、RPC、session、stream、事件 cursor、catalog delivery 與本機安全 | PlayerView、Declaration、ConnectRPC ADR | 規則判定、Vue component、未決 production topology |
+| [`deferred-replay-and-bot.md`](./deferred-replay-and-bot.md) | 尚未決定的 Replay 與 Bot 訓練問題 | 已確認 UI／API 邊界 | 現行首版需求或已批准設計 |
 | [`adr/`](./adr/) | 已批准且難以逆轉的單一決策及理由 | plan、rules、research | 當前版本、工作狀態 |
 | [`research/`](./research/) | 研究過程、風險與來源證據 | primary sources、ADR | 當前執行狀態 |
 
-關聯方向保持單向：工作追蹤讀取 `implementation-features.md`、`card.md` 與 `rules-issues.md`；`implementation-features.md` 讀取 `development-plan.md` 與 `card.md`；`card.md` 讀取卡面 manifest、rules 與 `rules-issues.md`；README 只導向這些文件。下游文件不得反向複製上游事實。
+關聯方向保持單向：Vue 讀取 PlayerView、Declaration 與 ConnectRPC 合約；ConnectRPC 讀取 PlayerView 與 Declaration，不反向定義規則；工作追蹤讀取規格，不把驗收內容複製回規格。`card.md` 仍是卡面資料與 Support Set 的唯一來源。下游文件不得反向複製上游事實。
 
 ## ADR 索引
 
@@ -52,3 +62,5 @@
 | [0014](./adr/0014-centralize-derived-characteristics-and-replacements.md) | 中央 derived evaluator 與 replacement pipeline |
 | [0015](./adr/0015-retain-opportunity-until-the-holder-passes.md) | Opportunity 由行動者保留至讓過 |
 | [0016](./adr/0016-use-hierarchical-content-ids.md) | CardFace 與 Ability Slot 的顯式階層式 ID |
+| [0017](./adr/0017-use-a-unified-ability-and-effect-runtime.md) | 統一的 Ability Instance、Effect Runtime 與 typed operations |
+| [0018](./adr/0018-expose-connectrpc-http-api-to-separate-vue-client.md) | ConnectRPC HTTP API 與獨立 Vue 專案邊界 |
