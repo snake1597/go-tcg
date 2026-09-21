@@ -55,7 +55,7 @@ func TestLegalAttackersIncludesEveryObeyingPositivePowerAlly(t *testing.T) {
 	game.state.Scheduler = schedulerFrame{
 		Kind:              schedulerStable,
 		TurnPlayer:        model.PlayerOne,
-		Phase:             PhaseMain,
+		Phase:             constants.PhaseMain,
 		OpportunityHolder: model.PlayerOne,
 		TurnNumber:        3,
 	}
@@ -140,7 +140,7 @@ func TestLegalAttackersExcludesFirstTurnChampion(t *testing.T) {
 	game.state.Scheduler = schedulerFrame{
 		Kind:              schedulerStable,
 		TurnPlayer:        model.PlayerOne,
-		Phase:             PhaseMain,
+		Phase:             constants.PhaseMain,
 		OpportunityHolder: model.PlayerOne,
 		TurnNumber:        1,
 	}
@@ -250,7 +250,7 @@ func TestWieldIsUnavailableOutsideMainPhase(t *testing.T) {
 			"WEAPON",
 		},
 	}
-	game.state.Scheduler.Phase = PhaseEnd
+	game.state.Scheduler.Phase = constants.PhaseEnd
 	game.advanceKnowledgeRevision()
 	view, err := game.PlayerView(model.PlayerOne)
 	if err != nil {

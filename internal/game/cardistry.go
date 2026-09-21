@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sort"
 
+	"go-tcg/internal/constants"
 	"go-tcg/internal/model"
 	tcgErrors "go-tcg/internal/tcg_errors"
 )
@@ -41,7 +42,7 @@ func (g *Game) canActivateCardistry(player *model.Player, source objectID) bool 
 	if baseCost < 0 || !samePlayer(g.state.Scheduler.OpportunityHolder, player) {
 		return false
 	}
-	if !fast && (!samePlayer(g.state.Scheduler.TurnPlayer, player) || g.state.Scheduler.Phase != PhaseMain || len(g.state.EffectsStack) != 0) {
+	if !fast && (!samePlayer(g.state.Scheduler.TurnPlayer, player) || g.state.Scheduler.Phase != constants.PhaseMain || len(g.state.EffectsStack) != 0) {
 		return false
 	}
 	return g.canPayCardistryCost(

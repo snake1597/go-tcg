@@ -43,7 +43,7 @@ func TestStandardSetupStartsFirstTurnAtMainAndPassesToSecondPlayersDraw(t *testi
 		game,
 		model.PlayerOne,
 		model.PlayerOne,
-		PhaseMain,
+		constants.PhaseMain,
 		model.PlayerOne,
 		[]constants.ActionKind{
 			constants.ActionConcede,
@@ -55,7 +55,7 @@ func TestStandardSetupStartsFirstTurnAtMainAndPassesToSecondPlayersDraw(t *testi
 		game,
 		model.PlayerTwo,
 		model.PlayerOne,
-		PhaseMain,
+		constants.PhaseMain,
 		model.PlayerOne,
 		[]constants.ActionKind{
 			constants.ActionConcede,
@@ -73,7 +73,7 @@ func TestStandardSetupStartsFirstTurnAtMainAndPassesToSecondPlayersDraw(t *testi
 		game,
 		model.PlayerTwo,
 		model.PlayerOne,
-		PhaseMain,
+		constants.PhaseMain,
 		model.PlayerTwo,
 		[]constants.ActionKind{
 			constants.ActionConcede,
@@ -92,7 +92,7 @@ func TestStandardSetupStartsFirstTurnAtMainAndPassesToSecondPlayersDraw(t *testi
 		game,
 		model.PlayerOne,
 		model.PlayerOne,
-		PhaseEnd,
+		constants.PhaseEnd,
 		model.PlayerOne,
 		[]constants.ActionKind{
 			constants.ActionConcede,
@@ -124,7 +124,7 @@ func TestStandardSetupStartsFirstTurnAtMainAndPassesToSecondPlayersDraw(t *testi
 		game,
 		model.PlayerTwo,
 		model.PlayerTwo,
-		PhaseMain,
+		constants.PhaseMain,
 		model.PlayerTwo,
 		[]constants.ActionKind{
 			constants.ActionConcede,
@@ -165,7 +165,7 @@ func TestStandardGameCompletesTurnsAndReplaysWakeUp(t *testing.T) {
 	if err != nil {
 		t.Fatalf("PlayerView() error = %v", err)
 	}
-	if secondView.TurnNumber != 2 || secondView.Phase != PhaseMain {
+	if secondView.TurnNumber != 2 || secondView.Phase != constants.PhaseMain {
 		t.Fatalf(
 			"Player Two turn = %d phase %q, want turn 2 main after wake-up and draw",
 			secondView.TurnNumber,
@@ -219,7 +219,7 @@ func TestStandardGameCompletesTurnsAndReplaysWakeUp(t *testing.T) {
 		game,
 		model.PlayerOne,
 		model.PlayerOne,
-		PhaseMaterialize,
+		constants.PhaseMaterialize,
 		nil,
 		[]constants.ActionKind{
 			constants.ActionConcede,
@@ -335,7 +335,7 @@ func playTargetedActionAndResolve(
 		game,
 		player,
 		player,
-		PhaseMain,
+		constants.PhaseMain,
 		player,
 		[]constants.ActionKind{
 			constants.ActionConcede,
@@ -380,7 +380,7 @@ func playAllyAndResolve(
 		game,
 		player,
 		player,
-		PhaseMain,
+		constants.PhaseMain,
 		player,
 		[]constants.ActionKind{
 			constants.ActionConcede,
@@ -450,7 +450,7 @@ func completeMainAndEnd(
 		game,
 		player,
 		player,
-		PhaseMain,
+		constants.PhaseMain,
 		player,
 		[]constants.ActionKind{
 			constants.ActionConcede,
@@ -467,7 +467,7 @@ func completeMainAndEnd(
 		game,
 		player,
 		player,
-		PhaseEnd,
+		constants.PhaseEnd,
 		player,
 		[]constants.ActionKind{
 			constants.ActionConcede,
@@ -535,7 +535,7 @@ func TestWakeUpPhaseWakesAllControlledRestedObjects(t *testing.T) {
 	champion := game.state.Champions[model.PlayerTwo.UID]
 	champion.Rested = true
 	game.state.Champions[model.PlayerTwo.UID] = champion
-	game.state.Scheduler.Phase = PhaseEnd
+	game.state.Scheduler.Phase = constants.PhaseEnd
 	game.state.Scheduler.OpportunityHolder = model.PlayerOne
 	game.advanceKnowledgeRevision()
 
@@ -598,7 +598,7 @@ func TestStandardPassesDeterministicallyReachRecollectionOnTheNextTurn(t *testin
 		first,
 		model.PlayerOne,
 		model.PlayerOne,
-		PhaseMaterialize,
+		constants.PhaseMaterialize,
 		nil,
 		[]constants.ActionKind{
 			constants.ActionConcede,
@@ -616,7 +616,7 @@ func TestStandardPassesDeterministicallyReachRecollectionOnTheNextTurn(t *testin
 		first,
 		model.PlayerOne,
 		model.PlayerOne,
-		PhaseRecollection,
+		constants.PhaseRecollection,
 		model.PlayerOne,
 		[]constants.ActionKind{
 			constants.ActionConcede,
@@ -653,7 +653,7 @@ func TestStandardTurnStopsAtMaterializeUntilTurnPlayerSkipsIt(t *testing.T) {
 		game,
 		model.PlayerTwo,
 		model.PlayerTwo,
-		PhaseMaterialize,
+		constants.PhaseMaterialize,
 		nil,
 		[]constants.ActionKind{
 			constants.ActionConcede,
@@ -672,7 +672,7 @@ func TestStandardTurnStopsAtMaterializeUntilTurnPlayerSkipsIt(t *testing.T) {
 		game,
 		model.PlayerTwo,
 		model.PlayerTwo,
-		PhaseRecollection,
+		constants.PhaseRecollection,
 		model.PlayerTwo,
 		[]constants.ActionKind{
 			constants.ActionConcede,
@@ -776,7 +776,7 @@ func TestMaterializingTonorisLevelsUpChampionAndGrantsTaunt(t *testing.T) {
 	if err := replay.Verify(); err != nil {
 		t.Fatalf("serialized Replay().Verify() error = %v", err)
 	}
-	for game.state.Scheduler.TurnPlayer != player || game.state.Scheduler.Phase != PhaseMaterialize {
+	for game.state.Scheduler.TurnPlayer != player || game.state.Scheduler.Phase != constants.PhaseMaterialize {
 		currentView, err := game.PlayerView(game.state.Scheduler.TurnPlayer)
 		if err != nil {
 			t.Fatalf("PlayerView() advancing taunt duration error = %v", err)
@@ -939,7 +939,7 @@ func TestMaterializingTonorisRejectsIllegalTimingWithoutChangingState(t *testing
 		t.Fatalf("PlayerView() error = %v", err)
 	}
 	materialize := materializationActionByCardName(t, view, "Tonoris, Lone Mercenary")
-	game.state.Scheduler.Phase = PhaseMain
+	game.state.Scheduler.Phase = constants.PhaseMain
 	before := game.StateHash()
 	if err := game.Submit(
 		player,
@@ -1172,7 +1172,7 @@ func assertTurnView(
 	game *Game,
 	player *model.Player,
 	wantTurnPlayer *model.Player,
-	wantPhase Phase,
+	wantPhase constants.Phase,
 	wantOpportunity *model.Player,
 	wantActions []constants.ActionKind,
 ) {
@@ -1197,7 +1197,7 @@ func assertTurnView(
 	}
 	if samePlayer(player, wantOpportunity) {
 		allowedActions[constants.ActionActivate] = true
-		if game.state.Scheduler.TurnNumber > 1 && samePlayer(player, wantTurnPlayer) && wantPhase == PhaseMain && len(game.state.EffectsStack) == 0 {
+		if game.state.Scheduler.TurnNumber > 1 && samePlayer(player, wantTurnPlayer) && wantPhase == constants.PhaseMain && len(game.state.EffectsStack) == 0 {
 			allowedActions[constants.ActionAttack] = true
 			allowedActions[constants.ActionWield] = true
 		}
@@ -1282,7 +1282,7 @@ func newTonorisMaterializationGame(t *testing.T) *Game {
 	if err != nil {
 		t.Fatalf("NewStandardGame() error = %v", err)
 	}
-	for game.state.Scheduler.TurnPlayer != model.PlayerTwo || game.state.Scheduler.Phase != PhaseMaterialize {
+	for game.state.Scheduler.TurnPlayer != model.PlayerTwo || game.state.Scheduler.Phase != constants.PhaseMaterialize {
 		view, err := game.PlayerView(model.PlayerOne)
 		if err != nil {
 			t.Fatalf("PlayerView() error = %v", err)

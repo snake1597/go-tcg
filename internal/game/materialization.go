@@ -2,6 +2,7 @@ package game
 
 import (
 	"fmt"
+	"go-tcg/internal/constants"
 	"go-tcg/internal/model"
 	tcgErrors "go-tcg/internal/tcg_errors"
 )
@@ -13,25 +14,6 @@ const (
 	impactHammerCardID       CardID = "chsbalegbs"
 	impactHammerOnWieldCause        = "ability:chsbalegbs:front:on-wield-self-damage"
 )
-
-type effectStackItemKind string
-
-const (
-	effectStackMaterialization effectStackItemKind = "materialization"
-	effectStackTonorisTaunt    effectStackItemKind = "tonoris_on_enter_taunt"
-	effectStackCombat          effectStackItemKind = "combat"
-	effectStackAbility         effectStackItemKind = "ability"
-)
-
-type effectStackItem struct {
-	Kind       effectStackItemKind `json:"kind"`
-	Controller *model.Player       `json:"controller"`
-	Source     cardInstanceID      `json:"source"`
-	Target     objectID            `json:"target,omitempty"`
-	Attacker   objectID            `json:"attacker,omitempty"`
-	SourceLKI  cardInstanceID      `json:"source_lki,omitempty"`
-	Ability    *abilityInstance    `json:"ability,omitempty"`
-}
 
 // legalMaterializations 回傳目前玩家在 Materialize 階段可從 Material Deck 使用的牌。
 // 輸入為目前行動玩家；輸出依 Material Deck 原始順序排列；不會改變對局狀態。
@@ -54,7 +36,7 @@ func (g *Game) legalMaterializations(player *model.Player) []cardInstanceID {
 // 輸入為玩家與候選牌；輸出為可否 materialize；不會改變對局狀態。
 func (g *Game) canMaterialize(player *model.Player, card cardInstanceID) bool {
 	scheduler := g.state.Scheduler
-	if scheduler.Kind != schedulerStable || scheduler.Phase != PhaseMaterialize || !samePlayer(scheduler.TurnPlayer, player) || scheduler.OpportunityHolder != nil {
+	if scheduler.Kind != schedulerStable || scheduler.Phase != constants.PhaseMaterialize || !samePlayer(scheduler.TurnPlayer, player) || scheduler.OpportunityHolder != nil {
 		return false
 	}
 	candidate, exists := g.state.Cards[card]
@@ -171,26 +153,6 @@ func removeCardAt(cards []cardInstanceID, index int) []cardInstanceID {
 		cards[:index],
 		cards[index+1:]...,
 	)
-}
-
-// resolveTopEffectStack 先移除堆疊頂項目，再依種類結算，因此結算中加入的新項目會留在堆疊。
-// 呼叫端須保證堆疊非空，能力項目須有 Ability；未知種類會 panic。
-func (g *Game) resolveTopEffectStack() {
-	lastIndex := len(g.state.EffectsStack) - 1
-	item := g.state.EffectsStack[lastIndex]
-	g.state.EffectsStack = g.state.EffectsStack[:lastIndex]
-	switch item.Kind {
-	case effectStackMaterialization:
-		g.resolveMaterialization(item)
-	case effectStackTonorisTaunt:
-		g.resolveTonorisTaunt(item)
-	case effectStackCombat:
-		g.resolveCombat(item)
-	case effectStackAbility:
-		g.resolveAbility(*item.Ability)
-	default:
-		panic(fmt.Sprintf("unknown effect stack item %q", item.Kind))
-	}
 }
 
 // resolveMaterialization 消耗 Stack 來源，並依牌類型結算 Champion 升級或 Regalia 進場。

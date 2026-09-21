@@ -4,19 +4,9 @@ import (
 	"fmt"
 	"sort"
 
+	"go-tcg/internal/constants"
 	"go-tcg/internal/model"
 	tcgErrors "go-tcg/internal/tcg_errors"
-)
-
-type Phase string
-
-const (
-	PhaseWakeUp       Phase = "wake_up"
-	PhaseMaterialize  Phase = "materialize"
-	PhaseRecollection Phase = "recollection"
-	PhaseDraw         Phase = "draw"
-	PhaseMain         Phase = "main"
-	PhaseEnd          Phase = "end"
 )
 
 // passOpportunity 僅接受穩定排程下的行動機會持有者 pass。
@@ -39,7 +29,7 @@ func (g *Game) passOpportunity(player *model.Player) error {
 		if g.state.Finished {
 			return nil
 		}
-		if len(g.state.EffectsStack) == 0 && scheduler.Phase == PhaseMaterialize {
+		if len(g.state.EffectsStack) == 0 && scheduler.Phase == constants.PhaseMaterialize {
 			g.advanceAfterOpportunity()
 			return nil
 		}
@@ -56,18 +46,18 @@ func (g *Game) passOpportunity(player *model.Player) error {
 func (g *Game) advanceAfterOpportunity() {
 	scheduler := &g.state.Scheduler
 	switch scheduler.Phase {
-	case PhaseMaterialize:
-		scheduler.Phase = PhaseRecollection
-	case PhaseRecollection:
+	case constants.PhaseMaterialize:
+		scheduler.Phase = constants.PhaseRecollection
+	case constants.PhaseRecollection:
 		g.recollectMemory(scheduler.TurnPlayer)
-		scheduler.Phase = PhaseDraw
-	case PhaseMain:
-		scheduler.Phase = PhaseEnd
-	case PhaseEnd:
+		scheduler.Phase = constants.PhaseDraw
+	case constants.PhaseMain:
+		scheduler.Phase = constants.PhaseEnd
+	case constants.PhaseEnd:
 		scheduler.TurnPlayer = g.nextPlayer(scheduler.TurnPlayer)
 		scheduler.TurnNumber++
 		clear(g.state.CardistryDiscounts)
-		scheduler.Phase = PhaseWakeUp
+		scheduler.Phase = constants.PhaseWakeUp
 	default:
 		panic(fmt.Sprintf("cannot advance after opportunity in phase %q", scheduler.Phase))
 	}
@@ -76,10 +66,10 @@ func (g *Game) advanceAfterOpportunity() {
 
 func (g *Game) skipMaterialize(player *model.Player) error {
 	scheduler := &g.state.Scheduler
-	if scheduler.Kind != schedulerStable || scheduler.Phase != PhaseMaterialize || !samePlayer(scheduler.TurnPlayer, player) {
+	if scheduler.Kind != schedulerStable || scheduler.Phase != constants.PhaseMaterialize || !samePlayer(scheduler.TurnPlayer, player) {
 		return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, player)
 	}
-	scheduler.Phase = PhaseRecollection
+	scheduler.Phase = constants.PhaseRecollection
 	g.runStandardScheduler()
 	return nil
 }
@@ -92,29 +82,29 @@ func (g *Game) runStandardScheduler() {
 	for !g.state.Finished {
 		scheduler := &g.state.Scheduler
 		switch scheduler.Phase {
-		case PhaseWakeUp:
+		case constants.PhaseWakeUp:
 			g.wakeUpObjects(scheduler.TurnPlayer)
 			g.expireTimedChampionEffects()
-			scheduler.Phase = PhaseMaterialize
-		case PhaseMaterialize:
+			scheduler.Phase = constants.PhaseMaterialize
+		case constants.PhaseMaterialize:
 			if g.isFirstTurn() {
-				scheduler.Phase = PhaseRecollection
+				scheduler.Phase = constants.PhaseRecollection
 				continue
 			}
 			return
-		case PhaseRecollection:
+		case constants.PhaseRecollection:
 			if g.isFirstTurn() {
-				scheduler.Phase = PhaseDraw
+				scheduler.Phase = constants.PhaseDraw
 				continue
 			}
 			g.grantOpportunity(scheduler.TurnPlayer)
 			return
-		case PhaseDraw:
+		case constants.PhaseDraw:
 			if scheduler.TurnNumber != 1 && !g.drawTurnCard(scheduler.TurnPlayer) {
 				return
 			}
-			scheduler.Phase = PhaseMain
-		case PhaseMain, PhaseEnd:
+			scheduler.Phase = constants.PhaseMain
+		case constants.PhaseMain, constants.PhaseEnd:
 			g.grantOpportunity(scheduler.TurnPlayer)
 			return
 		default:

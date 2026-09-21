@@ -27,6 +27,17 @@ const (
 	ActionWield           ActionKind = "wield"
 )
 
+type Phase string
+
+const (
+	PhaseWakeUp       Phase = "wake_up"
+	PhaseMaterialize  Phase = "materialize"
+	PhaseRecollection Phase = "recollection"
+	PhaseDraw         Phase = "draw"
+	PhaseMain         Phase = "main"
+	PhaseEnd          Phase = "end"
+)
+
 const (
 	CardDataSchemaVersion = 1
 	// CanonicalStateSchemaVersion 標示 StateHash 使用的 canonical state 結構版本。

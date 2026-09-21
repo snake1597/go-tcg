@@ -68,7 +68,7 @@ func (g *Game) canActivateAction(player *model.Player, card cardInstanceID) bool
 	if !samePlayer(scheduler.OpportunityHolder, player) || (!canUseAlternativeCost && len(visibleReserveCards) < reserveCost) {
 		return false
 	}
-	if !candidate.Fast && (!samePlayer(scheduler.TurnPlayer, player) || scheduler.Phase != PhaseMain || len(g.state.EffectsStack) != 0) {
+	if !candidate.Fast && (!samePlayer(scheduler.TurnPlayer, player) || scheduler.Phase != constants.PhaseMain || len(g.state.EffectsStack) != 0) {
 		return false
 	}
 	if containsString(candidate.Types, "ALLY") {

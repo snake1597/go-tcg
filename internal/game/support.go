@@ -127,7 +127,11 @@ func loadValidatedStandardDecks(configuration StandardGameConfig) (validatedStan
 	}, nil
 }
 
+// validateDefinitionsAgainstRegistry 確認不可變卡牌資料與 production registry 彼此完整對應。
+// 驗證依序涵蓋 definition 到 registry、registry 到 definition，以及 Ability Slot 的牌面歸屬；
+// 任一對應缺漏時立即回傳第一個錯誤，且不修改 definitions 或 registry。
 func validateDefinitionsAgainstRegistry(definitions map[CardID]CardDefinition, registry contentRegistry) error {
+	// 每筆不可變卡牌資料都必須有對應的卡牌與牌面註冊，避免資料存在但 runtime 無法辨識。
 	for cardID, definition := range definitions {
 		if _, exists := registry.cards[cardID]; !exists {
 			return fmt.Errorf("card definition %q is orphaned from the production registry", cardID)
@@ -136,11 +140,13 @@ func validateDefinitionsAgainstRegistry(definitions map[CardID]CardDefinition, r
 			return fmt.Errorf("CardFace definition %q is missing from the production registry", definition.Face().ID())
 		}
 	}
+	// 反向確認 registry 沒有指向不存在之不可變資料的卡牌。
 	for cardID := range registry.cards {
 		if _, exists := definitions[cardID]; !exists {
 			return fmt.Errorf("production registry card %q has no card definition", cardID)
 		}
 	}
+	// 每個註冊牌面都必須屬於既有卡牌，且 ID 必須與該卡牌不可變資料所宣告的牌面一致。
 	for faceID, registration := range registry.faces {
 		definition, exists := definitions[registration.CardID]
 		if !exists {
@@ -150,6 +156,7 @@ func validateDefinitionsAgainstRegistry(definitions map[CardID]CardDefinition, r
 			return fmt.Errorf("production registry CardFace %q is absent from immutable card data", faceID)
 		}
 	}
+	// Ability Slot 必須透過已註冊牌面連回不可變卡牌資料，確保後續支援集合可安全展開。
 	for abilityID, registration := range registry.abilities {
 		if _, exists := definitions[registry.faces[registration.FaceID].CardID]; !exists {
 			return fmt.Errorf("production registry Ability Slot %q has no immutable CardFace", abilityID)

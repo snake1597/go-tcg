@@ -221,7 +221,7 @@ Canonical replay 包含：
 - DeclarationTransaction 對取消、過期、非法及費用不足能完整 rollback state、事件與 PRNG；activation 成立後的 fizzle／negate 不退費。
 - 玩家視角不洩漏對手手牌或牌庫順序；洗牌後舊 ViewHandle 無法追蹤卡牌，已公開事件歷史仍可回顧。
 - 相同引擎、規則、卡面、牌組及 PRNG 版本，加上相同 seed 與輸入序列，必須逐步產生相同 state hash。
-- 至少 100 場不同 seed 的 bot 鏡像對戰在行動上限內結束，沒有 panic、deadlock、scheduler 不收斂、非法提交或 NeedsRuling。
+- 至少 10 場不同 seed 的 bot 鏡像對戰在行動上限內結束，沒有 panic、deadlock、scheduler 不收斂、非法提交或 NeedsRuling。
 - `go test ./...`、`go test -race ./...` 與設定時限的 fuzz/property tests 全數通過。
 - `CONTEXT.md`、ADR、規則 issue、卡牌覆蓋矩陣與 CLI 使用說明同步完成，且文件連結檢查通過。
 

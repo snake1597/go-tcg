@@ -548,7 +548,7 @@ func newCardistryGame(t *testing.T, definition CardID) *Game {
 		Types: game.state.Cards[source].Types,
 	}
 	game.state.Scheduler.Kind = schedulerStable
-	game.state.Scheduler.Phase = PhaseMain
+	game.state.Scheduler.Phase = constants.PhaseMain
 	game.state.Scheduler.TurnPlayer = player
 	game.state.Scheduler.OpportunityHolder = player
 	game.advanceKnowledgeRevision()

@@ -147,7 +147,7 @@ func TestRunCompletesHumanVsBotGameAndWritesVerifiableReplay(t *testing.T) {
 	}
 	text := output.String()
 	for _, want := range []string{
-		"真人：player-1　bot：player-2",
+		"真人：player-1 bot：player-2",
 		"bot player-2 啟動 Fiery Interference。",
 		"結果：player-2 獲勝",
 	} {
@@ -316,7 +316,7 @@ func TestRenderViewExplainsDrawChoiceDamageAndStackTiming(t *testing.T) {
 		&output,
 		model.PlayerOne,
 		game.PlayerView{
-			Phase: game.PhaseMain,
+			Phase: constants.PhaseMain,
 			Champions: []game.VisibleChampion{
 				{
 					Owner:    model.PlayerOne,

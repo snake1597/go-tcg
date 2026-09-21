@@ -93,7 +93,7 @@ func TestDuchessThornesDiscountExpiresAtTurnBoundary(t *testing.T) {
 	game := newCardistryGame(t, twoOfHeartsCardID)
 	player := model.PlayerOne
 	game.state.CardistryDiscounts[player.UID] = 6
-	game.state.Scheduler.Phase = PhaseEnd
+	game.state.Scheduler.Phase = constants.PhaseEnd
 	game.state.Scheduler.OpportunityHolder = player
 	game.state.Scheduler.ConsecutivePasses = len(game.players) - 1
 

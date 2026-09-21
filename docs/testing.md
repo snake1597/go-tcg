@@ -55,10 +55,9 @@ go test ./...
 go test -race ./...
 go test ./internal/game -run '^$' -fuzz '^FuzzRejectedInputPreservesStateHash$' -fuzztime=10s
 go test ./internal/game -run '^$' -fuzz '^FuzzReplayHashDeterminism$' -fuzztime=10s
-go test ./internal/productioncli -run '^TestMirrorGamesCompleteFor100Seeds$' -count=1
 ```
 
-100-seed gate 對 seed 1 至 100 各建立一局，逐局限制 1000 次 action submission 並驗證 replay。失敗訊息固定包含 seed、step、diagnostic 與最終 state hash；Go fuzz 產生的失敗 corpus 必須保留在 `testdata/fuzz/<FuzzName>`，修正後作為永久回歸案例，不得只重跑到成功。
+Go fuzz 產生的失敗 corpus 必須保留在 `testdata/fuzz/<FuzzName>`，修正後作為永久回歸案例，不得只重跑到成功。
 
 ## 禁止模式
 

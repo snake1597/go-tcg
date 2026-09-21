@@ -132,4 +132,3 @@ Canonical state hash 必須完整涵蓋所有會影響目前或未來可觀察�
 - 目前架構檢視顯示 Ability Instance constructor 是 critical graph hotspot，具有 9 個 direct caller 並影響 16 組 execution flow。因此，Ability Instance 建立流程的修改必須採用小型 vertical slice 並逐一驗證。
 - 外部 Game Module Interface 已具備適當深度。主要設計工作是提升內部 locality，並讓 executable Card Definition 成為單一來源，而不是把 module 拆成許多 shallow package。
 - 成熟引擎支持此方向：可重用 typed effect 能處理常見卡牌，大型卡池能從 declarative definition 獲益，特殊 mechanic 仍可能需要狹窄的 engine-level primitive。本專案應採用此模式，但不引入這些引擎累積的歷史廣度。
-- 撰寫本規格時，Game Module tests 已通過；repository-wide suite 存在既有失敗，原因是 100-seed mirror-game gate 的 seed 1 達到 1,000 action 上限。實作時必須區分此 baseline 與新 regression，且不得弱化或跳過該 gate。

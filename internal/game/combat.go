@@ -2,6 +2,7 @@ package game
 
 import (
 	"fmt"
+	"go-tcg/internal/constants"
 	"go-tcg/internal/model"
 	tcgErrors "go-tcg/internal/tcg_errors"
 	"sort"
@@ -21,7 +22,7 @@ type wieldDeclaration struct {
 // 輸入為持有行動機會的玩家；輸出為合法攻擊者的內部識別，無副作用。
 func (g *Game) legalAttackers(player *model.Player) []objectID {
 	scheduler := g.state.Scheduler
-	if scheduler.TurnNumber == 1 || !samePlayer(scheduler.TurnPlayer, player) || scheduler.Phase != PhaseMain || len(g.state.EffectsStack) != 0 {
+	if scheduler.TurnNumber == 1 || !samePlayer(scheduler.TurnPlayer, player) || scheduler.Phase != constants.PhaseMain || len(g.state.EffectsStack) != 0 {
 		return nil
 	}
 	attackers := make([]objectID, 0, 1)
@@ -142,7 +143,7 @@ func (g *Game) canWield(player *model.Player, weapon objectID) bool {
 	scheduler := g.state.Scheduler
 	if !samePlayer(scheduler.OpportunityHolder, player) ||
 		!samePlayer(scheduler.TurnPlayer, player) ||
-		scheduler.Phase != PhaseMain ||
+		scheduler.Phase != constants.PhaseMain ||
 		len(g.state.EffectsStack) != 0 ||
 		!g.isLegalWeapon(player, weapon) {
 		return false

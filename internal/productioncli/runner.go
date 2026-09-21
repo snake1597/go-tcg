@@ -63,12 +63,13 @@ func Run(arguments []string, input io.Reader, output io.Writer, repositoryRoot s
 		Seed:           *seed,
 	})
 	if setupErr != nil {
-		var gateError *game.GateError
-		if errors.As(setupErr, &gateError) {
+		gateError, ok := errors.AsType[*game.GateError](setupErr)
+		if ok {
 			writeGateDiagnostics(output, gateError.Diagnostics)
 		}
 		return fmt.Errorf("start standard game: %w", setupErr)
 	}
+
 	opponent := bot.NewHeuristic(
 		bot.NewSeededRandom(*seed),
 	)
@@ -91,7 +92,8 @@ func Run(arguments []string, input io.Reader, output io.Writer, repositoryRoot s
 	}()
 
 	fmt.Fprintln(output, "隱私警告：canonical replay 可能包含完整隱藏資訊，僅供私人診斷使用，不可公開分享。")
-	fmt.Fprintln(output, "真人：player-1　bot：player-2")
+	fmt.Fprintln(output, "真人：player-1 bot：player-2")
+
 	scanner := bufio.NewScanner(input)
 	acceptedSubmissions := 0
 	for {
@@ -99,6 +101,7 @@ func Run(arguments []string, input io.Reader, output io.Writer, repositoryRoot s
 		if playerErr != nil {
 			return fmt.Errorf("get decision player: %w", playerErr)
 		}
+
 		view, viewErr := match.PlayerView(player)
 		if viewErr != nil {
 			return fmt.Errorf("get player view: %w", viewErr)
@@ -110,6 +113,7 @@ func Run(arguments []string, input io.Reader, output io.Writer, repositoryRoot s
 			}
 			return nil
 		}
+
 		if acceptedSubmissions >= *submissionLimit {
 			diagnostic := fmt.Sprintf("submission limit %d reached", *submissionLimit)
 			fmt.Fprintf(
@@ -123,11 +127,13 @@ func Run(arguments []string, input io.Reader, output io.Writer, repositoryRoot s
 			)
 			return fmt.Errorf("%s", diagnostic)
 		}
+
 		if player == model.PlayerTwo {
 			botInput, decideErr := opponent.Decide(view)
 			if decideErr != nil {
 				return fmt.Errorf("decide bot action: %w", decideErr)
 			}
+
 			beforeHash := match.StateHash()
 			if submitErr := match.Submit(player, botInput); submitErr != nil {
 				if match.StateHash() != beforeHash {
@@ -135,10 +141,12 @@ func Run(arguments []string, input io.Reader, output io.Writer, repositoryRoot s
 				}
 				return fmt.Errorf("submit bot action: %w", submitErr)
 			}
+
 			afterView, afterViewErr := match.PlayerView(player)
 			if afterViewErr != nil {
 				return fmt.Errorf("get bot view after submission: %w", afterViewErr)
 			}
+
 			acceptedSubmissions++
 			writeSubmissionSummary(
 				output,
@@ -150,11 +158,13 @@ func Run(arguments []string, input io.Reader, output io.Writer, repositoryRoot s
 			)
 			continue
 		}
+
 		renderView(output, player, view)
 		selected, selectErr := readSelection(scanner, output, view)
 		if selectErr != nil {
 			return fmt.Errorf("read selection: %w", selectErr)
 		}
+
 		beforeHash := match.StateHash()
 		if submitErr := match.Submit(player, selected); submitErr != nil {
 			if match.StateHash() != beforeHash {
@@ -163,10 +173,12 @@ func Run(arguments []string, input io.Reader, output io.Writer, repositoryRoot s
 			fmt.Fprintf(output, "輸入被引擎拒絕：%v\n", submitErr)
 			continue
 		}
+
 		afterView, afterViewErr := match.PlayerView(player)
 		if afterViewErr != nil {
 			return fmt.Errorf("get player view after submission: %w", afterViewErr)
 		}
+
 		acceptedSubmissions++
 		writeSubmissionSummary(
 			output,
@@ -191,11 +203,13 @@ func writeSubmissionSummary(output io.Writer, actorLabel string, actor *model.Pl
 		writeRetainedOpportunity(output, actor, after)
 		return
 	}
+
 	action, found := legalActionForInput(before, input)
 	if !found {
 		fmt.Fprintf(output, "%s 已完成一次提交。\n", actorLabel)
 		return
 	}
+
 	if action.Kind != constants.ActionPass {
 		if action.Kind == constants.ActionActivate && action.CardName != "" {
 			fmt.Fprintf(output, "%s 啟動 %s。\n", actorLabel, action.CardName)
@@ -211,6 +225,7 @@ func writeSubmissionSummary(output io.Writer, actorLabel string, actor *model.Pl
 		writeRetainedOpportunity(output, actor, after)
 		return
 	}
+
 	if !sameVisibleEffectsStack(before.EffectsStack, after.EffectsStack) {
 		top := before.EffectsStack[len(before.EffectsStack)-1]
 		fmt.Fprintf(output, "%s 選擇 pass。\n", actorLabel)
@@ -227,6 +242,7 @@ func writeSubmissionSummary(output io.Writer, actorLabel string, actor *model.Pl
 		}
 		return
 	}
+
 	fmt.Fprintf(
 		output,
 		"%s 選擇 pass，Opportunity 移交給 %s。\n",
@@ -299,11 +315,13 @@ func readSelection(scanner *bufio.Scanner, output io.Writer, view game.PlayerVie
 			}
 			return emptyInput, fmt.Errorf("%w", io.EOF)
 		}
+
 		selected, err := strconv.Atoi(strings.TrimSpace(scanner.Text()))
 		if err != nil || selected <= 0 {
 			fmt.Fprintln(output, "無效編號，請重新輸入。")
 			continue
 		}
+
 		if view.PendingChoice != nil {
 			if selected > len(view.PendingChoice.Options) {
 				if selected == len(view.PendingChoice.Options)+1 && view.PendingChoice.CanPass {
