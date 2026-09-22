@@ -63,10 +63,6 @@ func Run(arguments []string, input io.Reader, output io.Writer, repositoryRoot s
 		Seed:           *seed,
 	})
 	if setupErr != nil {
-		gateError, ok := errors.AsType[*game.GateError](setupErr)
-		if ok {
-			writeGateDiagnostics(output, gateError.Diagnostics)
-		}
 		return fmt.Errorf("start standard game: %w", setupErr)
 	}
 
@@ -545,15 +541,6 @@ func playerName(player *model.Player) string {
 		return "無"
 	}
 	return player.UID
-}
-
-// writeGateDiagnostics 逐行輸出 Support Set gate 的可行動缺項診斷。
-// 輸入為輸出串流與診斷清單；輸出為零值，副作用僅為寫入文字。
-func writeGateDiagnostics(output io.Writer, diagnostics []game.GateDiagnostic) {
-	fmt.Fprintln(output, "Standard 開局 gate 失敗：")
-	for _, diagnostic := range diagnostics {
-		fmt.Fprintf(output, "- %s %s：%s\n", diagnostic.Kind, diagnostic.ID, diagnostic.Reason)
-	}
 }
 
 // writeReplay 將 canonical replay 以只限擁有者讀寫的檔案權限寫入指定位置。

@@ -22,4 +22,4 @@ go run ./cmd/production_cli \
 
 ## 驗證
 
-發布級測試命令與 fuzz 時限見 [`docs/testing.md`](./docs/testing.md)。固定牌組、Support Set、CardFace 與 Ability Slot 覆蓋狀態見 [`docs/card.md`](./docs/card.md)。規則基準與裁定見 [`docs/rules-issues.md`](./docs/rules-issues.md)。
+發布級測試命令與 fuzz 時限見 [`docs/testing.md`](./docs/testing.md)。固定牌組、CardFace 與建局資料流程見 [`docs/card.md`](./docs/card.md)。規則基準與裁定見 [`docs/rules-issues.md`](./docs/rules-issues.md)。

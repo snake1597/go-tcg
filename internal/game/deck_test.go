@@ -2,13 +2,21 @@ package game
 
 import (
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
+
+	"go-tcg/internal/constants"
 )
 
-func TestLoadFixedStandardDeck(t *testing.T) {
-	repositoryRoot := filepath.Join("..", "..")
-	content, err := loadCardDefinitions(
+// TestFixedStandardDeckReferencesLoadedDefinitions 驗證固定牌組可由 repository 的不可變卡面資料完整建立。
+// 輸入為固定牌組與載入的卡面資料；輸出為固定張數、版本與引用一致性的 assertion，副作用為讀取卡面檔案。
+func TestFixedStandardDeckReferencesLoadedDefinitions(t *testing.T) {
+	repositoryRoot := filepath.Join(
+		"..",
+		"..",
+	)
+	definitions, err := loadCardDefinitions(
 		filepath.Join(repositoryRoot, "card"),
 		filepath.Join(repositoryRoot, "card-data-manifest.json"),
 	)
@@ -17,8 +25,11 @@ func TestLoadFixedStandardDeck(t *testing.T) {
 	}
 
 	deck := fixedStandardDeck()
-	if err := validateFixedStandardDeck(deck, content); err != nil {
-		t.Fatalf("validateFixedStandardDeck() error = %v", err)
+	if err := validateDeckReferences(deck, definitions); err != nil {
+		t.Fatalf("validateDeckReferences() error = %v", err)
+	}
+	if deck.Version != constants.FixedDeckVersion || deck.CardDataVersion != constants.FixedCardDataVersion {
+		t.Fatalf("fixed deck version = %q, card data version = %q", deck.Version, deck.CardDataVersion)
 	}
 	if got := deck.MainDeck.Count(); got != 60 {
 		t.Fatalf("main deck count = %d, want 60", got)
@@ -29,31 +40,67 @@ func TestLoadFixedStandardDeck(t *testing.T) {
 	if got := deck.OutsideGamePool.Count(); got != 0 {
 		t.Fatalf("outside game pool count = %d, want 0", got)
 	}
-	if got := len(content); got != 32 {
+	if got := len(definitions); got != 32 {
 		t.Fatalf("card definition count = %d, want 32", got)
 	}
+	for _, section := range []struct {
+		name    string
+		cards   DeckSection
+		maximum int
+	}{
+		{
+			name:    "main deck",
+			cards:   deck.MainDeck,
+			maximum: 4,
+		},
+		{
+			name:    "material deck",
+			cards:   deck.MaterialDeck,
+			maximum: 1,
+		},
+		{
+			name:  "outside game pool",
+			cards: deck.OutsideGamePool,
+		},
+	} {
+		seen := make(map[CardID]struct{}, len(section.cards))
+		for _, entry := range section.cards {
+			if entry.Count <= 0 {
+				t.Fatalf("%s card %q has count %d, want positive", section.name, entry.CardID, entry.Count)
+			}
+			if section.maximum > 0 && entry.Count > section.maximum {
+				t.Fatalf("%s card %q has count %d, want at most %d", section.name, entry.CardID, entry.Count, section.maximum)
+			}
+			if _, exists := seen[entry.CardID]; exists {
+				t.Fatalf("%s repeats card %q", section.name, entry.CardID)
+			}
+			seen[entry.CardID] = struct{}{}
+		}
+	}
+	if !slices.Equal(deck.OutsideGamePool, DeckSection{}) {
+		t.Fatalf("outside game pool = %#v, want empty", deck.OutsideGamePool)
+	}
 
-	spirit := content[CardID("LMyKyVC2O9")]
-	if spirit.ID() != CardID("LMyKyVC2O9") {
-		t.Fatalf("Spirit card ID = %q, want LMyKyVC2O9", spirit.ID())
+	divineRelics := 0
+	for _, entry := range deck.MaterialDeck {
+		definition := definitions[entry.CardID]
+		if definition.card.EffectRaw != nil && strings.Contains(*definition.card.EffectRaw, "Divine Relic") {
+			divineRelics += entry.Count
+		}
 	}
-	if spirit.Face().ID() != CardFaceID("face:LMyKyVC2O9:front") {
-		t.Fatalf("Spirit face ID = %q", spirit.Face().ID())
-	}
-	if spirit.DataVersion() != "card-data-v3" {
-		t.Fatalf("Spirit data version = %q, want card-data-v3", spirit.DataVersion())
-	}
-	if spirit.Name() != "Spirit of Fire" {
-		t.Fatalf("Spirit name = %q", spirit.Name())
-	}
-	if !spirit.Face().HasType("CHAMPION") || spirit.Face().Level() != 0 {
-		t.Fatalf("Spirit face does not preserve Champion level: %+v", spirit.Face())
+	if divineRelics > 1 {
+		t.Fatalf("material deck has %d Divine Relic cards, want at most 1", divineRelics)
 	}
 }
 
-func TestFixedStandardDeckRejectsInvalidManifest(t *testing.T) {
-	repositoryRoot := filepath.Join("..", "..")
-	content, err := loadCardDefinitions(
+// TestValidateDeckReferencesRejectsUnbuildableCards 驗證建局前會拒絕無法轉成卡牌實例的固定牌組引用。
+// 輸入為被修改的固定牌組與正確 CardDefinition 索引；輸出為未知卡、錯誤牌面或錯誤起始 Champion 的錯誤，副作用為零。
+func TestValidateDeckReferencesRejectsUnbuildableCards(t *testing.T) {
+	repositoryRoot := filepath.Join(
+		"..",
+		"..",
+	)
+	definitions, err := loadCardDefinitions(
 		filepath.Join(repositoryRoot, "card"),
 		filepath.Join(repositoryRoot, "card-data-manifest.json"),
 	)
@@ -67,27 +114,6 @@ func TestFixedStandardDeckRejectsInvalidManifest(t *testing.T) {
 		message string
 	}{
 		{
-			name: "missing outside game pool",
-			mutate: func(deck *DeckManifest) {
-				deck.OutsideGamePool = nil
-			},
-			message: "outside game pool is required",
-		},
-		{
-			name: "wrong version",
-			mutate: func(deck *DeckManifest) {
-				deck.Version = "standard-fire-v1"
-			},
-			message: "deck version",
-		},
-		{
-			name: "wrong count",
-			mutate: func(deck *DeckManifest) {
-				deck.MainDeck[0].Count--
-			},
-			message: "main deck has 59 cards",
-		},
-		{
 			name: "unknown card",
 			mutate: func(deck *DeckManifest) {
 				deck.MainDeck[0].CardID = CardID("missing")
@@ -95,65 +121,28 @@ func TestFixedStandardDeckRejectsInvalidManifest(t *testing.T) {
 			message: "unknown card",
 		},
 		{
-			name: "too many copies",
+			name: "wrong face",
 			mutate: func(deck *DeckManifest) {
-				deck.MainDeck[0].Count--
-				deck.MainDeck[1].Count++
+				deck.MainDeck[0].FaceID = CardFaceID("face:i9hf5lhl5f:back")
 			},
-			message: "maximum is 4",
+			message: "does not match",
 		},
 		{
-			name: "substituted known main deck card",
+			name: "no starting champion",
 			mutate: func(deck *DeckManifest) {
-				deck.MainDeck[0].CardID = CardID("LMyKyVC2O9")
-				deck.MainDeck[0].FaceID = CardFaceID("face:LMyKyVC2O9:front")
+				deck.MaterialDeck = deck.MaterialDeck[1:]
 			},
-			message: "does not match the fixed manifest",
-		},
-		{
-			name: "removed material deck card",
-			mutate: func(deck *DeckManifest) {
-				deck.MaterialDeck = deck.MaterialDeck[:11]
-			},
-			message: "does not match the fixed manifest",
-		},
-		{
-			name: "added outside game pool card",
-			mutate: func(deck *DeckManifest) {
-				deck.OutsideGamePool = DeckSection{
-					deckEntry(
-						"GjM8b5fxqj",
-						1,
-					),
-				}
-			},
-			message: "does not match the fixed manifest",
+			message: "0 Level 0 Champions",
 		},
 	}
-
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			deck := fixedStandardDeck()
 			test.mutate(&deck)
-			err := validateFixedStandardDeck(deck, content)
+			err := validateDeckReferences(deck, definitions)
 			if err == nil || !strings.Contains(err.Error(), test.message) {
-				t.Fatalf("validateFixedStandardDeck() error = %v, want %q", err, test.message)
+				t.Fatalf("validateDeckReferences() error = %v, want %q", err, test.message)
 			}
 		})
-	}
-}
-
-func TestFixedStandardDeckRequiresMirroredPlayers(t *testing.T) {
-	first := fixedStandardDeck()
-	second := fixedStandardDeck()
-	if err := validateMirroredDecks(first, second); err != nil {
-		t.Fatalf("validateMirroredDecks() error = %v", err)
-	}
-
-	second.MainDeck[0].Count--
-	second.MainDeck[1].Count++
-	err := validateMirroredDecks(first, second)
-	if err == nil || !strings.Contains(err.Error(), "identical") {
-		t.Fatalf("validateMirroredDecks() error = %v, want identical-deck error", err)
 	}
 }

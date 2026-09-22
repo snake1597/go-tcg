@@ -6,24 +6,6 @@ import (
 	"go-tcg/internal/model"
 )
 
-func TestFixedStandardDeckRejectsMultipleDivineRelics(t *testing.T) {
-	repositoryRoot := "../.."
-	definitions, err := loadCardDefinitions(
-		repositoryRoot+"/card",
-		repositoryRoot+"/card-data-manifest.json",
-	)
-	if err != nil {
-		t.Fatalf("loadCardDefinitions() error = %v", err)
-	}
-	second := definitions[CardID("yj2rJBREH8")]
-	effect := "Divine Relic"
-	second.card.EffectRaw = &effect
-	definitions[second.ID()] = second
-	if err := validateFixedStandardDeck(fixedStandardDeck(), definitions); err == nil {
-		t.Fatal("validateFixedStandardDeck() accepted two Divine Relics")
-	}
-}
-
 func TestGrandCrusadersRingBanishesThenDrawsThroughAbilityStack(t *testing.T) {
 	game := newActionGame(t)
 	player := model.PlayerOne

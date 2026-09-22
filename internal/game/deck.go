@@ -9,7 +9,6 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
-	"strings"
 	"time"
 
 	carddata "go-tcg/internal/card_data"
@@ -251,107 +250,43 @@ func readCard(path string) (Card, error) {
 	return card, nil
 }
 
-// validateFixedStandardDeck 除了張數、版本與卡牌引用，也要求各區域條目及順序完全符合固定 manifest。
-// OutsideGamePool 必須明確提供，空集合可接受而 nil 不可；物質牌組須包含至少一張 level 0 champion。
-func validateFixedStandardDeck(deck DeckManifest, definitions map[CardID]CardDefinition) error {
-	if deck.Version != constants.FixedDeckVersion {
-		return fmt.Errorf("deck version %q does not match %q", deck.Version, constants.FixedDeckVersion)
+// validateDeckReferences 確保固定牌組的卡片與牌面可由載入的卡面資料建立，且有唯一的起始 Champion。
+// 輸入為固定 DeckManifest 與已驗證 CardDefinition 索引；輸出為引用或起始 Champion 錯誤，副作用為零。
+func validateDeckReferences(deck DeckManifest, definitions map[CardID]CardDefinition) error {
+	sections := []struct {
+		name  string
+		cards DeckSection
+	}{
+		{
+			name:  "main deck",
+			cards: deck.MainDeck,
+		},
+		{
+			name:  "material deck",
+			cards: deck.MaterialDeck,
+		},
+		{
+			name:  "outside game pool",
+			cards: deck.OutsideGamePool,
+		},
 	}
-	if deck.CardDataVersion != constants.FixedCardDataVersion {
-		return fmt.Errorf("deck card data version %q does not match %q", deck.CardDataVersion, constants.FixedCardDataVersion)
-	}
-	if deck.MainDeck.Count() != 60 {
-		return fmt.Errorf("main deck has %d cards, want 60", deck.MainDeck.Count())
-	}
-	if deck.MaterialDeck.Count() > 12 {
-		return fmt.Errorf("material deck has %d cards, maximum is 12", deck.MaterialDeck.Count())
-	}
-	if deck.OutsideGamePool == nil {
-		return fmt.Errorf("outside game pool is required")
-	}
-	if err := validateDeckSection("main deck", deck.MainDeck, 4, definitions); err != nil {
-		return err
-	}
-	if err := validateDeckSection("material deck", deck.MaterialDeck, 1, definitions); err != nil {
-		return err
-	}
-	if err := validateDeckSection("outside game pool", deck.OutsideGamePool, 4, definitions); err != nil {
-		return err
-	}
-	if err := validateDivineRelics(deck.MaterialDeck, definitions); err != nil {
-		return err
-	}
-	canonicalDeck := fixedStandardDeck()
-	if !slices.Equal(deck.MainDeck, canonicalDeck.MainDeck) ||
-		!slices.Equal(deck.MaterialDeck, canonicalDeck.MaterialDeck) ||
-		!slices.Equal(deck.OutsideGamePool, canonicalDeck.OutsideGamePool) {
-		return fmt.Errorf("deck does not match the fixed manifest")
-	}
-
 	startingChampions := 0
-	for _, entry := range deck.MaterialDeck {
-		definition := definitions[entry.CardID]
-		if definition.Face().HasType("CHAMPION") && definition.Face().Level() == 0 {
-			startingChampions += entry.Count
+	for _, section := range sections {
+		for _, entry := range section.cards {
+			definition, exists := definitions[entry.CardID]
+			if !exists {
+				return fmt.Errorf("%s contains unknown card %q", section.name, entry.CardID)
+			}
+			if entry.FaceID != definition.Face().ID() {
+				return fmt.Errorf("%s card %q face %q does not match %q", section.name, entry.CardID, entry.FaceID, definition.Face().ID())
+			}
+			if section.name == "material deck" && definition.Face().HasType("CHAMPION") && definition.Face().Level() == 0 {
+				startingChampions += entry.Count
+			}
 		}
 	}
-	if startingChampions == 0 {
-		return fmt.Errorf("material deck has no Level 0 Champion")
-	}
-	return nil
-}
-
-// validateDivineRelics 限制 material deck 中具有 Divine Relic 關鍵字的卡牌總數至多一張。
-// 輸入為已通過基本格式驗證的 material deck 與卡牌定義；輸出為驗證錯誤或 nil，副作用為零。
-func validateDivineRelics(section DeckSection, definitions map[CardID]CardDefinition) error {
-	count := 0
-	for _, entry := range section {
-		definition := definitions[entry.CardID]
-		if definition.card.EffectRaw == nil || !strings.Contains(*definition.card.EffectRaw, "Divine Relic") {
-			continue
-		}
-		count += entry.Count
-	}
-	if count > 1 {
-		return fmt.Errorf("material deck has %d Divine Relic cards, maximum is 1", count)
-	}
-	return nil
-}
-
-func validateMirroredDecks(first, second DeckManifest) error {
-	if first.Version != second.Version ||
-		first.CardDataVersion != second.CardDataVersion ||
-		!slices.Equal(first.MainDeck, second.MainDeck) ||
-		!slices.Equal(first.MaterialDeck, second.MaterialDeck) ||
-		!slices.Equal(first.OutsideGamePool, second.OutsideGamePool) {
-		return fmt.Errorf("both players must use identical fixed deck manifests")
-	}
-	return nil
-}
-
-func validateDeckSection(name string, section DeckSection, maximumCopies int, definitions map[CardID]CardDefinition) error {
-	seen := make(map[CardID]struct{}, len(section))
-	for _, entry := range section {
-		if entry.Count <= 0 {
-			return fmt.Errorf("%s card %q has invalid count %d", name, entry.CardID, entry.Count)
-		}
-		if maximumCopies > 0 && entry.Count > maximumCopies {
-			return fmt.Errorf("%s card %q has %d copies, maximum is %d", name, entry.CardID, entry.Count, maximumCopies)
-		}
-		if _, exists := seen[entry.CardID]; exists {
-			return fmt.Errorf("%s repeats card %q", name, entry.CardID)
-		}
-		seen[entry.CardID] = struct{}{}
-		definition, exists := definitions[entry.CardID]
-		if !exists {
-			return fmt.Errorf("%s contains unknown card %q", name, entry.CardID)
-		}
-		if definition.DataVersion() != constants.FixedCardDataVersion {
-			return fmt.Errorf("%s card %q has data version %q", name, entry.CardID, definition.DataVersion())
-		}
-		if entry.FaceID != definition.Face().ID() {
-			return fmt.Errorf("%s card %q face %q does not match %q", name, entry.CardID, entry.FaceID, definition.Face().ID())
-		}
+	if startingChampions != 1 {
+		return fmt.Errorf("material deck has %d Level 0 Champions, want exactly 1", startingChampions)
 	}
 	return nil
 }

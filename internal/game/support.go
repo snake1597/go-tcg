@@ -2,33 +2,9 @@ package game
 
 import (
 	"fmt"
-	"go-tcg/internal/constants"
 	"go-tcg/internal/model"
 	"path/filepath"
-	"sort"
-	"strings"
 )
-
-type GateDiagnostic struct {
-	Kind   constants.GateKind
-	ID     string
-	Reason string
-}
-
-type GateError struct {
-	Diagnostics []GateDiagnostic
-}
-
-func (gateError *GateError) Error() string {
-	if len(gateError.Diagnostics) == 0 {
-		return "standard game support gate failed"
-	}
-	parts := make([]string, 0, len(gateError.Diagnostics))
-	for _, diagnostic := range gateError.Diagnostics {
-		parts = append(parts, fmt.Sprintf("%s %s: %s", diagnostic.Kind, diagnostic.ID, diagnostic.Reason))
-	}
-	return "standard game support gate failed: " + strings.Join(parts, "; ")
-}
 
 type StandardGameConfig struct {
 	Players        [2]*model.Player
@@ -36,69 +12,15 @@ type StandardGameConfig struct {
 	Seed           uint64
 }
 
-type supportClosure struct {
-	cards      map[CardID]bool
-	faces      map[CardFaceID]bool
-	abilities  map[AbilitySlotID]bool
-	contents   map[ContentID]bool
-	mechanisms map[MechanismID]bool
-	operations map[OperationID]bool
-	rulings    map[RulingID]bool
-}
-
-// NewStandardGame 驗證固定牌組、卡牌資料與 registry，並檢查牌組可達的 Support Set。
-// 有未支援或缺漏項目時回傳 GateError；通過後建立含起始 zones 與排程的正式單局。
+// NewStandardGame 載入已驗證的固定卡面資料與固定 Standard 牌組，建立可直接執行的單局。
+// 輸入為兩名不同玩家、repository root 與隨機種子；輸出為初始化後的 Game 或資料／設定錯誤，副作用為讀取卡面檔案。
 func NewStandardGame(configuration StandardGameConfig) (*Game, error) {
-	registry, err := productionRegistry()
-	if err != nil {
-		return nil, fmt.Errorf("build production registry: %w", err)
-	}
-	return newStandardGameWithRegistry(
-		configuration,
-		registry,
-	)
-}
-
-// newStandardGameWithRegistry 以指定 registry 驗證固定牌組並建立正式單局。
-// 輸入為 Standard 設定與完整 registry；輸出為完成開局的 Game 或具體驗證錯誤，副作用限於成功建立的 Game。
-func newStandardGameWithRegistry(configuration StandardGameConfig, registry contentRegistry) (*Game, error) {
-	decks, err := loadValidatedStandardDecks(configuration)
-	if err != nil {
-		return nil, err
-	}
-	if err := validateDefinitionsAgainstRegistry(decks.Definitions, registry); err != nil {
-		return nil, err
-	}
-	_, diagnostics := evaluateSupportSet(decks.First, registry)
-	if len(diagnostics) > 0 {
-		return nil, &GateError{
-			Diagnostics: diagnostics,
-		}
-	}
-
-	return newStandardSetup(
-		configuration,
-		decks.Definitions,
-		decks.First,
-		decks.Second,
-	)
-}
-
-type validatedStandardDecks struct {
-	Definitions map[CardID]CardDefinition
-	First       DeckManifest
-	Second      DeckManifest
-}
-
-// loadValidatedStandardDecks 要求兩名 UID 非空且不同的玩家，從 RepositoryRoot 載入固定卡牌資料。
-// 雙方各使用固定標準牌組，通過個別牌組及鏡像驗證後才回傳；不執行 runtime 支援檢查。
-func loadValidatedStandardDecks(configuration StandardGameConfig) (validatedStandardDecks, error) {
 	if configuration.Players[0] == nil ||
 		configuration.Players[1] == nil ||
 		configuration.Players[0].UID == "" ||
 		configuration.Players[1].UID == "" ||
 		samePlayer(configuration.Players[0], configuration.Players[1]) {
-		return validatedStandardDecks{}, fmt.Errorf("standard game requires two distinct players")
+		return nil, fmt.Errorf("standard game requires two distinct players")
 	}
 
 	definitions, err := loadCardDefinitions(
@@ -106,313 +28,18 @@ func loadValidatedStandardDecks(configuration StandardGameConfig) (validatedStan
 		filepath.Join(configuration.RepositoryRoot, "card-data-manifest.json"),
 	)
 	if err != nil {
-		return validatedStandardDecks{}, fmt.Errorf("load fixed card data: %w", err)
+		return nil, fmt.Errorf("load fixed card data: %w", err)
 	}
 
-	firstDeck := fixedStandardDeck()
-	secondDeck := fixedStandardDeck()
-	if err := validateFixedStandardDeck(firstDeck, definitions); err != nil {
-		return validatedStandardDecks{}, fmt.Errorf("validate first player deck: %w", err)
-	}
-	if err := validateFixedStandardDeck(secondDeck, definitions); err != nil {
-		return validatedStandardDecks{}, fmt.Errorf("validate second player deck: %w", err)
-	}
-	if err := validateMirroredDecks(firstDeck, secondDeck); err != nil {
-		return validatedStandardDecks{}, err
-	}
-	return validatedStandardDecks{
-		Definitions: definitions,
-		First:       firstDeck,
-		Second:      secondDeck,
-	}, nil
-}
-
-// validateDefinitionsAgainstRegistry 確認不可變卡牌資料與 production registry 彼此完整對應。
-// 驗證依序涵蓋 definition 到 registry、registry 到 definition，以及 Ability Slot 的牌面歸屬；
-// 任一對應缺漏時立即回傳第一個錯誤，且不修改 definitions 或 registry。
-func validateDefinitionsAgainstRegistry(definitions map[CardID]CardDefinition, registry contentRegistry) error {
-	// 每筆不可變卡牌資料都必須有對應的卡牌與牌面註冊，避免資料存在但 runtime 無法辨識。
-	for cardID, definition := range definitions {
-		if _, exists := registry.cards[cardID]; !exists {
-			return fmt.Errorf("card definition %q is orphaned from the production registry", cardID)
-		}
-		if _, exists := registry.faces[definition.Face().ID()]; !exists {
-			return fmt.Errorf("CardFace definition %q is missing from the production registry", definition.Face().ID())
-		}
-	}
-	// 反向確認 registry 沒有指向不存在之不可變資料的卡牌。
-	for cardID := range registry.cards {
-		if _, exists := definitions[cardID]; !exists {
-			return fmt.Errorf("production registry card %q has no card definition", cardID)
-		}
-	}
-	// 每個註冊牌面都必須屬於既有卡牌，且 ID 必須與該卡牌不可變資料所宣告的牌面一致。
-	for faceID, registration := range registry.faces {
-		definition, exists := definitions[registration.CardID]
-		if !exists {
-			return fmt.Errorf("production registry CardFace %q has no card definition", faceID)
-		}
-		if faceID != definition.Face().ID() {
-			return fmt.Errorf("production registry CardFace %q is absent from immutable card data", faceID)
-		}
-	}
-	// Ability Slot 必須透過已註冊牌面連回不可變卡牌資料，確保後續支援集合可安全展開。
-	for abilityID, registration := range registry.abilities {
-		if _, exists := definitions[registry.faces[registration.FaceID].CardID]; !exists {
-			return fmt.Errorf("production registry Ability Slot %q has no immutable CardFace", abilityID)
-		}
-	}
-	return nil
-}
-
-// evaluateSupportSet 從牌組各區域出發，遞迴收集卡牌、牌面、能力、機制、操作與裁定的可達集合。
-// 先標記節點再巡訪相依關係，避免循環重複巡訪；未支援節點仍繼續展開，以收集完整診斷。
-// 缺少節點、Unsupported 狀態與 pending 裁定都產生診斷，依種類與 ID 去重；不修改 registry。
-func evaluateSupportSet(deck DeckManifest, registry contentRegistry) (supportClosure, []GateDiagnostic) {
-	closure := supportClosure{
-		cards:      make(map[CardID]bool),
-		faces:      make(map[CardFaceID]bool),
-		abilities:  make(map[AbilitySlotID]bool),
-		contents:   make(map[ContentID]bool),
-		mechanisms: make(map[MechanismID]bool),
-		operations: make(map[OperationID]bool),
-		rulings:    make(map[RulingID]bool),
-	}
-	diagnosticSet := make(map[string]GateDiagnostic)
-	addDiagnostic := func(kind constants.GateKind, id, reason string) {
-		key := string(kind) + "\x00" + id
-		diagnosticSet[key] = GateDiagnostic{
-			Kind:   kind,
-			ID:     id,
-			Reason: reason,
-		}
+	deck := fixedStandardDeck()
+	if err := validateDeckReferences(deck, definitions); err != nil {
+		return nil, fmt.Errorf("validate fixed deck references: %w", err)
 	}
 
-	var visitContent func(ContentID)
-	var visitCard func(CardID)
-	var visitFace func(CardFaceID)
-	var visitAbility func(AbilitySlotID)
-	var visitMechanism func(MechanismID)
-	var visitOperation func(OperationID)
-	var visitRuling func(RulingID)
-
-	visitRuling = func(id RulingID) {
-		if closure.rulings[id] {
-			return
-		}
-		closure.rulings[id] = true
-		registration, exists := registry.rulings[id]
-		if !exists {
-			addDiagnostic(constants.GateRuling, string(id), "missing from registry")
-			return
-		}
-		if registration.Status == constants.RulingPending {
-			addDiagnostic(constants.GateRuling, string(id), "unresolved")
-		}
-	}
-	visitOperation = func(id OperationID) {
-		if closure.operations[id] {
-			return
-		}
-		closure.operations[id] = true
-		registration, exists := registry.operations[id]
-		if !exists {
-			addDiagnostic(constants.GateOperation, string(id), "missing from registry")
-			return
-		}
-		if registration.Status == constants.Unsupported {
-			addDiagnostic(constants.GateOperation, string(id), "unsupported")
-		}
-	}
-	visitMechanism = func(id MechanismID) {
-		if closure.mechanisms[id] {
-			return
-		}
-		closure.mechanisms[id] = true
-		registration, exists := registry.mechanisms[id]
-		if !exists {
-			addDiagnostic(constants.GateMechanism, string(id), "missing from registry")
-			return
-		}
-		if registration.Status == constants.Unsupported {
-			addDiagnostic(constants.GateMechanism, string(id), "unsupported")
-		}
-		for _, operationID := range registration.Operations {
-			visitOperation(operationID)
-		}
-		for _, rulingID := range registration.Rulings {
-			visitRuling(rulingID)
-		}
-	}
-	visitAbility = func(id AbilitySlotID) {
-		if closure.abilities[id] {
-			return
-		}
-		closure.abilities[id] = true
-		registration, exists := registry.abilities[id]
-		if !exists {
-			addDiagnostic(constants.GateAbility, string(id), "missing from registry")
-			return
-		}
-		if registration.Status == constants.Unsupported {
-			addDiagnostic(constants.GateAbility, string(id), "unsupported")
-		}
-		for _, mechanismID := range registration.Mechanisms {
-			visitMechanism(mechanismID)
-		}
-		for _, operationID := range registration.Operations {
-			visitOperation(operationID)
-		}
-		for _, dependencyID := range registration.Dependencies {
-			visitContent(dependencyID)
-		}
-		for _, rulingID := range registration.Rulings {
-			visitRuling(rulingID)
-		}
-	}
-	visitFace = func(id CardFaceID) {
-		if closure.faces[id] {
-			return
-		}
-		closure.faces[id] = true
-		registration, exists := registry.faces[id]
-		if !exists {
-			addDiagnostic(constants.GateContent, string(id), "missing from registry")
-			return
-		}
-		if registration.Status == constants.Unsupported {
-			addDiagnostic(constants.GateContent, string(id), "unsupported")
-		}
-		for _, behavior := range registration.Behaviors {
-			abilityID := abilitySlotID(
-				id,
-				behavior,
-			)
-			visitAbility(abilityID)
-		}
-	}
-	visitCard = func(id CardID) {
-		if closure.cards[id] {
-			return
-		}
-		closure.cards[id] = true
-		registration, exists := registry.cards[id]
-		contentID := "card:" + string(id)
-		if !exists {
-			addDiagnostic(constants.GateContent, contentID, "missing from registry")
-			return
-		}
-		if registration.Status == constants.Unsupported {
-			addDiagnostic(constants.GateContent, contentID, "unsupported")
-		}
-		for faceID, face := range registry.faces {
-			if face.CardID == id {
-				visitFace(faceID)
-			}
-		}
-		for _, dependencyID := range registration.Dependencies {
-			visitContent(dependencyID)
-		}
-	}
-	visitContent = func(id ContentID) {
-		if strings.HasPrefix(string(id), "card:") {
-			visitCard(CardID(strings.TrimPrefix(string(id), "card:")))
-			return
-		}
-		if closure.contents[id] {
-			return
-		}
-		closure.contents[id] = true
-		registration, exists := registry.contents[id]
-		if !exists {
-			addDiagnostic(constants.GateContent, string(id), "missing from registry")
-			return
-		}
-		if registration.Status == constants.Unsupported {
-			addDiagnostic(constants.GateContent, string(id), "unsupported")
-		}
-		for _, dependencyID := range registration.Dependencies {
-			visitContent(dependencyID)
-		}
-	}
-
-	sections := []DeckSection{
-		deck.MainDeck,
-		deck.MaterialDeck,
-		deck.OutsideGamePool,
-	}
-	for _, section := range sections {
-		for _, entry := range section {
-			visitCard(entry.CardID)
-			visitFace(entry.FaceID)
-		}
-	}
-	addOrphanDiagnostics(closure, registry, addDiagnostic)
-
-	diagnostics := make([]GateDiagnostic, 0, len(diagnosticSet))
-	for _, diagnostic := range diagnosticSet {
-		diagnostics = append(diagnostics, diagnostic)
-	}
-	sort.Slice(diagnostics, func(first, second int) bool {
-		return compareGateDiagnostic(diagnostics[first], diagnostics[second]) < 0
-	})
-	return closure, diagnostics
-}
-
-func addOrphanDiagnostics(closure supportClosure, registry contentRegistry, add func(constants.GateKind, string, string)) {
-	for id := range registry.cards {
-		if !closure.cards[id] {
-			add(constants.GateRegistry, "card:"+string(id), "orphaned formal content")
-		}
-	}
-	for id := range registry.faces {
-		if !closure.faces[id] {
-			add(constants.GateRegistry, string(id), "orphaned formal content")
-		}
-	}
-	for id := range registry.abilities {
-		if !closure.abilities[id] {
-			add(constants.GateRegistry, string(id), "orphaned formal content")
-		}
-	}
-	for id := range registry.contents {
-		if !closure.contents[id] {
-			add(constants.GateRegistry, string(id), "orphaned formal content")
-		}
-	}
-	for id := range registry.mechanisms {
-		if !closure.mechanisms[id] {
-			add(constants.GateRegistry, string(id), "orphaned formal content")
-		}
-	}
-	for id := range registry.operations {
-		if !closure.operations[id] {
-			add(constants.GateRegistry, string(id), "orphaned formal content")
-		}
-	}
-	for id := range registry.rulings {
-		if !closure.rulings[id] {
-			add(constants.GateRegistry, string(id), "orphaned formal content")
-		}
-	}
-}
-
-func compareGateDiagnostic(first, second GateDiagnostic) int {
-	if first.Kind < second.Kind {
-		return -1
-	}
-	if first.Kind > second.Kind {
-		return 1
-	}
-	return strings.Compare(first.ID, second.ID)
-}
-
-func abilitySlotID(faceID CardFaceID, behavior string) AbilitySlotID {
-	abilityPrefix := strings.Replace(
-		string(faceID),
-		"face:",
-		"ability:",
-		1,
+	return newStandardSetup(
+		configuration,
+		definitions,
+		deck,
+		deck,
 	)
-	return AbilitySlotID(abilityPrefix + ":" + behavior)
 }
