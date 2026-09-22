@@ -93,7 +93,7 @@ func TestResonanceBaublesAreUnavailableWithoutMatchingOpponentChampion(t *testin
 		}
 	}
 	game.advanceKnowledgeRevision()
-	if got := len(game.state.Knowledge.Abilities[player.UID]); got != 0 {
-		t.Fatalf("ability handles = %#v, want none", game.state.Knowledge.Abilities[player.UID])
+	if got := len(game.state.Knowledge.Players[player.UID].Abilities); got != 0 {
+		t.Fatalf("ability handles = %#v, want none", game.state.Knowledge.Players[player.UID].Abilities)
 	}
 }

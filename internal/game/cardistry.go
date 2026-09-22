@@ -180,7 +180,7 @@ func (g *Game) payMemoryCost(player *model.Player, cost int, memoryPayment []Vie
 // memoryPaymentCardForHandle 反查玩家指定的非隨機 Memory 付款來源。
 // 輸入為付款玩家與 PlayerView handle；輸出為墓地中的 Floating Memory 卡牌或驗證錯誤，無副作用。
 func (g *Game) memoryPaymentCardForHandle(player *model.Player, handle ViewHandle) (cardInstanceID, error) {
-	for card, candidate := range g.state.Knowledge.Cards[player.UID] {
+	for card, candidate := range g.state.Knowledge.Players[player.UID].Cards {
 		if candidate != handle {
 			continue
 		}

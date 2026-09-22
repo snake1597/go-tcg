@@ -205,7 +205,7 @@ func TestSubmitRejectsUnusedPayloadByActionKind(t *testing.T) {
 		{
 			name: "plain action rejects reserve",
 			setup: func(game *Game) Input {
-				game.state.Knowledge.Actions[model.PlayerOne.UID]["plain"] = constants.ActionPass
+				game.state.Knowledge.Players[model.PlayerOne.UID].Actions["plain"] = constants.ActionPass
 				return Input{
 					Revision: game.state.Revision,
 					Action:   "plain",
@@ -218,7 +218,7 @@ func TestSubmitRejectsUnusedPayloadByActionKind(t *testing.T) {
 		{
 			name: "materialization rejects reserve",
 			setup: func(game *Game) Input {
-				game.state.Knowledge.Materializations[model.PlayerOne.UID]["materialize"] = "source"
+				game.state.Knowledge.Players[model.PlayerOne.UID].Materializations["materialize"] = "source"
 				return Input{
 					Revision: game.state.Revision,
 					Action:   "materialize",
@@ -231,7 +231,7 @@ func TestSubmitRejectsUnusedPayloadByActionKind(t *testing.T) {
 		{
 			name: "card activation rejects memory payment",
 			setup: func(game *Game) Input {
-				game.state.Knowledge.Activations[model.PlayerOne.UID]["activate"] = "source"
+				game.state.Knowledge.Players[model.PlayerOne.UID].Activations["activate"] = "source"
 				return Input{
 					Revision: game.state.Revision,
 					Action:   "activate",
@@ -244,7 +244,7 @@ func TestSubmitRejectsUnusedPayloadByActionKind(t *testing.T) {
 		{
 			name: "attack rejects reserve",
 			setup: func(game *Game) Input {
-				game.state.Knowledge.Attacks[model.PlayerOne.UID]["attack"] = "attacker"
+				game.state.Knowledge.Players[model.PlayerOne.UID].Attacks["attack"] = "attacker"
 				return Input{
 					Revision: game.state.Revision,
 					Action:   "attack",
@@ -257,7 +257,7 @@ func TestSubmitRejectsUnusedPayloadByActionKind(t *testing.T) {
 		{
 			name: "wield rejects memory payment",
 			setup: func(game *Game) Input {
-				game.state.Knowledge.Wields[model.PlayerOne.UID]["wield"] = "weapon"
+				game.state.Knowledge.Players[model.PlayerOne.UID].Wields["wield"] = "weapon"
 				return Input{
 					Revision: game.state.Revision,
 					Action:   "wield",
@@ -270,7 +270,7 @@ func TestSubmitRejectsUnusedPayloadByActionKind(t *testing.T) {
 		{
 			name: "cardistry rejects reserve",
 			setup: func(game *Game) Input {
-				game.state.Knowledge.Abilities[model.PlayerOne.UID]["cardistry"] = activatedAbility{
+				game.state.Knowledge.Players[model.PlayerOne.UID].Abilities["cardistry"] = activatedAbility{
 					Kind:   activatedAbilityCardistry,
 					Source: "source",
 				}
@@ -286,7 +286,7 @@ func TestSubmitRejectsUnusedPayloadByActionKind(t *testing.T) {
 		{
 			name: "object ability rejects reserve",
 			setup: func(game *Game) Input {
-				game.state.Knowledge.Abilities[model.PlayerOne.UID]["ability"] = activatedAbility{
+				game.state.Knowledge.Players[model.PlayerOne.UID].Abilities["ability"] = activatedAbility{
 					Kind:   activatedAbilityObject,
 					Source: "source",
 				}
@@ -454,7 +454,7 @@ func TestSubmitRejectsActionAfterGameFinishes(t *testing.T) {
 
 func TestStateHashUsesCanonicalVersionedState(t *testing.T) {
 	game := newTestGame(42)
-	const want = "7f94b54d03338ebf1a81c1ce8c916ce5e4935d42c75623951d0b1183991fb75e"
+	const want = "4af1bf6e6a83084e97ab896860d404599d09e6160c67cd71d4a0fd25a804e3d5"
 
 	if got := game.StateHash(); got != want {
 		t.Fatalf("StateHash() = %q, want canonical digest %q", got, want)
@@ -462,6 +462,24 @@ func TestStateHashUsesCanonicalVersionedState(t *testing.T) {
 	otherGame := newTestGame(43)
 	if other := otherGame.StateHash(); other == want {
 		t.Fatalf("StateHash() ignored the seed: seed 43 also produced %q", other)
+	}
+}
+
+// TestKnowledgeStateGroupsViewsByPlayer 驗證新對局為每位玩家建立獨立的可見資訊容器。
+// 輸入為固定 seed 的測試對局；輸出為每個玩家的完整 playerKnowledge；副作用僅限測試資料寫入。
+func TestKnowledgeStateGroupsViewsByPlayer(t *testing.T) {
+	game := newTestGame(42)
+	first := game.state.Knowledge.Players[model.PlayerOne.UID]
+	second := game.state.Knowledge.Players[model.PlayerTwo.UID]
+	if first == nil || second == nil {
+		t.Fatalf("Knowledge.Players = %#v, want both players", game.state.Knowledge.Players)
+	}
+	if first.Actions == nil || first.Materializations == nil || first.Activations == nil || first.Attacks == nil || first.Wields == nil || first.Abilities == nil || first.Cards == nil || first.Events == nil {
+		t.Fatalf("first player knowledge = %#v, want initialized collections", first)
+	}
+	first.Actions["only-first"] = constants.ActionPass
+	if _, exists := second.Actions["only-first"]; exists {
+		t.Fatalf("second player actions = %#v, want no first player handle", second.Actions)
 	}
 }
 

@@ -145,7 +145,7 @@ func (g *Game) reserveCardsForHandles(player *model.Player, source cardInstanceI
 // reserveCardForHandle 依玩家目前的追蹤映射反查 reserve 選擇對應的卡牌。
 // 輸入為玩家與不透明 handle；輸出為卡牌識別與是否存在，無副作用。
 func (g *Game) reserveCardForHandle(player *model.Player, handle ViewHandle) (cardInstanceID, bool) {
-	for entity, candidate := range g.state.Knowledge.Cards[player.UID] {
+	for entity, candidate := range g.state.Knowledge.Players[player.UID].Cards {
 		if candidate == handle {
 			return cardInstanceID(entity), true
 		}

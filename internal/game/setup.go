@@ -18,8 +18,6 @@ func newStandardSetup(
 	secondDeck DeckManifest,
 ) (*Game, error) {
 	game := NewGame(configuration)
-	game.state.NextHandle = 0
-	game.initializeKnowledgeState()
 
 	decks := []DeckManifest{
 		firstDeck,

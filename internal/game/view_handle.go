@@ -15,22 +15,22 @@ type ViewHandle string
 // grantCardTracking 為玩家首次追蹤到的卡牌配置 handle，後續追蹤保留同一 handle。
 // 是否應讓玩家追蹤此牌由呼叫端決定，此函式不檢查牌所在區域或可見性。
 func (g *Game) grantCardTracking(player *model.Player, card entityID) {
-	if _, exists := g.state.Knowledge.Cards[player.UID][card]; exists {
+	if _, exists := g.state.Knowledge.Players[player.UID].Cards[card]; exists {
 		return
 	}
 	handle := g.newViewHandle(
 		player,
 		constants.ViewHandleSubjectCardPrefix+string(card),
 	)
-	g.state.Knowledge.Cards[player.UID][card] = handle
+	g.state.Knowledge.Players[player.UID].Cards[card] = handle
 }
 
 func (g *Game) revokeCardTracking(player *model.Player, card entityID) {
-	handle, exists := g.state.Knowledge.Cards[player.UID][card]
+	handle, exists := g.state.Knowledge.Players[player.UID].Cards[card]
 	if !exists {
 		return
 	}
-	delete(g.state.Knowledge.Cards[player.UID], card)
+	delete(g.state.Knowledge.Players[player.UID].Cards, card)
 	choice := g.state.Knowledge.Choice
 	if choice == nil || !samePlayer(choice.Actor, player) {
 		return

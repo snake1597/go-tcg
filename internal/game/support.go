@@ -37,10 +37,5 @@ func NewStandardGame(configuration StandardGameConfig) (*Game, error) {
 		return nil, fmt.Errorf("validate fixed deck references: %w", err)
 	}
 
-	return newStandardSetup(
-		configuration,
-		definitions,
-		deck,
-		deck,
-	)
+	return newStandardSetup(configuration, definitions, deck, deck)
 }
