@@ -188,7 +188,7 @@ func TestArthurImmortalityExpiresAtBeginningOfOwnersNextTurn(t *testing.T) {
 }
 
 func TestZeroImmortalityDurationIsNotActive(t *testing.T) {
-	game := NewGame(1)
+	game := newTestGame(1)
 	id := objectID("ordinary")
 	game.state.Objects[id] = fieldObject{}
 	if game.isImmortal(id) {

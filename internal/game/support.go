@@ -7,7 +7,7 @@ import (
 )
 
 type StandardGameConfig struct {
-	Players        [2]*model.Player
+	Players        []*model.Player
 	RepositoryRoot string
 	Seed           uint64
 }
@@ -15,7 +15,8 @@ type StandardGameConfig struct {
 // NewStandardGame 載入已驗證的固定卡面資料與固定 Standard 牌組，建立可直接執行的單局。
 // 輸入為兩名不同玩家、repository root 與隨機種子；輸出為初始化後的 Game 或資料／設定錯誤，副作用為讀取卡面檔案。
 func NewStandardGame(configuration StandardGameConfig) (*Game, error) {
-	if configuration.Players[0] == nil ||
+	if len(configuration.Players) != 2 ||
+		configuration.Players[0] == nil ||
 		configuration.Players[1] == nil ||
 		configuration.Players[0].UID == "" ||
 		configuration.Players[1].UID == "" ||

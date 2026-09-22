@@ -11,10 +11,22 @@ import (
 	"testing"
 )
 
+func newTestGame(seed uint64) *Game {
+	return NewGame(
+		StandardGameConfig{
+			Players: []*model.Player{
+				model.PlayerOne,
+				model.PlayerTwo,
+			},
+			Seed: seed,
+		},
+	)
+}
+
 func TestNewGamePinsReplayVersionsAndSeed(t *testing.T) {
 	const seed uint64 = 42
 
-	game := NewGame(seed)
+	game := newTestGame(seed)
 	replay := game.Replay()
 
 	wantVersions := Versions{
@@ -39,7 +51,7 @@ func TestNewGamePinsReplayVersionsAndSeed(t *testing.T) {
 }
 
 func TestPlayerViewScopesOpaqueActionHandles(t *testing.T) {
-	game := NewGame(42)
+	game := newTestGame(42)
 
 	firstView, err := game.PlayerView(model.PlayerOne)
 	if err != nil {
@@ -90,7 +102,7 @@ func TestPlayerViewScopesOpaqueActionHandles(t *testing.T) {
 // TestPlayerViewIncludesHeuristicRank 驗證 PlayerView 對每個合法 action 提供 bot 可用的固定優先級。
 // 輸入為新建對局與 Player One；輸出為投降 action 的最低優先級 rank，副作用是無。
 func TestPlayerViewIncludesHeuristicRank(t *testing.T) {
-	game := NewGame(1)
+	game := newTestGame(1)
 	view, err := game.PlayerView(model.PlayerOne)
 	if err != nil {
 		t.Fatalf("PlayerView() error = %v", err)
@@ -149,7 +161,7 @@ func TestSubmitRejectsInvalidActionHandleWithoutChangingGame(t *testing.T) {
 		t.Run(
 			testCase.name,
 			func(t *testing.T) {
-				game := NewGame(42)
+				game := newTestGame(42)
 				beforeHash := game.StateHash()
 				replayBeforeInput := game.Replay()
 				beforeReplay, err := json.Marshal(replayBeforeInput)
@@ -305,7 +317,7 @@ func TestSubmitRejectsUnusedPayloadByActionKind(t *testing.T) {
 		t.Run(
 			testCase.name,
 			func(t *testing.T) {
-				game := NewGame(42)
+				game := newTestGame(42)
 				input := testCase.setup(game)
 				beforeHash := game.StateHash()
 				beforeReplay := game.Replay()
@@ -332,8 +344,8 @@ func TestSubmitRejectsUnusedPayloadByActionKind(t *testing.T) {
 }
 
 func TestSameSeedAndInputProduceSameStateHash(t *testing.T) {
-	first := NewGame(42)
-	second := NewGame(42)
+	first := newTestGame(42)
+	second := newTestGame(42)
 	input := concedeInput(
 		t,
 		first,
@@ -380,7 +392,7 @@ func TestSameSeedAndInputProduceSameStateHash(t *testing.T) {
 func TestSubmitRejectsActionAfterGameFinishes(t *testing.T) {
 	match, err := NewStandardGame(
 		StandardGameConfig{
-			Players: [2]*model.Player{
+			Players: []*model.Player{
 				model.PlayerOne,
 				model.PlayerTwo,
 			},
@@ -435,13 +447,13 @@ func TestSubmitRejectsActionAfterGameFinishes(t *testing.T) {
 }
 
 func TestStateHashUsesCanonicalVersionedState(t *testing.T) {
-	game := NewGame(42)
+	game := newTestGame(42)
 	const want = "523e17749e989683c1b634cb83fc9a4ed68f8474dca3c5a7ce036b3fbba51e3e"
 
 	if got := game.StateHash(); got != want {
 		t.Fatalf("StateHash() = %q, want canonical digest %q", got, want)
 	}
-	otherGame := NewGame(43)
+	otherGame := newTestGame(43)
 	if other := otherGame.StateHash(); other == want {
 		t.Fatalf("StateHash() ignored the seed: seed 43 also produced %q", other)
 	}
@@ -499,7 +511,7 @@ func TestRejectedInputDoesNotChangeGame(t *testing.T) {
 		t.Run(
 			testCase.name,
 			func(t *testing.T) {
-				game := NewGame(42)
+				game := newTestGame(42)
 				beforeView, err := game.PlayerView(model.PlayerOne)
 				if err != nil {
 					t.Fatalf("PlayerView() before input error = %v", err)
@@ -553,7 +565,7 @@ func TestRejectedInputDoesNotChangeGame(t *testing.T) {
 }
 
 func TestReplayVerifiesFromRecordedVersionsAndSeed(t *testing.T) {
-	game := NewGame(42)
+	game := newTestGame(42)
 	input := concedeInput(
 		t,
 		game,
@@ -611,7 +623,7 @@ func TestReplayRejectsEachIncompatibleVersion(t *testing.T) {
 		t.Run(
 			testCase.name,
 			func(t *testing.T) {
-				game := NewGame(42)
+				game := newTestGame(42)
 				replay := game.Replay()
 				switch testCase.field {
 				case "format":
@@ -649,7 +661,7 @@ func TestReplayRejectsEachIncompatibleVersion(t *testing.T) {
 }
 
 func TestReplayReportsFirstStateHashDivergence(t *testing.T) {
-	game := NewGame(42)
+	game := newTestGame(42)
 	input := concedeInput(
 		t,
 		game,

@@ -234,7 +234,7 @@ func newActionGameWithSource(t *testing.T, definition CardID) *Game {
 func newActionGameForPlayer(t *testing.T, player *model.Player, definition CardID) *Game {
 	t.Helper()
 	game, err := NewStandardGame(StandardGameConfig{
-		Players: [2]*model.Player{
+		Players: []*model.Player{
 			model.PlayerOne,
 			model.PlayerTwo,
 		},

@@ -10,7 +10,7 @@ import (
 // 輸入為正常 StandardGameConfig；輸出為雙方各有七張起手牌的 Game，副作用為讀取 repository 內的卡面資料。
 func TestNewStandardGameCreatesCompleteFixedDeckGame(t *testing.T) {
 	configuration := StandardGameConfig{
-		Players: [2]*model.Player{
+		Players: []*model.Player{
 			model.PlayerOne,
 			model.PlayerTwo,
 		},

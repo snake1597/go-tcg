@@ -18,14 +18,11 @@ type Game struct {
 
 // NewGame 建立引擎的空白狀態並固定亂數種子與版本。
 // 玩家牌組、開局事件與標準回合排程由 setup 層配置。
-func NewGame(seed uint64) *Game {
+func NewGame(config StandardGameConfig) *Game {
 	versions := currentVersions()
 	game := &Game{
 		versions: versions,
-		players: []*model.Player{
-			model.PlayerOne,
-			model.PlayerTwo,
-		},
+		players:  config.Players,
 		state: gameState{
 			Revision:           1,
 			Entities:           make(map[entityID]knowledgeEntity),
@@ -37,13 +34,13 @@ func NewGame(seed uint64) *Game {
 			CardistryDiscounts: make(map[string]int),
 			Events:             []eventBatch{},
 			PRNG: prngState{
-				Seed: seed,
+				Seed: config.Seed,
 			},
 		},
 		replay: Replay{
 			FormatVersion: constants.ReplayFormatVersion,
 			Versions:      versions,
-			InitialSeed:   seed,
+			InitialSeed:   config.Seed,
 		},
 	}
 	game.initializeKnowledgeState()

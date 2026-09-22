@@ -51,7 +51,7 @@ func TestChampionAttackUsesPlayerViewAndDealsSimultaneousCombatDamage(t *testing
 // TestLegalAttackersIncludesEveryObeyingPositivePowerAlly 驗證一般 Ally 不需卡牌特例即可取得 attack action，零 power Ally 則不可攻擊。
 // 輸入為同一玩家控制的兩個 awake Ally objects；輸出為只包含正 power Ally 的合法攻擊者，副作用僅為重建 PlayerView action handles。
 func TestLegalAttackersIncludesEveryObeyingPositivePowerAlly(t *testing.T) {
-	game := NewGame(42)
+	game := newTestGame(42)
 	game.state.Scheduler = schedulerFrame{
 		Kind:              schedulerStable,
 		TurnPlayer:        model.PlayerOne,
@@ -112,7 +112,7 @@ func TestLegalAttackersIncludesEveryObeyingPositivePowerAlly(t *testing.T) {
 // TestLegalAttackersExcludesFirstTurnChampion 驗證先手玩家首回合不能宣告攻擊。
 // 輸入為首回合 Main Phase 的正 power、醒著 Champion；輸出為沒有 Attack action，副作用僅為重建 PlayerView action handles。
 func TestLegalAttackersExcludesFirstTurnChampion(t *testing.T) {
-	game := NewGame(42)
+	game := newTestGame(42)
 	firstChampionCard := cardInstanceID("champion-card:player-1")
 	secondChampionCard := cardInstanceID("champion-card:player-2")
 	game.state.Cards[firstChampionCard] = cardInstance{

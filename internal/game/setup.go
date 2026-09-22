@@ -17,30 +17,22 @@ func newStandardSetup(
 	firstDeck DeckManifest,
 	secondDeck DeckManifest,
 ) (*Game, error) {
-	game := NewGame(configuration.Seed)
-	game.players = []*model.Player{
-		configuration.Players[0],
-		configuration.Players[1],
-	}
+	game := NewGame(configuration)
 	game.state.NextHandle = 0
 	game.initializeKnowledgeState()
-	game.state.Zones = make(map[string]playerZones, len(game.players))
-	game.state.Champions = make(map[string]championObject, len(game.players))
 
 	decks := []DeckManifest{
 		firstDeck,
 		secondDeck,
 	}
 	for index, player := range game.players {
-		if err := game.addPlayerDeck(
-			player,
-			decks[index],
-			definitions,
-		); err != nil {
+		if err := game.addPlayerDeck(player, decks[index], definitions); err != nil {
 			return nil, err
 		}
+
 		game.shuffleMainDeck(player)
 	}
+
 	for _, player := range game.players {
 		if !game.resolveSpiritOfFireOnEnter(player) {
 			break

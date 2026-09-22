@@ -81,7 +81,12 @@ func (r Replay) Verify() error {
 	if r.InitialState == nil || len(r.InitialPlayers) == 0 {
 		return newReplayVersionMismatch("missing initial state")
 	}
-	game := NewGame(r.InitialSeed)
+	game := NewGame(
+		StandardGameConfig{
+			Players: r.InitialPlayers,
+			Seed:    r.InitialSeed,
+		},
+	)
 	game.state = cloneGameState(*r.InitialState)
 	game.players = append(
 		[]*model.Player(nil),

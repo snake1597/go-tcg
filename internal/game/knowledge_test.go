@@ -8,7 +8,7 @@ import (
 )
 
 func TestPlayerViewProjectsOnlyTrackedCardsAndVisibleHistory(t *testing.T) {
-	game := NewGame(42)
+	game := newTestGame(42)
 	secretCard := game.addKnowledgeFixtureCard(
 		model.PlayerOne,
 		"Secret Flame",
@@ -48,7 +48,7 @@ func TestPlayerViewProjectsOnlyTrackedCardsAndVisibleHistory(t *testing.T) {
 // 輸入為含手牌、場上物件及效果項目的標準單局；輸出為不含內部識別的可見資料，副作用為零。
 func TestPlayerViewProjectsOwnHandPublicFieldAndEffectStack(t *testing.T) {
 	game, err := NewStandardGame(StandardGameConfig{
-		Players: [2]*model.Player{
+		Players: []*model.Player{
 			model.PlayerOne,
 			model.PlayerTwo,
 		},
@@ -112,7 +112,7 @@ func TestPlayerViewProjectsOwnHandPublicFieldAndEffectStack(t *testing.T) {
 // TestPlayerViewGroupsFieldByPlayerAndPlayOrder 驗證場上卡牌先依玩家座位分組，再依進場順序呈現。
 // 輸入為兩位玩家交錯進場的四張 Ally；輸出為各玩家維持自身出牌順序的公開場上投影，副作用為零。
 func TestPlayerViewGroupsFieldByPlayerAndPlayOrder(t *testing.T) {
-	game := NewGame(42)
+	game := newTestGame(42)
 	addCard := func(id cardInstanceID, owner *model.Player, name string) cardInstanceID {
 		game.state.Cards[id] = cardInstance{
 			ID:    id,
@@ -215,7 +215,7 @@ func TestPlayerViewGroupsFieldByPlayerAndPlayOrder(t *testing.T) {
 }
 
 func TestPlayerViewRevokesTrackingHandleButRetainsRevealHistory(t *testing.T) {
-	game := NewGame(42)
+	game := newTestGame(42)
 	secretCard := game.addKnowledgeFixtureCard(
 		model.PlayerOne,
 		"Secret Flame",
@@ -267,7 +267,7 @@ func TestPlayerViewRevokesTrackingHandleButRetainsRevealHistory(t *testing.T) {
 }
 
 func TestPendingChoiceAcceptsOnlyCurrentPlayersVisibleHandle(t *testing.T) {
-	game := NewGame(42)
+	game := newTestGame(42)
 	secretCard := game.addKnowledgeFixtureCard(
 		model.PlayerOne,
 		"Secret Flame",
@@ -327,7 +327,7 @@ func TestPendingChoiceAcceptsOnlyCurrentPlayersVisibleHandle(t *testing.T) {
 // TestPendingChoiceNamesChampionTarget 驗證攻擊目標以公開 Champion 卡名投影，而非無意義的通用選項。
 // 輸入為玩家可見的 Champion object 選項；輸出為含卡名的 PendingChoice，副作用僅為建立測試狀態。
 func TestPendingChoiceNamesChampionTarget(t *testing.T) {
-	game := NewGame(42)
+	game := newTestGame(42)
 	championCard := cardInstanceID("champion-card:player-2")
 	championID := objectID("champion:player-2")
 	game.state.Cards[championCard] = cardInstance{
@@ -359,7 +359,7 @@ func TestPendingChoiceNamesChampionTarget(t *testing.T) {
 }
 
 func TestRevokingTrackingRevokesPendingChoiceOptionWithoutChangingStateOnSubmission(t *testing.T) {
-	game := NewGame(42)
+	game := newTestGame(42)
 	secretCard := game.addKnowledgeFixtureCard(
 		model.PlayerOne,
 		"Secret Flame",
@@ -402,7 +402,7 @@ func TestRevokingTrackingRevokesPendingChoiceOptionWithoutChangingStateOnSubmiss
 }
 
 func TestPendingChoiceOmitsUntrackedCards(t *testing.T) {
-	game := NewGame(42)
+	game := newTestGame(42)
 	secretCard := game.addKnowledgeFixtureCard(
 		model.PlayerOne,
 		"Secret Flame",

@@ -55,7 +55,7 @@ func Run(arguments []string, input io.Reader, output io.Writer, repositoryRoot s
 	}
 
 	match, setupErr := game.NewStandardGame(game.StandardGameConfig{
-		Players: [2]*model.Player{
+		Players: []*model.Player{
 			model.PlayerOne,
 			model.PlayerTwo,
 		},

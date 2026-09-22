@@ -458,7 +458,7 @@ func TestRejectedReserveInputDoesNotChangeStateHash(t *testing.T) {
 	repositoryRoot := filepath.Clean("../..")
 	match, err := game.NewStandardGame(
 		game.StandardGameConfig{
-			Players: [2]*model.Player{
+			Players: []*model.Player{
 				model.PlayerOne,
 				model.PlayerTwo,
 			},

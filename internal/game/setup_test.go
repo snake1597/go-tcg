@@ -26,7 +26,7 @@ func materializationActionByCardName(t *testing.T, view PlayerView, name string)
 // turn-order-main-phase.md § General Rules.
 func TestStandardSetupStartsFirstTurnAtMainAndPassesToSecondPlayersDraw(t *testing.T) {
 	configuration := StandardGameConfig{
-		Players: [2]*model.Player{
+		Players: []*model.Player{
 			model.PlayerOne,
 			model.PlayerTwo,
 		},
@@ -138,7 +138,7 @@ func TestStandardSetupStartsFirstTurnAtMainAndPassesToSecondPlayersDraw(t *testi
 func TestStandardGameCompletesTurnsAndReplaysWakeUp(t *testing.T) {
 	game, err := NewStandardGame(
 		StandardGameConfig{
-			Players: [2]*model.Player{
+			Players: []*model.Player{
 				model.PlayerOne,
 				model.PlayerTwo,
 			},
@@ -507,7 +507,7 @@ func fieldObjectByOwnerAndName(
 func TestWakeUpPhaseWakesAllControlledRestedObjects(t *testing.T) {
 	game, err := NewStandardGame(
 		StandardGameConfig{
-			Players: [2]*model.Player{
+			Players: []*model.Player{
 				model.PlayerOne,
 				model.PlayerTwo,
 			},
@@ -561,7 +561,7 @@ func TestWakeUpPhaseWakesAllControlledRestedObjects(t *testing.T) {
 // turn-order-recollection-phase.md § General Rules.
 func TestStandardPassesDeterministicallyReachRecollectionOnTheNextTurn(t *testing.T) {
 	configuration := StandardGameConfig{
-		Players: [2]*model.Player{
+		Players: []*model.Player{
 			model.PlayerOne,
 			model.PlayerTwo,
 		},
@@ -629,7 +629,7 @@ func TestStandardPassesDeterministicallyReachRecollectionOnTheNextTurn(t *testin
 // turn-order-materialize-phase.md § General Rules.
 func TestStandardTurnStopsAtMaterializeUntilTurnPlayerSkipsIt(t *testing.T) {
 	configuration := StandardGameConfig{
-		Players: [2]*model.Player{
+		Players: []*model.Player{
 			model.PlayerOne,
 			model.PlayerTwo,
 		},
@@ -995,7 +995,7 @@ func TestMaterializingTonorisFizzlesWhenLineageBecomesIllegalBeforeResolution(t 
 
 func TestNewStandardGameCreatesMirroredOpeningState(t *testing.T) {
 	configuration := StandardGameConfig{
-		Players: [2]*model.Player{
+		Players: []*model.Player{
 			&model.Player{
 				UID: "aria",
 			},
@@ -1068,7 +1068,7 @@ func TestNewStandardGameCreatesMirroredOpeningState(t *testing.T) {
 
 func TestStandardSetupEndsWhenStartingHandDrawDecksOut(t *testing.T) {
 	configuration := StandardGameConfig{
-		Players: [2]*model.Player{
+		Players: []*model.Player{
 			&model.Player{
 				UID: "aria",
 			},
@@ -1129,7 +1129,7 @@ func TestStandardSetupEndsWhenStartingHandDrawDecksOut(t *testing.T) {
 
 func TestNewStandardGameIsReproducibleForTheSameSeed(t *testing.T) {
 	configuration := StandardGameConfig{
-		Players: [2]*model.Player{
+		Players: []*model.Player{
 			&model.Player{
 				UID: "aria",
 			},
@@ -1271,7 +1271,7 @@ func newTonorisMaterializationGame(t *testing.T) *Game {
 	t.Helper()
 	repositoryRoot := filepath.Clean("../..")
 	configuration := StandardGameConfig{
-		Players: [2]*model.Player{
+		Players: []*model.Player{
 			model.PlayerOne,
 			model.PlayerTwo,
 		},

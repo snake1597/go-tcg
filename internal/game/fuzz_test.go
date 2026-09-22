@@ -17,7 +17,7 @@ func FuzzRejectedInputPreservesStateHash(f *testing.F) {
 	f.Add(secondSeed, "")
 	f.Fuzz(
 		func(t *testing.T, seed uint64, forged string) {
-			match := NewGame(seed)
+			match := newTestGame(seed)
 			beforeHash := match.StateHash()
 			beforeReplay := match.Replay()
 			if forged == "" {
@@ -51,8 +51,8 @@ func FuzzReplayHashDeterminism(f *testing.F) {
 	f.Add(secondSeed)
 	f.Fuzz(
 		func(t *testing.T, seed uint64) {
-			first := NewGame(seed)
-			second := NewGame(seed)
+			first := newTestGame(seed)
+			second := newTestGame(seed)
 			view, err := first.PlayerView(model.PlayerOne)
 			if err != nil {
 				t.Fatalf("first PlayerView() error = %v", err)
