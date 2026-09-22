@@ -804,6 +804,68 @@ func TestMaterializingTonorisLevelsUpChampionAndGrantsTaunt(t *testing.T) {
 	}
 }
 
+// TestMaterializationCanUseMemoryPayment 驗證具體化可用公開的 Floating Memory handle 支付 Memory Cost。
+// 輸入為清空一般 Memory 並將 Five of Spades 放入墓地的正式 PlayerView 提交；輸出為成功建立具體化堆疊；副作用為將付款牌放逐與記錄付款事件。
+func TestMaterializationCanUseMemoryPayment(t *testing.T) {
+	game := newTonorisMaterializationGame(t)
+	player := model.PlayerTwo
+	floatingMemory := findCard(
+		t,
+		game,
+		player,
+		fiveOfSpadesCardID,
+	)
+	moveCardToGraveyard(
+		t,
+		game,
+		player,
+		floatingMemory,
+	)
+	game.grantCardTracking(
+		player,
+		entityID(floatingMemory),
+	)
+	zones := game.state.Zones[player.UID]
+	zones.Memory = nil
+	game.state.Zones[player.UID] = zones
+	game.advanceKnowledgeRevision()
+	game.captureReplayInitialState()
+
+	view, err := game.PlayerView(player)
+	if err != nil {
+		t.Fatalf("PlayerView() error = %v", err)
+	}
+	materialize := materializationActionByCardName(
+		t,
+		view,
+		"Tonoris, Lone Mercenary",
+	)
+	if materialize.MemoryPaymentRequired != 1 || len(materialize.MemoryPaymentOptions) != 1 {
+		t.Fatalf("materialization action = %#v, want one required Memory Payment option", materialize)
+	}
+	if err := game.Submit(
+		player,
+		Input{
+			Revision: view.Revision,
+			Action:   materialize.Handle,
+			MemoryPayment: []ViewHandle{
+				materialize.MemoryPaymentOptions[0].Handle,
+			},
+		},
+	); err != nil {
+		t.Fatalf("Submit() error = %v", err)
+	}
+	if cardIndex(game.state.Zones[player.UID].Banishment, floatingMemory) < 0 {
+		t.Fatal("Floating Memory card was not banished")
+	}
+	if !hasGameEvent(game, "materialize-banish-floating-memory") {
+		t.Fatalf("events = %#v, want materialization Floating Memory payment", game.state.Events)
+	}
+	if err := game.Replay().Verify(); err != nil {
+		t.Fatalf("Replay().Verify() error = %v", err)
+	}
+}
+
 // TestMaterializationExposesEveryEligibleFixedMaterialDeckCard 驗證固定 Material Deck 的所有非起始卡都可透過 PlayerView materialize。
 // 輸入為進入第二位玩家 Materialize Phase 的正式 Standard 單局；輸出為 Tonoris 與十張 Regalia 的 materialize actions，副作用僅為建立隔離測試單局與付款用 Memory。
 func TestMaterializationExposesEveryEligibleFixedMaterialDeckCard(t *testing.T) {

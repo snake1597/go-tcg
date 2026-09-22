@@ -45,7 +45,7 @@ func (g *Game) canActivateCardistry(player *model.Player, source objectID) bool 
 	if !fast && (!samePlayer(g.state.Scheduler.TurnPlayer, player) || g.state.Scheduler.Phase != constants.PhaseMain || len(g.state.EffectsStack) != 0) {
 		return false
 	}
-	return g.canPayCardistryCost(
+	return g.canPayMemoryCost(
 		player,
 		g.cardistryCost(player, baseCost),
 	)
@@ -94,16 +94,20 @@ func (g *Game) cardistryCost(player *model.Player, baseCost int) int {
 	return cost
 }
 
-func (g *Game) activateCardistry(player *model.Player, source objectID, floatingMemory []ViewHandle) error {
+// activateCardistry 宣告指定物件的 Cardistry，並以通用 Memory 付款來源支付其費用。
+// 輸入為控制者、來源物件與非隨機 Memory 付款 handles；輸出為啟動錯誤或 nil，成功時推入能力並授予行動機會。
+func (g *Game) activateCardistry(player *model.Player, source objectID, memoryPayment []ViewHandle) error {
 	if !g.canActivateCardistry(player, source) {
 		return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, source)
 	}
 	object := g.state.Objects[source]
 	baseCost, _ := g.cardistryBaseCost(object.Card)
-	if err := g.payCardistryCost(
+	if err := g.payMemoryCost(
 		player,
 		g.cardistryCost(player, baseCost),
-		floatingMemory,
+		memoryPayment,
+		"banish-floating-memory",
+		"banish-memory",
 	); err != nil {
 		return err
 	}
@@ -116,12 +120,16 @@ func (g *Game) activateCardistry(player *model.Player, source objectID, floating
 	return nil
 }
 
-func (g *Game) canPayCardistryCost(player *model.Player, cost int) bool {
+// canPayMemoryCost 判斷玩家的隨機 Memory 與非隨機付款來源是否足以支付指定費用。
+// 輸入為付款玩家與 Memory Cost；輸出為可否完成支付，無副作用。
+func (g *Game) canPayMemoryCost(player *model.Player, cost int) bool {
 	zones := g.state.Zones[player.UID]
-	return len(zones.Memory)+len(g.floatingMemoryCards(player)) >= cost
+	return len(zones.Memory)+len(g.memoryPaymentCards(player)) >= cost
 }
 
-func (g *Game) floatingMemoryCards(player *model.Player) []cardInstanceID {
+// memoryPaymentCards 回傳目前可作為任一 Memory Cost 非隨機付款來源的卡牌。
+// 輸入為付款玩家；輸出為其墓地中具有 Floating Memory 的卡牌，無副作用。
+func (g *Game) memoryPaymentCards(player *model.Player) []cardInstanceID {
 	zones := g.state.Zones[player.UID]
 	cards := make([]cardInstanceID, 0, len(zones.Graveyard))
 	for _, card := range zones.Graveyard {
@@ -133,14 +141,14 @@ func (g *Game) floatingMemoryCards(player *model.Player) []cardInstanceID {
 	return cards
 }
 
-// payCardistryCost 先驗證所有指定 Floating Memory handle、重複牌與付款總額，再修改區域。
+// payMemoryCost 先驗證所有指定的非隨機 Memory 付款來源、重複牌與付款總額，再修改區域。
 // 指定墓地牌先放逐，剩餘費用以對局亂數從 Memory 選牌支付，並逐張記錄付款事件。
-// 指定牌超過費用或總額不足時回傳 ErrInvalidViewHandle，尚不付款或推進亂數。
-func (g *Game) payCardistryCost(player *model.Player, cost int, floatingMemory []ViewHandle) error {
+// 輸入包含付款事件名稱；指定牌超過費用或總額不足時回傳 ErrInvalidViewHandle，尚不付款或推進亂數。
+func (g *Game) payMemoryCost(player *model.Player, cost int, memoryPayment []ViewHandle, floatingEvent string, randomEvent string) error {
 	zones := g.state.Zones[player.UID]
-	floatingCards := make(map[cardInstanceID]struct{}, len(floatingMemory))
-	for _, handle := range floatingMemory {
-		card, err := g.floatingMemoryCardForHandle(player, handle)
+	floatingCards := make(map[cardInstanceID]struct{}, len(memoryPayment))
+	for _, handle := range memoryPayment {
+		card, err := g.memoryPaymentCardForHandle(player, handle)
 		if err != nil {
 			return err
 		}
@@ -156,20 +164,22 @@ func (g *Game) payCardistryCost(player *model.Player, cost int, floatingMemory [
 		index := cardIndex(zones.Graveyard, card)
 		zones.Graveyard = removeCardAt(zones.Graveyard, index)
 		zones.Banishment = append(zones.Banishment, card)
-		g.recordPublicEvent(player, "cost", "banish-floating-memory", card)
+		g.recordPublicEvent(player, "cost", floatingEvent, card)
 	}
 	for payment := len(floatingCards); payment < cost; payment++ {
 		index := int(g.nextRandom() % uint64(len(zones.Memory)))
 		card := zones.Memory[index]
 		zones.Memory = removeCardAt(zones.Memory, index)
 		zones.Banishment = append(zones.Banishment, card)
-		g.recordPublicEvent(player, "cost", "banish-memory", card)
+		g.recordPublicEvent(player, "cost", randomEvent, card)
 	}
 	g.state.Zones[player.UID] = zones
 	return nil
 }
 
-func (g *Game) floatingMemoryCardForHandle(player *model.Player, handle ViewHandle) (cardInstanceID, error) {
+// memoryPaymentCardForHandle 反查玩家指定的非隨機 Memory 付款來源。
+// 輸入為付款玩家與 PlayerView handle；輸出為墓地中的 Floating Memory 卡牌或驗證錯誤，無副作用。
+func (g *Game) memoryPaymentCardForHandle(player *model.Player, handle ViewHandle) (cardInstanceID, error) {
 	for card, candidate := range g.state.Knowledge.Cards[player.UID] {
 		if candidate != handle {
 			continue

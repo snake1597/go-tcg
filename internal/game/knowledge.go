@@ -23,8 +23,7 @@ type knowledgeState struct {
 	Activations      map[string]map[ViewHandle]cardInstanceID       `json:"activations"`
 	Attacks          map[string]map[ViewHandle]objectID             `json:"attacks"`
 	Wields           map[string]map[ViewHandle]objectID             `json:"wields"`
-	Cardistries      map[string]map[ViewHandle]objectID             `json:"cardistries"`
-	ObjectAbilities  map[string]map[ViewHandle]objectID             `json:"object_abilities"`
+	Abilities        map[string]map[ViewHandle]activatedAbility     `json:"abilities"`
 	Cards            map[string]map[entityID]ViewHandle             `json:"cards"`
 	Events           map[string][]VisibleEvent                      `json:"events"`
 	Choice           *pendingChoice                                 `json:"choice,omitempty"`
@@ -34,6 +33,20 @@ type knowledgeState struct {
 	Wield            *wieldDeclaration                              `json:"wield,omitempty"`
 	ObjectAbility    *objectAbilityDeclaration                      `json:"object_ability,omitempty"`
 	VeritaCost       *veritaAlternativeCostDeclaration              `json:"verita_cost,omitempty"`
+}
+
+type activatedAbilityKind string
+
+const (
+	activatedAbilityCardistry activatedAbilityKind = "cardistry"
+	activatedAbilityObject    activatedAbilityKind = "object"
+)
+
+// activatedAbility 將玩家可啟動的場上能力映射回來源與宣告規格。
+// 輸入為來源物件與能力種類；輸出由 Submit 與 PlayerView 消費；本身沒有副作用。
+type activatedAbility struct {
+	Kind   activatedAbilityKind
+	Source objectID
 }
 
 type pendingChoice struct {
@@ -49,8 +62,7 @@ func (g *Game) initializeKnowledgeState() {
 		Activations:      make(map[string]map[ViewHandle]cardInstanceID, len(g.players)),
 		Attacks:          make(map[string]map[ViewHandle]objectID, len(g.players)),
 		Wields:           make(map[string]map[ViewHandle]objectID, len(g.players)),
-		Cardistries:      make(map[string]map[ViewHandle]objectID, len(g.players)),
-		ObjectAbilities:  make(map[string]map[ViewHandle]objectID, len(g.players)),
+		Abilities:        make(map[string]map[ViewHandle]activatedAbility, len(g.players)),
 		Cards:            make(map[string]map[entityID]ViewHandle, len(g.players)),
 		Events:           make(map[string][]VisibleEvent, len(g.players)),
 	}
@@ -60,8 +72,7 @@ func (g *Game) initializeKnowledgeState() {
 		knowledge.Activations[player.UID] = make(map[ViewHandle]cardInstanceID)
 		knowledge.Attacks[player.UID] = make(map[ViewHandle]objectID)
 		knowledge.Wields[player.UID] = make(map[ViewHandle]objectID)
-		knowledge.Cardistries[player.UID] = make(map[ViewHandle]objectID)
-		knowledge.ObjectAbilities[player.UID] = make(map[ViewHandle]objectID)
+		knowledge.Abilities[player.UID] = make(map[ViewHandle]activatedAbility)
 		knowledge.Cards[player.UID] = make(map[entityID]ViewHandle)
 		knowledge.Events[player.UID] = []VisibleEvent{}
 	}
@@ -79,15 +90,13 @@ func (g *Game) refreshLegalActions() {
 		activations := g.state.Knowledge.Activations[player.UID]
 		attacks := g.state.Knowledge.Attacks[player.UID]
 		wields := g.state.Knowledge.Wields[player.UID]
-		cardistries := g.state.Knowledge.Cardistries[player.UID]
-		objectAbilities := g.state.Knowledge.ObjectAbilities[player.UID]
+		abilities := g.state.Knowledge.Abilities[player.UID]
 		clear(actions)
 		clear(materializations)
 		clear(activations)
 		clear(attacks)
 		clear(wields)
-		clear(cardistries)
-		clear(objectAbilities)
+		clear(abilities)
 		if g.state.Finished {
 			continue
 		}
@@ -124,11 +133,17 @@ func (g *Game) refreshLegalActions() {
 				}
 				for _, source := range g.legalCardistries(player) {
 					handle := g.newViewHandle(player, constants.ViewHandleSubjectActionCardistryPrefix+string(source))
-					cardistries[handle] = source
+					abilities[handle] = activatedAbility{
+						Kind:   activatedAbilityCardistry,
+						Source: source,
+					}
 				}
 				for _, source := range g.legalObjectAbilities(player) {
 					handle := g.newViewHandle(player, constants.ViewHandleSubjectActionAbilityPrefix+string(source))
-					objectAbilities[handle] = source
+					abilities[handle] = activatedAbility{
+						Kind:   activatedAbilityObject,
+						Source: source,
+					}
 				}
 			case samePlayer(player, g.state.Scheduler.TurnPlayer) && g.state.Scheduler.Phase == constants.PhaseMaterialize:
 				for _, card := range g.legalMaterializations(player) {
@@ -179,12 +194,18 @@ func (g *Game) legalActions(player *model.Player) []LegalAction {
 		)
 	}
 	for handle, card := range g.state.Knowledge.Materializations[player.UID] {
+		memoryCost := g.characteristicsForCard(card).MemoryCost
 		legalActions = append(
 			legalActions,
 			LegalAction{
 				Handle:   handle,
 				Kind:     constants.ActionMaterialize,
 				CardName: g.state.Entities[entityID(card)].Name,
+				MemoryPaymentRequired: max(
+					memoryCost-len(g.state.Zones[player.UID].Memory),
+					0,
+				),
+				MemoryPaymentOptions: g.visibleMemoryPaymentSources(player),
 			},
 		)
 	}
@@ -221,25 +242,30 @@ func (g *Game) legalActions(player *model.Player) []LegalAction {
 			CardName: g.state.Entities[entityID(g.state.Objects[weapon].Card)].Name,
 		})
 	}
-	for handle, source := range g.state.Knowledge.Cardistries[player.UID] {
-		card := g.state.Objects[source].Card
-		baseCost, _ := g.cardistryBaseCost(card)
-		cost := g.cardistryCost(player, baseCost)
-		memoryCount := len(g.state.Zones[player.UID].Memory)
-		floatingMemoryRequired := max(cost-memoryCount, 0)
-		legalActions = append(
-			legalActions,
-			LegalAction{
-				Handle:                 handle,
-				Kind:                   constants.ActionActivate,
-				CardName:               g.cardName(card),
-				FloatingMemoryRequired: floatingMemoryRequired,
-				FloatingMemoryOptions:  g.visibleFloatingMemory(player),
-			},
-		)
-	}
-	for handle, source := range g.state.Knowledge.ObjectAbilities[player.UID] {
-		legalActions = append(legalActions, LegalAction{Handle: handle, Kind: constants.ActionActivate, CardName: g.state.Entities[entityID(g.state.Objects[source].Card)].Name})
+	for handle, ability := range g.state.Knowledge.Abilities[player.UID] {
+		switch ability.Kind {
+		case activatedAbilityCardistry:
+			card := g.state.Objects[ability.Source].Card
+			baseCost, _ := g.cardistryBaseCost(card)
+			cost := g.cardistryCost(player, baseCost)
+			memoryCount := len(g.state.Zones[player.UID].Memory)
+			legalActions = append(legalActions, LegalAction{
+				Handle:                handle,
+				Kind:                  constants.ActionActivate,
+				CardName:              g.cardName(card),
+				MemoryPaymentRequired: max(cost-memoryCount, 0),
+				MemoryPaymentOptions:  g.visibleMemoryPaymentSources(player),
+			})
+		case activatedAbilityObject:
+			legalActions = append(
+				legalActions,
+				LegalAction{
+					Handle:   handle,
+					Kind:     constants.ActionActivate,
+					CardName: g.state.Entities[entityID(g.state.Objects[ability.Source].Card)].Name,
+				},
+			)
+		}
 	}
 	for index := range legalActions {
 		legalActions[index].HeuristicRank = g.heuristicRank(
@@ -294,10 +320,10 @@ func (g *Game) visibleReserveCards(player *model.Player, source cardInstanceID) 
 	return options
 }
 
-// visibleFloatingMemory 投影目前可作為 Cardistry Floating Memory 的已追蹤墓地卡牌。
-// 輸入為付款玩家；輸出為引擎已驗證可選的卡牌 handle，無副作用且不重新判定 Cardistry 成本。
-func (g *Game) visibleFloatingMemory(player *model.Player) []VisibleCard {
-	cards := g.floatingMemoryCards(player)
+// visibleMemoryPaymentSources 投影目前可支付 Memory Cost 的已追蹤非隨機來源。
+// 輸入為付款玩家；輸出為引擎已驗證可選的卡牌 handle，無副作用且不綁定特定能力。
+func (g *Game) visibleMemoryPaymentSources(player *model.Player) []VisibleCard {
+	cards := g.memoryPaymentCards(player)
 	options := make([]VisibleCard, 0, len(cards))
 	for _, card := range cards {
 		handle, exists := g.state.Knowledge.Cards[player.UID][entityID(card)]
@@ -337,7 +363,7 @@ func (g *Game) heuristicRank(player *model.Player, action LegalAction) int {
 		if action.CardName == "Duchess, Six of Hearts" {
 			return 2
 		}
-		if action.FloatingMemoryOptions != nil {
+		if action.MemoryPaymentOptions != nil {
 			return 2
 		}
 		return 3

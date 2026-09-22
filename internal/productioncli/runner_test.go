@@ -242,9 +242,9 @@ func TestRunStopsAtSubmissionLimitWithReplayDiagnostics(t *testing.T) {
 	}
 }
 
-// TestReadSelectionUsesEngineProvidedPassAndFloatingMemoryOptions 驗證可略過選擇與 Floating Memory 都只使用 PlayerView 的編號選項。
+// TestReadSelectionUsesEngineProvidedPassAndMemoryPaymentOptions 驗證可略過選擇與 Memory 付款都只使用 PlayerView 的編號選項。
 // 輸入為含 pass 與兩張付款卡的可見視圖；輸出為對應 handle，副作用僅為消耗腳本輸入。
-func TestReadSelectionUsesEngineProvidedPassAndFloatingMemoryOptions(t *testing.T) {
+func TestReadSelectionUsesEngineProvidedPassAndMemoryPaymentOptions(t *testing.T) {
 	passView := game.PlayerView{
 		Revision: 4,
 		LegalActions: []game.LegalAction{
@@ -280,7 +280,7 @@ func TestReadSelectionUsesEngineProvidedPassAndFloatingMemoryOptions(t *testing.
 			{
 				Handle: "cardistry-handle",
 				Kind:   constants.ActionActivate,
-				FloatingMemoryOptions: []game.VisibleCard{
+				MemoryPaymentOptions: []game.VisibleCard{
 					{
 						Handle: "floating-one",
 						Name:   "Five of Spades",
@@ -303,8 +303,8 @@ func TestReadSelectionUsesEngineProvidedPassAndFloatingMemoryOptions(t *testing.
 	if paymentErr != nil {
 		t.Fatalf("readSelection() payment error = %v", paymentErr)
 	}
-	if paymentInput.Action != "cardistry-handle" || len(paymentInput.FloatingMemory) != 2 || paymentInput.FloatingMemory[0] != "floating-one" || paymentInput.FloatingMemory[1] != "floating-two" {
-		t.Fatalf("payment input = %#v, want engine floating memory handles", paymentInput)
+	if paymentInput.Action != "cardistry-handle" || len(paymentInput.MemoryPayment) != 2 || paymentInput.MemoryPayment[0] != "floating-one" || paymentInput.MemoryPayment[1] != "floating-two" {
+		t.Fatalf("payment input = %#v, want engine memory payment handles", paymentInput)
 	}
 }
 

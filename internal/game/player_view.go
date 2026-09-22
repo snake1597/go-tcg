@@ -14,10 +14,10 @@ type LegalAction struct {
 	// ReserveCost 與 ReserveOptions 定義 activation 必須提交的手牌付款張數與可選 handles。
 	ReserveCost    int           `json:"reserve_cost,omitempty"`
 	ReserveOptions []VisibleCard `json:"reserve_options,omitempty"`
-	// FloatingMemoryRequired 指出本次 Cardistry 付款至少必須使用的 Floating Memory 張數。
-	FloatingMemoryRequired int           `json:"floating_memory_required,omitempty"`
-	FloatingMemoryOptions  []VisibleCard `json:"floating_memory_options,omitempty"`
-	HeuristicRank          int           `json:"heuristic_rank"`
+	// MemoryPaymentRequired 指出本次 Memory Cost 至少必須使用的非隨機付款來源數量。
+	MemoryPaymentRequired int           `json:"memory_payment_required,omitempty"`
+	MemoryPaymentOptions  []VisibleCard `json:"memory_payment_options,omitempty"`
+	HeuristicRank         int           `json:"heuristic_rank"`
 }
 
 // VisibleChoice 提供 PendingChoice 選項的玩家可見描述與啟發式優先級。

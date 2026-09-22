@@ -43,7 +43,7 @@ func (g *Game) canMaterialize(player *model.Player, card cardInstanceID) bool {
 	if !exists || !samePlayer(candidate.Owner, player) {
 		return false
 	}
-	if len(g.state.Zones[player.UID].Memory) < g.characteristicsForCard(card).MemoryCost {
+	if !g.canPayMemoryCost(player, g.characteristicsForCard(card).MemoryCost) {
 		return false
 	}
 	if containsString(candidate.Types, "REGALIA") {
@@ -69,9 +69,9 @@ func (g *Game) canMaterializeChampionLevelUp(player *model.Player, candidate car
 	return candidate.Level == current.Level+1
 }
 
-// materialize 驗證玩家對 Material Deck 牌的宣告，並將付款與 Stack 建立交由付款流程處理。
-// 輸入為玩家與其公開的 materialization 牌；輸出為驗證或付款錯誤；成功時會改變區域與 Stack。
-func (g *Game) materialize(player *model.Player, card cardInstanceID) error {
+// materialize 驗證玩家對 Material Deck 牌的宣告，並以通用 Memory 付款與 Stack 建立交由付款流程處理。
+// 輸入為玩家、其公開的 materialization 牌與非隨機付款 handles；輸出為驗證或付款錯誤；成功時會改變區域與 Stack。
+func (g *Game) materialize(player *model.Player, card cardInstanceID, memoryPayment []ViewHandle) error {
 	if !g.canMaterialize(
 		player,
 		card,
@@ -86,20 +86,23 @@ func (g *Game) materialize(player *model.Player, card cardInstanceID) error {
 	if materialDeckIndex < 0 {
 		return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, card)
 	}
-	if err := g.payMaterialization(player, card); err != nil {
+	if err := g.payMaterialization(player, card, memoryPayment); err != nil {
 		return fmt.Errorf("pay materialization: %w", err)
 	}
 	return nil
 }
 
-// payMaterialization 重新檢查進場與付款條件，再移走 Material Deck 牌並隨機放逐 Memory。
-// 來源保留在 EffectSources，materialization 效果入堆疊後授予玩家行動機會；此時尚未進場。
-func (g *Game) payMaterialization(player *model.Player, card cardInstanceID) error {
+// payMaterialization 重新檢查進場與付款條件，再以通用 Memory 付款移走 Material Deck 牌。
+// 輸入為玩家、候選牌與非隨機付款 handles；來源保留在 EffectSources，成功時入堆疊並授予玩家行動機會。
+func (g *Game) payMaterialization(player *model.Player, card cardInstanceID, memoryPayment []ViewHandle) error {
 	if !g.canMaterialize(
 		player,
 		card,
 	) {
 		return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, card)
+	}
+	if err := g.payMemoryCost(player, g.characteristicsForCard(card).MemoryCost, memoryPayment, "materialize-banish-floating-memory", "materialize-banish-memory"); err != nil {
+		return fmt.Errorf("pay memory cost: %w", err)
 	}
 	zones := g.state.Zones[player.UID]
 	materialDeckIndex := cardIndex(
@@ -114,15 +117,6 @@ func (g *Game) payMaterialization(player *model.Player, card cardInstanceID) err
 		zones.MaterialDeck,
 		materialDeckIndex,
 	)
-	for paymentCount := 0; paymentCount < g.characteristicsForCard(card).MemoryCost; paymentCount++ {
-		memoryCount := len(zones.Memory)
-		randomValue := g.nextRandom()
-		paymentIndex := int(randomValue % uint64(memoryCount))
-		payment := zones.Memory[paymentIndex]
-		zones.Memory = removeCardAt(zones.Memory, paymentIndex)
-		zones.Banishment = append(zones.Banishment, payment)
-		g.recordPublicEvent(player, "materialize:payment", "materialize-banish-memory", payment)
-	}
 	g.state.Zones[player.UID] = zones
 	g.state.EffectSources = append(g.state.EffectSources, card)
 	g.state.EffectsStack = append(

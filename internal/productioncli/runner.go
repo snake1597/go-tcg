@@ -347,15 +347,15 @@ func readSelection(scanner *bufio.Scanner, output io.Writer, view game.PlayerVie
 		if reserveErr != nil {
 			return emptyInput, fmt.Errorf("read reserve: %w", reserveErr)
 		}
-		floatingMemory, floatingMemoryErr := readFloatingMemory(scanner, output, action)
-		if floatingMemoryErr != nil {
-			return emptyInput, fmt.Errorf("read floating memory: %w", floatingMemoryErr)
+		memoryPayment, memoryPaymentErr := readMemoryPayment(scanner, output, action)
+		if memoryPaymentErr != nil {
+			return emptyInput, fmt.Errorf("read memory payment: %w", memoryPaymentErr)
 		}
 		return game.Input{
-			Revision:       view.Revision,
-			Action:         action.Handle,
-			Reserve:        reserve,
-			FloatingMemory: floatingMemory,
+			Revision:      view.Revision,
+			Action:        action.Handle,
+			Reserve:       reserve,
+			MemoryPayment: memoryPayment,
 		}, nil
 	}
 }
@@ -391,21 +391,21 @@ func ReadReserve(scanner *bufio.Scanner, output io.Writer, action game.LegalActi
 	}
 }
 
-// readFloatingMemory 讓玩家以引擎提供的編號選項複選 Cardistry Floating Memory，空白代表不選。
+// readMemoryPayment 讓玩家以引擎提供的編號選項複選非隨機 Memory 付款來源，空白代表不選。
 // 輸入為 scanner、輸出與合法 action；輸出為選取的 handle 或讀取錯誤，副作用僅為寫入提示與無效輸入訊息。
-func readFloatingMemory(scanner *bufio.Scanner, output io.Writer, action game.LegalAction) ([]game.ViewHandle, error) {
-	if len(action.FloatingMemoryOptions) == 0 {
+func readMemoryPayment(scanner *bufio.Scanner, output io.Writer, action game.LegalAction) ([]game.ViewHandle, error) {
+	if len(action.MemoryPaymentOptions) == 0 {
 		return nil, nil
 	}
-	fmt.Fprintln(output, "可選 Floating Memory（可複選，以逗號分隔；直接 Enter 不使用）：")
-	for index, card := range action.FloatingMemoryOptions {
+	fmt.Fprintln(output, "可選 Memory 付款來源（可複選，以逗號分隔；直接 Enter 不使用）：")
+	for index, card := range action.MemoryPaymentOptions {
 		fmt.Fprintf(output, "%d. %s\n", index+1, card.Name)
 	}
 	for {
 		fmt.Fprint(output, "請輸入編號：")
 		if !scanner.Scan() {
 			if scannerErr := scanner.Err(); scannerErr != nil {
-				return nil, fmt.Errorf("read floating memory: %w", scannerErr)
+				return nil, fmt.Errorf("read memory payment: %w", scannerErr)
 			}
 			return nil, fmt.Errorf("%w", io.EOF)
 		}
@@ -415,7 +415,7 @@ func readFloatingMemory(scanner *bufio.Scanner, output io.Writer, action game.Le
 		}
 		selected, valid := parseNumberedHandles(
 			text,
-			action.FloatingMemoryOptions,
+			action.MemoryPaymentOptions,
 		)
 		if valid {
 			return selected, nil

@@ -59,7 +59,7 @@ func currentVersions() Versions {
 }
 
 // Submit 以目前 revision、action kind 的 payload 契約與玩家專屬 handle 驗證輸入，再交給對應行動或選擇流程。
-// 等待選擇時只接受該選擇、投降，以及可略過能力的 pass；Reserve 只供手牌 activation，Floating Memory 只供 Cardistry 付款。
+// 等待選擇時只接受該選擇、投降，以及可略過能力的 pass；Reserve 與 MemoryPayment 皆由 action 的宣告規格驗證。
 // 成功接受輸入後記錄 replay；驗證或子流程失敗時不記錄此步。
 // 此入口沒有統一回滾機制，子流程須自行維持失敗時的狀態契約。
 func (g *Game) Submit(player *model.Player, input Input) error {
@@ -107,8 +107,10 @@ func (g *Game) Submit(player *model.Player, input Input) error {
 		g.recordReplayStep(player, input)
 		return nil
 	}
-	if len(input.FloatingMemory) > 0 {
-		if _, exists := g.state.Knowledge.Cardistries[player.UID][input.Action]; !exists {
+	if len(input.MemoryPayment) > 0 {
+		ability, abilityExists := g.state.Knowledge.Abilities[player.UID][input.Action]
+		_, materializationExists := g.state.Knowledge.Materializations[player.UID][input.Action]
+		if (!abilityExists || ability.Kind != activatedAbilityCardistry) && !materializationExists {
 			return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, input.Action)
 		}
 	}
@@ -121,6 +123,7 @@ func (g *Game) Submit(player *model.Player, input Input) error {
 			if err := g.materialize(
 				player,
 				card,
+				input.MemoryPayment,
 			); err != nil {
 				return fmt.Errorf("materialize champion: %w", err)
 			}
@@ -141,29 +144,27 @@ func (g *Game) Submit(player *model.Player, input Input) error {
 						return fmt.Errorf("begin attack: %w", err)
 					}
 				} else {
-					source, cardistryExists := g.state.Knowledge.Cardistries[player.UID][input.Action]
-					if cardistryExists {
-						if err := g.activateCardistry(
-							player,
-							source,
-							input.FloatingMemory,
-						); err != nil {
-							return fmt.Errorf("activate Cardistry: %w", err)
-						}
-					} else {
-						object, objectAbilityExists := g.state.Knowledge.ObjectAbilities[player.UID][input.Action]
-						if objectAbilityExists {
-							if err := g.beginObjectAbility(player, object); err != nil {
+					ability, abilityExists := g.state.Knowledge.Abilities[player.UID][input.Action]
+					if abilityExists {
+						switch ability.Kind {
+						case activatedAbilityCardistry:
+							if err := g.activateCardistry(player, ability.Source, input.MemoryPayment); err != nil {
+								return fmt.Errorf("activate Cardistry: %w", err)
+							}
+						case activatedAbilityObject:
+							if err := g.beginObjectAbility(player, ability.Source); err != nil {
 								return fmt.Errorf("begin object ability: %w", err)
 							}
-						} else {
-							weapon, wieldExists := g.state.Knowledge.Wields[player.UID][input.Action]
-							if !wieldExists {
-								return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, input.Action)
-							}
-							if err := g.beginWield(player, weapon); err != nil {
-								return fmt.Errorf("begin wield: %w", err)
-							}
+						default:
+							return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, input.Action)
+						}
+					} else {
+						weapon, wieldExists := g.state.Knowledge.Wields[player.UID][input.Action]
+						if !wieldExists {
+							return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, input.Action)
+						}
+						if err := g.beginWield(player, weapon); err != nil {
+							return fmt.Errorf("begin wield: %w", err)
 						}
 					}
 				}
@@ -206,7 +207,7 @@ func (g *Game) Submit(player *model.Player, input Input) error {
 // 輸入為提交玩家與尚未執行的 Input；輸出為 payload 契約錯誤或 nil，無副作用且不檢查 action 的其餘規則合法性。
 func (g *Game) validateInputPayload(player *model.Player, input Input) error {
 	if input.Choice != "" {
-		if input.Action != "" || len(input.Reserve) > 0 || len(input.FloatingMemory) > 0 {
+		if input.Action != "" || len(input.Reserve) > 0 || len(input.MemoryPayment) > 0 {
 			return fmt.Errorf("%w: unused input payload for choice", tcgErrors.ErrInvalidViewHandle)
 		}
 		return nil
@@ -215,14 +216,14 @@ func (g *Game) validateInputPayload(player *model.Player, input Input) error {
 		return fmt.Errorf("%w: missing action or choice", tcgErrors.ErrInvalidViewHandle)
 	}
 	if card, exists := g.state.Knowledge.Activations[player.UID][input.Action]; exists {
-		if len(input.FloatingMemory) > 0 || len(input.Reserve) != g.activationReserveCost(player, card) {
+		if len(input.MemoryPayment) > 0 || len(input.Reserve) != g.activationReserveCost(player, card) {
 			return fmt.Errorf("%w: unused input payload for activation", tcgErrors.ErrInvalidViewHandle)
 		}
 		return nil
 	}
-	if _, exists := g.state.Knowledge.Cardistries[player.UID][input.Action]; exists {
-		if len(input.Reserve) > 0 {
-			return fmt.Errorf("%w: unused input payload for Cardistry", tcgErrors.ErrInvalidViewHandle)
+	if ability, exists := g.state.Knowledge.Abilities[player.UID][input.Action]; exists {
+		if len(input.Reserve) > 0 || (ability.Kind != activatedAbilityCardistry && len(input.MemoryPayment) > 0) {
+			return fmt.Errorf("%w: unused input payload for ability", tcgErrors.ErrInvalidViewHandle)
 		}
 		return nil
 	}
@@ -230,9 +231,14 @@ func (g *Game) validateInputPayload(player *model.Player, input Input) error {
 	_, materializationExists := g.state.Knowledge.Materializations[player.UID][input.Action]
 	_, attackExists := g.state.Knowledge.Attacks[player.UID][input.Action]
 	_, wieldExists := g.state.Knowledge.Wields[player.UID][input.Action]
-	_, abilityExists := g.state.Knowledge.ObjectAbilities[player.UID][input.Action]
-	if actionExists || materializationExists || attackExists || wieldExists || abilityExists {
-		if len(input.Reserve) > 0 || len(input.FloatingMemory) > 0 {
+	if materializationExists {
+		if len(input.Reserve) > 0 {
+			return fmt.Errorf("%w: unused input payload for materialization", tcgErrors.ErrInvalidViewHandle)
+		}
+		return nil
+	}
+	if actionExists || attackExists || wieldExists {
+		if len(input.Reserve) > 0 || len(input.MemoryPayment) > 0 {
 			return fmt.Errorf("%w: unused input payload for action", tcgErrors.ErrInvalidViewHandle)
 		}
 	}

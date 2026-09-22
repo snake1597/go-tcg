@@ -36,11 +36,11 @@ func TestNewGamePinsReplayVersionsAndSeed(t *testing.T) {
 		Deck:     "standard-fire-v2",
 		PRNG:     "splitmix64-v1",
 	}
-	if replay.FormatVersion != 4 {
-		t.Fatalf("Replay().FormatVersion = %d, want 4", replay.FormatVersion)
+	if replay.FormatVersion != 5 {
+		t.Fatalf("Replay().FormatVersion = %d, want 5", replay.FormatVersion)
 	}
-	if constants.CanonicalStateSchemaVersion != 4 {
-		t.Fatalf("CanonicalStateSchemaVersion = %d, want 4", constants.CanonicalStateSchemaVersion)
+	if constants.CanonicalStateSchemaVersion != 5 {
+		t.Fatalf("CanonicalStateSchemaVersion = %d, want 5", constants.CanonicalStateSchemaVersion)
 	}
 	if replay.Versions != wantVersions {
 		t.Fatalf("Replay().Versions = %#v, want %#v", replay.Versions, wantVersions)
@@ -196,7 +196,7 @@ func TestSubmitRejectsInvalidActionHandleWithoutChangingGame(t *testing.T) {
 }
 
 // TestSubmitRejectsUnusedPayloadByActionKind 驗證每類合法 handle 只接受該行動實際消費的 Input 欄位。
-// 輸入為帶有 Reserve 或 FloatingMemory 多餘資料的 action／choice；輸出為 ErrInvalidViewHandle，副作用為拒絕後 state hash 與 replay 都不變。
+// 輸入為帶有 Reserve 或 MemoryPayment 多餘資料的 action／choice；輸出為 ErrInvalidViewHandle，副作用為拒絕後 state hash 與 replay 都不變。
 func TestSubmitRejectsUnusedPayloadByActionKind(t *testing.T) {
 	testCases := []struct {
 		name  string
@@ -229,13 +229,13 @@ func TestSubmitRejectsUnusedPayloadByActionKind(t *testing.T) {
 			},
 		},
 		{
-			name: "card activation rejects floating memory",
+			name: "card activation rejects memory payment",
 			setup: func(game *Game) Input {
 				game.state.Knowledge.Activations[model.PlayerOne.UID]["activate"] = "source"
 				return Input{
 					Revision: game.state.Revision,
 					Action:   "activate",
-					FloatingMemory: []ViewHandle{
+					MemoryPayment: []ViewHandle{
 						"unused",
 					},
 				}
@@ -255,13 +255,13 @@ func TestSubmitRejectsUnusedPayloadByActionKind(t *testing.T) {
 			},
 		},
 		{
-			name: "wield rejects floating memory",
+			name: "wield rejects memory payment",
 			setup: func(game *Game) Input {
 				game.state.Knowledge.Wields[model.PlayerOne.UID]["wield"] = "weapon"
 				return Input{
 					Revision: game.state.Revision,
 					Action:   "wield",
-					FloatingMemory: []ViewHandle{
+					MemoryPayment: []ViewHandle{
 						"unused",
 					},
 				}
@@ -270,7 +270,10 @@ func TestSubmitRejectsUnusedPayloadByActionKind(t *testing.T) {
 		{
 			name: "cardistry rejects reserve",
 			setup: func(game *Game) Input {
-				game.state.Knowledge.Cardistries[model.PlayerOne.UID]["cardistry"] = "source"
+				game.state.Knowledge.Abilities[model.PlayerOne.UID]["cardistry"] = activatedAbility{
+					Kind:   activatedAbilityCardistry,
+					Source: "source",
+				}
 				return Input{
 					Revision: game.state.Revision,
 					Action:   "cardistry",
@@ -283,7 +286,10 @@ func TestSubmitRejectsUnusedPayloadByActionKind(t *testing.T) {
 		{
 			name: "object ability rejects reserve",
 			setup: func(game *Game) Input {
-				game.state.Knowledge.ObjectAbilities[model.PlayerOne.UID]["ability"] = "source"
+				game.state.Knowledge.Abilities[model.PlayerOne.UID]["ability"] = activatedAbility{
+					Kind:   activatedAbilityObject,
+					Source: "source",
+				}
 				return Input{
 					Revision: game.state.Revision,
 					Action:   "ability",
@@ -448,7 +454,7 @@ func TestSubmitRejectsActionAfterGameFinishes(t *testing.T) {
 
 func TestStateHashUsesCanonicalVersionedState(t *testing.T) {
 	game := newTestGame(42)
-	const want = "523e17749e989683c1b634cb83fc9a4ed68f8474dca3c5a7ce036b3fbba51e3e"
+	const want = "7f94b54d03338ebf1a81c1ce8c916ce5e4935d42c75623951d0b1183991fb75e"
 
 	if got := game.StateHash(); got != want {
 		t.Fatalf("StateHash() = %q, want canonical digest %q", got, want)

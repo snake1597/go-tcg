@@ -7,7 +7,7 @@ import (
 	"go-tcg/internal/model"
 )
 
-func TestCardistryFloatingMemoryIsDeclaredRecordedAndReplayed(t *testing.T) {
+func TestCardistryMemoryPaymentIsDeclaredRecordedAndReplayed(t *testing.T) {
 	game := newCardistryGame(t, wonderlandsReignCardID)
 	player := model.PlayerOne
 	floatingMemory := findCard(t, game, player, fiveOfSpadesCardID)
@@ -29,7 +29,7 @@ func TestCardistryFloatingMemoryIsDeclaredRecordedAndReplayed(t *testing.T) {
 		Input{
 			Revision: view.Revision,
 			Action:   cardistryAction(t, game, player),
-			FloatingMemory: []ViewHandle{
+			MemoryPayment: []ViewHandle{
 				game.state.Knowledge.Cards[player.UID][entityID(floatingMemory)],
 			},
 		},
@@ -51,7 +51,7 @@ func TestCardistryFloatingMemoryIsDeclaredRecordedAndReplayed(t *testing.T) {
 	}
 }
 
-func TestCardistryInvalidFloatingMemoryDoesNotChangeState(t *testing.T) {
+func TestCardistryInvalidMemoryPaymentDoesNotChangeState(t *testing.T) {
 	game := newCardistryGame(t, wonderlandsReignCardID)
 	player := model.PlayerOne
 	notFloatingMemory := findCard(t, game, player, twoOfHeartsCardID)
@@ -98,7 +98,7 @@ func TestCardistryRejectedActivationsDoNotChangeState(t *testing.T) {
 				Input{
 					Revision: game.state.Revision,
 					Action:   pass,
-					FloatingMemory: []ViewHandle{
+					MemoryPayment: []ViewHandle{
 						"not-a-floating-memory-handle",
 					},
 				},
@@ -573,8 +573,8 @@ func gCardistrySource(game *Game, card cardInstanceID) bool {
 
 func cardistryAction(t *testing.T, game *Game, player *model.Player) ViewHandle {
 	t.Helper()
-	for handle, source := range game.state.Knowledge.Cardistries[player.UID] {
-		if source == objectID("cardistry:source") {
+	for handle, ability := range game.state.Knowledge.Abilities[player.UID] {
+		if ability.Kind == activatedAbilityCardistry && ability.Source == objectID("cardistry:source") {
 			return handle
 		}
 	}

@@ -182,11 +182,11 @@ func (bot *Heuristic) decideAction(view game.PlayerView) (game.Input, error) {
 		if action.Handle != handle {
 			continue
 		}
-		if action.FloatingMemoryRequired > len(action.FloatingMemoryOptions) {
-			return emptyInput, fmt.Errorf("floating memory options = %d, want at least %d", len(action.FloatingMemoryOptions), action.FloatingMemoryRequired)
+		if action.MemoryPaymentRequired > len(action.MemoryPaymentOptions) {
+			return emptyInput, fmt.Errorf("memory payment options = %d, want at least %d", len(action.MemoryPaymentOptions), action.MemoryPaymentRequired)
 		}
-		for index := 0; index < action.FloatingMemoryRequired; index++ {
-			input.FloatingMemory = append(input.FloatingMemory, action.FloatingMemoryOptions[index].Handle)
+		for index := 0; index < action.MemoryPaymentRequired; index++ {
+			input.MemoryPayment = append(input.MemoryPayment, action.MemoryPaymentOptions[index].Handle)
 		}
 		if action.ReserveCost == 0 {
 			return input, nil
