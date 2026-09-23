@@ -75,19 +75,19 @@ type CardFace struct {
 	card Card
 }
 
-func (definition CardDefinition) ID() CardID {
+func (definition *CardDefinition) ID() CardID {
 	return definition.id
 }
 
-func (definition CardDefinition) DataVersion() string {
+func (definition *CardDefinition) DataVersion() string {
 	return definition.dataVersion
 }
 
-func (definition CardDefinition) Name() string {
+func (definition *CardDefinition) Name() string {
 	return definition.card.Name
 }
 
-func (definition CardDefinition) Face() CardFace {
+func (definition *CardDefinition) Face() CardFace {
 	return definition.face
 }
 
@@ -95,7 +95,7 @@ func (face CardFace) ID() CardFaceID {
 	return face.id
 }
 
-func (definition CardDefinition) faceData() Card {
+func (definition *CardDefinition) faceData() Card {
 	return definition.card
 }
 

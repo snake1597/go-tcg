@@ -32,12 +32,10 @@ func (g *Game) newCardInstance(player *model.Player, entry DeckEntry, definition
 	face := definition.Face()
 	cardData := definition.faceData()
 	cardCount := len(g.state.Cards) + 1
-	identifierText := fmt.Sprintf(
-		"card:%s:%d",
-		player,
-		cardCount,
-	)
+
+	identifierText := fmt.Sprintf("card:%s:%d", player, cardCount)
 	identifier := cardInstanceID(identifierText)
+
 	g.state.Cards[identifier] = cardInstance{
 		ID:          identifier,
 		Owner:       player,
@@ -54,9 +52,11 @@ func (g *Game) newCardInstance(player *model.Player, entry DeckEntry, definition
 		Power:       cardStat(cardData.Power),
 		Life:        cardStat(cardData.Life),
 	}
+
 	g.state.Entities[entityID(identifier)] = knowledgeEntity{
-		Name: definitions[entry.CardID].Name(),
+		Name: definition.Name(),
 	}
+
 	return identifier
 }
 

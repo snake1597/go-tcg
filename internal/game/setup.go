@@ -24,7 +24,8 @@ func newStandardSetup(
 		secondDeck,
 	}
 	for index, player := range game.players {
-		if err := game.addPlayerDeck(player, decks[index], definitions); err != nil {
+		err := game.addPlayerDeck(player, decks[index], definitions)
+		if err != nil {
 			return nil, err
 		}
 
