@@ -231,7 +231,9 @@ func TestSubmitRejectsUnusedPayloadByActionKind(t *testing.T) {
 		{
 			name: "card activation rejects memory payment",
 			setup: func(game *Game) Input {
-				game.getPlayerKnowledge(model.PlayerOne).Activations["activate"] = "source"
+				game.getPlayerKnowledge(model.PlayerOne).Activations["activate"] = activationOption{
+					Card: "source",
+				}
 				return Input{
 					Revision: game.state.Revision,
 					Action:   "activate",

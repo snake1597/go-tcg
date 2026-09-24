@@ -30,14 +30,6 @@ type actionDeclaration struct {
 	Stage    declarationStage `json:"stage"`
 }
 
-// veritaAlternativeCostDeclaration 保存尚未提交的墓地付款選擇。
-// Source 是手牌中的 Verita，Selected 是玩家逐張選取的墓地牌；建立與取消都不移動任何牌。
-type veritaAlternativeCostDeclaration struct {
-	Controller *model.Player    `json:"controller"`
-	Source     cardInstanceID   `json:"source"`
-	Selected   []cardInstanceID `json:"selected"`
-}
-
 func (g *Game) legalActionCards(player *model.Player) []cardInstanceID {
 	if g.state.Knowledge.Declaration != nil {
 		return nil
@@ -53,7 +45,7 @@ func (g *Game) legalActionCards(player *model.Player) []cardInstanceID {
 }
 
 // canActivateAction 檢查持有者、行動機會、費用與目前已實作的卡牌限制。
-// 非 Fast 行動只允許在自己的主階段且效果堆疊為空時使用；Verita 可採替代費用。
+// 非 Fast 行動只允許在自己的主階段且效果堆疊為空時使用；有替代費用的卡可選擇其付款方式。
 // 此檢查不保證來源位於手牌，也不驗證最終目標；宣告與提交階段仍須檢查。
 func (g *Game) canActivateAction(player *model.Player, card cardInstanceID) bool {
 	scheduler := g.state.Scheduler
@@ -61,8 +53,7 @@ func (g *Game) canActivateAction(player *model.Player, card cardInstanceID) bool
 	if !exists || !samePlayer(candidate.Owner, player) || (!containsString(candidate.Types, "ACTION") && !containsString(candidate.Types, "ALLY")) {
 		return false
 	}
-	alternativeCostCards := g.veritaAlternativeCostCards(player)
-	canUseAlternativeCost := candidate.Definition == veritaCardID && len(alternativeCostCards) > 0
+	canUseAlternativeCost := len(g.alternativeCostCards(player, card)) > 0
 	visibleReserveCards := g.visibleReserveCards(player, card)
 	reserveCost := g.actionReserveCost(player, card)
 	if !samePlayer(scheduler.OpportunityHolder, player) || (!canUseAlternativeCost && len(visibleReserveCards) < reserveCost) {
@@ -77,9 +68,6 @@ func (g *Game) canActivateAction(player *model.Player, card cardInstanceID) bool
 	if candidate.Definition == blazingThrowCardID && len(g.legalWeapons(player)) == 0 {
 		return false
 	}
-	if candidate.Definition == veritaCardID {
-		return true
-	}
 	if candidate.Definition == trumpSetCardID {
 		targets := g.trumpSetTargets(player)
 		return len(targets) > 0
@@ -89,14 +77,8 @@ func (g *Game) canActivateAction(player *model.Player, card cardInstanceID) bool
 
 // beginActionDeclaration 為行動建立選目標的宣告，尚不移走來源牌或支付費用。
 // Blazing Throw 選完目標後還須選擇犧牲武器；Trump Set 僅能選受控的 Suited ally。
-// Verita 會先建立可取消的替代費用選擇；其他 action 才建立目標宣告。
+// Action 依其目標規則建立宣告；替代費用在啟動入口單獨選擇。
 func (g *Game) beginActionDeclaration(player *model.Player, card cardInstanceID, reserve []ViewHandle) error {
-	if g.state.Cards[card].Definition == veritaCardID {
-		if err := g.beginVeritaAlternativeCostDeclaration(player, card, reserve); err != nil {
-			return fmt.Errorf("begin Verita alternative cost: %w", err)
-		}
-		return nil
-	}
 	targets := g.legalTargets()
 	if g.state.Cards[card].Definition == trumpSetCardID {
 		targets = g.trumpSetTargets(player)
@@ -159,14 +141,6 @@ func (g *Game) commitAllyActivation(player *model.Player, card cardInstanceID, r
 	if !g.canActivateAction(player, card) {
 		return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, card)
 	}
-	if g.state.Cards[card].Definition == veritaCardID {
-		if len(g.veritaAlternativeCostCards(player)) > 0 {
-			if err := g.beginVeritaAlternativeCostDeclaration(player, card, reserve); err != nil {
-				return fmt.Errorf("begin Verita alternative cost: %w", err)
-			}
-			return nil
-		}
-	}
 	reserved, err := g.reserveCardsForHandles(player, card, reserve)
 	if err != nil {
 		return fmt.Errorf("reserve Ally cards: %w", err)
@@ -207,102 +181,6 @@ func (g *Game) queueAllyActivation(player *model.Player, card cardInstanceID) {
 	)
 	g.pushAbility(instance)
 	g.grantOpportunity(player)
-}
-
-// beginVeritaAlternativeCostDeclaration 開始 Verita 的逐張替代費用選擇，或在無替代費用時以 Reserve 建立 activation。
-// 輸入為控制者、手牌中的 Verita 與 Reserve handles；輸出為待選 handle 或提交錯誤，副作用為建立費用宣告或 Effects Stack item。
-func (g *Game) beginVeritaAlternativeCostDeclaration(player *model.Player, card cardInstanceID, reserve []ViewHandle) error {
-	if !g.canActivateAction(player, card) || cardIndex(g.state.Zones[player.UID].Hand, card) < 0 {
-		return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, card)
-	}
-	if len(g.veritaAlternativeCostCards(player)) == 0 {
-		if err := g.commitAllyActivation(player, card, reserve); err != nil {
-			return fmt.Errorf("commit Ally activation: %w", err)
-		}
-		return nil
-	}
-	declaration := &veritaAlternativeCostDeclaration{
-		Controller: player,
-		Source:     card,
-	}
-	if len(g.veritaAlternativeCostChoiceCards(declaration)) == 0 {
-		return fmt.Errorf("invalid Verita alternative cost")
-	}
-	g.state.Knowledge.VeritaCost = declaration
-	g.setVeritaAlternativeCostChoice(declaration)
-	return nil
-}
-
-// submitVeritaAlternativeCostChoice 接受一張仍可完成精確總和的墓地牌。
-// 當選到至少三張且總和十時，原子地放逐付款並建立 Verita activation；否則只更新宣告，無區域副作用。
-func (g *Game) submitVeritaAlternativeCostChoice(player *model.Player, card cardInstanceID) error {
-	declaration := g.state.Knowledge.VeritaCost
-	if declaration == nil || !samePlayer(declaration.Controller, player) || !containsCard(g.veritaAlternativeCostChoiceCards(declaration), card) {
-		return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, card)
-	}
-	declaration.Selected = append(declaration.Selected, card)
-	if g.canUseVeritaAlternativeCost(player, declaration.Selected) {
-		if err := g.commitVeritaAlternativeCost(declaration); err != nil {
-			return err
-		}
-		g.state.Knowledge.VeritaCost = nil
-		g.state.Knowledge.Choice = nil
-		return nil
-	}
-	g.setVeritaAlternativeCostChoice(declaration)
-	return nil
-}
-
-// setVeritaAlternativeCostChoice 以仍存在完整付款組合的墓地牌重建選擇 handle。
-// 輸入為暫存宣告；輸出寫入 pending choice，副作用不移動卡牌且允許玩家取消。
-func (g *Game) setVeritaAlternativeCostChoice(declaration *veritaAlternativeCostDeclaration) {
-	options := make([]objectID, 0)
-	for _, card := range g.veritaAlternativeCostChoiceCards(declaration) {
-		options = append(options, objectID(card))
-	}
-	g.setDeclarationChoice(declaration.Controller, options)
-	g.state.Knowledge.Choice.CanPass = true
-}
-
-// veritaAlternativeCostChoiceCards 回傳下一張可選且保證仍有精確付款組合的墓地牌。
-// 輸入為暫存選擇；輸出依墓地順序排列，副作用為零。
-func (g *Game) veritaAlternativeCostChoiceCards(declaration *veritaAlternativeCostDeclaration) []cardInstanceID {
-	candidates := []cardInstanceID{}
-	for _, card := range g.state.Zones[declaration.Controller.UID].Graveyard {
-		if containsCard(declaration.Selected, card) {
-			continue
-		}
-		selected := append(append([]cardInstanceID(nil), declaration.Selected...), card)
-		if len(g.findVeritaAlternativeCostCards(declaration.Controller, g.state.Zones[declaration.Controller.UID].Graveyard, selected, 0)) > 0 {
-			candidates = append(candidates, card)
-		}
-	}
-	return candidates
-}
-
-// commitVeritaAlternativeCost 驗證來源與完整付款後一次提交所有區域異動。
-// 輸入為已完成的宣告；成功時將付款放逐並把 Verita activation 放上 Effects Stack，失敗時完全不改變遊戲狀態。
-func (g *Game) commitVeritaAlternativeCost(declaration *veritaAlternativeCostDeclaration) error {
-	if !g.canUseVeritaAlternativeCost(declaration.Controller, declaration.Selected) {
-		return fmt.Errorf("invalid Verita alternative cost")
-	}
-	zones := g.state.Zones[declaration.Controller.UID]
-	index := cardIndex(zones.Hand, declaration.Source)
-	if index < 0 {
-		return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, declaration.Source)
-	}
-	for _, card := range declaration.Selected {
-		graveyardIndex := cardIndex(zones.Graveyard, card)
-		if graveyardIndex < 0 {
-			return fmt.Errorf("invalid Verita alternative cost")
-		}
-		zones.Graveyard = removeCardAt(zones.Graveyard, graveyardIndex)
-		zones.Banishment = append(zones.Banishment, card)
-	}
-	zones.Hand = removeCardAt(zones.Hand, index)
-	g.state.Zones[declaration.Controller.UID] = zones
-	g.queueAllyActivation(declaration.Controller, declaration.Source)
-	return nil
 }
 
 func (g *Game) submitActionDeclarationChoice(player *model.Player, subject entityID) error {

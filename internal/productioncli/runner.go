@@ -529,7 +529,12 @@ func renderView(output io.Writer, player *model.Player, view game.PlayerView) {
 func actionLabel(action game.LegalAction) string {
 	label := string(action.Kind)
 	if action.CardName != "" {
-		return label + "：" + action.CardName
+		label += "：" + action.CardName
+		if action.CostMethod == "alternative" {
+			label += "（替代費用）"
+		} else if action.CostMethod == "reserve" {
+			label += "（Reserve）"
+		}
 	}
 	return label
 }

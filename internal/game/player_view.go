@@ -11,6 +11,8 @@ type LegalAction struct {
 	Handle   ViewHandle           `json:"handle"`
 	Kind     constants.ActionKind `json:"kind"`
 	CardName string               `json:"card_name,omitempty"`
+	// CostMethod 區分一般 Reserve 與來源卡宣告的替代費用。
+	CostMethod string `json:"cost_method,omitempty"`
 	// ReserveCost 與 ReserveOptions 定義 activation 必須提交的手牌付款張數與可選 handles。
 	ReserveCost    int           `json:"reserve_cost,omitempty"`
 	ReserveOptions []VisibleCard `json:"reserve_options,omitempty"`

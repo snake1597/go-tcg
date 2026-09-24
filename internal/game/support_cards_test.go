@@ -145,8 +145,19 @@ func TestDuchessCopyAndVeritaAlternativeCostUseZonesAtomically(t *testing.T) {
 		card.ReserveCost = cost
 		game.state.Cards[cards[index]] = card
 	}
-	if err := game.payVeritaAlternativeCost(player, cards); err != nil {
-		t.Fatalf("payVeritaAlternativeCost() error = %v", err)
+	verita := findCard(t, game, player, veritaCardID)
+	zones = game.state.Zones[player.UID]
+	zones.MainDeck = removeCardAt(zones.MainDeck, cardIndex(zones.MainDeck, verita))
+	zones.Hand = append(zones.Hand, verita)
+	game.state.Zones[player.UID] = zones
+	if err := game.commitAlternativeCost(
+		&alternativeCostDeclaration{
+			Controller: player,
+			Source:     verita,
+			Selected:   cards,
+		},
+	); err != nil {
+		t.Fatalf("commitAlternativeCost() error = %v", err)
 	}
 }
 
@@ -184,8 +195,28 @@ func TestVeritaAlternativeCostSelectsCardsBeforeAtomicallyCommitting(t *testing.
 		card.ReserveCost = cost
 		game.state.Cards[cards[index]] = card
 	}
-	if err := game.beginVeritaAlternativeCostDeclaration(player, verita, nil); err != nil {
-		t.Fatalf("beginVeritaAlternativeCostDeclaration() error = %v", err)
+	game.advanceKnowledgeRevision()
+	activationView, err := game.PlayerView(player)
+	if err != nil {
+		t.Fatalf("PlayerView() error = %v", err)
+	}
+	var alternativeAction ViewHandle
+	for _, action := range activationView.LegalActions {
+		if action.CardName == "Verita, Queen of Hearts" && action.CostMethod == "alternative" {
+			alternativeAction = action.Handle
+		}
+	}
+	if alternativeAction == "" {
+		t.Fatal("missing alternative cost activation")
+	}
+	if err := game.Submit(
+		player,
+		Input{
+			Revision: activationView.Revision,
+			Action:   alternativeAction,
+		},
+	); err != nil {
+		t.Fatalf("Submit() alternative cost activation error = %v", err)
 	}
 	if cardIndex(game.state.Zones[player.UID].Hand, verita) < 0 || cardIndex(game.state.Zones[player.UID].Graveyard, cards[0]) < 0 {
 		t.Fatal("starting Verita choice moved a card")
@@ -214,18 +245,18 @@ func TestVeritaAlternativeCostSelectsCardsBeforeAtomicallyCommitting(t *testing.
 	); err != nil {
 		t.Fatalf("Submit() cancel Verita alternative cost error = %v", err)
 	}
-	if game.state.Knowledge.VeritaCost != nil || cardIndex(game.state.Zones[player.UID].Hand, verita) < 0 || cardIndex(game.state.Zones[player.UID].Graveyard, cards[0]) < 0 {
+	if game.state.Knowledge.AlternativeCost != nil || cardIndex(game.state.Zones[player.UID].Hand, verita) < 0 || cardIndex(game.state.Zones[player.UID].Graveyard, cards[0]) < 0 {
 		t.Fatal("cancelled Verita choice left a partial modification")
 	}
-	if err := game.beginVeritaAlternativeCostDeclaration(player, verita, nil); err != nil {
-		t.Fatalf("beginVeritaAlternativeCostDeclaration() after cancellation error = %v", err)
+	if err := game.beginAlternativeCostDeclaration(player, verita); err != nil {
+		t.Fatalf("beginAlternativeCostDeclaration() after cancellation error = %v", err)
 	}
 	for _, card := range cards {
-		if err := game.submitVeritaAlternativeCostChoice(player, card); err != nil {
-			t.Fatalf("submitVeritaAlternativeCostChoice() error = %v", err)
+		if err := game.submitAlternativeCostChoice(player, card); err != nil {
+			t.Fatalf("submitAlternativeCostChoice() error = %v", err)
 		}
 	}
-	if game.state.Knowledge.VeritaCost != nil || cardIndex(game.state.Zones[player.UID].Hand, verita) >= 0 {
+	if game.state.Knowledge.AlternativeCost != nil || cardIndex(game.state.Zones[player.UID].Hand, verita) >= 0 {
 		t.Fatal("completed Verita selection was not committed")
 	}
 	for _, card := range cards {
@@ -264,15 +295,95 @@ func TestVeritaAlternativeCostRejectsInexactCardsWithoutMovingThem(t *testing.T)
 		card.ReserveCost = cost
 		game.state.Cards[cards[index]] = card
 	}
-	if got := game.veritaAlternativeCostCards(player); len(got) != 0 {
-		t.Fatalf("veritaAlternativeCostCards() = %#v, want no exact combination", got)
+	verita := findCard(t, game, player, veritaCardID)
+	if got := game.alternativeCostCards(player, verita); len(got) != 0 {
+		t.Fatalf("alternativeCostCards() = %#v, want no exact combination", got)
 	}
-	if err := game.payVeritaAlternativeCost(player, cards); err == nil {
-		t.Fatal("payVeritaAlternativeCost() error = nil, want inexact cost rejection")
+	if err := game.commitAlternativeCost(
+		&alternativeCostDeclaration{
+			Controller: player,
+			Source:     verita,
+			Selected:   cards,
+		},
+	); err == nil {
+		t.Fatal("commitAlternativeCost() error = nil, want inexact cost rejection")
 	}
 	for _, card := range cards {
 		if cardIndex(game.state.Zones[player.UID].Graveyard, card) < 0 || cardIndex(game.state.Zones[player.UID].Banishment, card) >= 0 {
 			t.Fatalf("inexact Verita payment %q moved zones", card)
+		}
+	}
+}
+
+// TestVeritaOffersBothPaymentMethods 驗證替代費用可付時，玩家仍能選擇一般 Reserve 付款。
+func TestVeritaOffersBothPaymentMethods(t *testing.T) {
+	game := newActionGame(t)
+	player := model.PlayerOne
+	verita := findCard(t, game, player, veritaCardID)
+	zones := game.state.Zones[player.UID]
+	zones.MainDeck = removeCardAt(zones.MainDeck, cardIndex(zones.MainDeck, verita))
+	zones.Hand = append(zones.Hand, verita)
+	cards := make([]cardInstanceID, 0, 3)
+	for _, card := range zones.MainDeck {
+		if !containsString(game.state.Cards[card].Types, "ALLY") {
+			continue
+		}
+		cards = append(cards, card)
+		if len(cards) == 3 {
+			break
+		}
+	}
+	if len(cards) != 3 {
+		t.Fatal("fixture did not contain three ally cards")
+	}
+	for index, card := range cards {
+		zones.MainDeck = removeCardAt(zones.MainDeck, cardIndex(zones.MainDeck, card))
+		zones.Graveyard = append(zones.Graveyard, card)
+		candidate := game.state.Cards[card]
+		candidate.Subtypes = append(candidate.Subtypes, "SUITED")
+		candidate.ReserveCost = []int{3, 3, 4}[index]
+		game.state.Cards[card] = candidate
+	}
+	game.state.Zones[player.UID] = zones
+	veritaCard := game.state.Cards[verita]
+	veritaCard.ReserveCost = 1
+	game.state.Cards[verita] = veritaCard
+	game.advanceKnowledgeRevision()
+	view, err := game.PlayerView(player)
+	if err != nil {
+		t.Fatalf("PlayerView() error = %v", err)
+	}
+	var reserveAction, alternativeAction LegalAction
+	for _, action := range view.LegalActions {
+		if action.CardName != "Verita, Queen of Hearts" {
+			continue
+		}
+		switch action.CostMethod {
+		case "reserve":
+			reserveAction = action
+		case "alternative":
+			alternativeAction = action
+		}
+	}
+	if reserveAction.Handle == "" || reserveAction.ReserveCost != 1 || alternativeAction.Handle == "" || alternativeAction.ReserveCost != 0 {
+		t.Fatalf("Verita payment actions = reserve %#v, alternative %#v", reserveAction, alternativeAction)
+	}
+	if err := game.Submit(
+		player,
+		Input{
+			Revision: view.Revision,
+			Action:   reserveAction.Handle,
+			Reserve:  reserveHandles(reserveAction),
+		},
+	); err != nil {
+		t.Fatalf("Submit() Reserve payment error = %v", err)
+	}
+	if game.state.Knowledge.AlternativeCost != nil || cardIndex(game.state.Zones[player.UID].Hand, verita) >= 0 {
+		t.Fatal("Reserve payment did not activate Verita directly")
+	}
+	for _, card := range cards {
+		if cardIndex(game.state.Zones[player.UID].Graveyard, card) < 0 {
+			t.Fatalf("Reserve payment moved graveyard card %q", card)
 		}
 	}
 }

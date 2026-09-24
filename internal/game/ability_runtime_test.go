@@ -6,6 +6,69 @@ import (
 	"go-tcg/internal/model"
 )
 
+// TestDiscardUsesSpecifiedZone 驗證棄牌預設來自手牌，且指定 Memory 時從該區移至墓地。
+func TestDiscardUsesSpecifiedZone(t *testing.T) {
+	game := newActionGame(t)
+	player := model.PlayerOne
+	zones := game.state.Zones[player.UID]
+	handCard := zones.Hand[0]
+	memoryCard := zones.Hand[1]
+	zones.Hand = removeCardAt(zones.Hand, 1)
+	zones.Memory = append(zones.Memory, memoryCard)
+	game.state.Zones[player.UID] = zones
+
+	game.discardCard(player, "", handCard)
+	game.discardCard(player, cardZoneMemory, memoryCard)
+	zones = game.state.Zones[player.UID]
+	if cardIndex(zones.Hand, handCard) >= 0 || cardIndex(zones.Memory, memoryCard) >= 0 {
+		t.Fatal("discarded cards remained in their source zones")
+	}
+	if cardIndex(zones.Graveyard, handCard) < 0 || cardIndex(zones.Graveyard, memoryCard) < 0 {
+		t.Fatal("discarded cards did not reach the graveyard")
+	}
+}
+
+// TestAbilityChoiceUsesSpecifiedZone 驗證效果可從指定區域選牌，並由同一區域執行棄牌。
+func TestAbilityChoiceUsesSpecifiedZone(t *testing.T) {
+	game := newActionGame(t)
+	player := model.PlayerOne
+	zones := game.state.Zones[player.UID]
+	card := zones.Hand[0]
+	zones.Hand = removeCardAt(zones.Hand, 0)
+	zones.Memory = append(zones.Memory, card)
+	game.state.Zones[player.UID] = zones
+	source := findCard(t, game, player, blazingThrowCardID)
+	game.pushAbility(game.newAbilityInstance(
+		player,
+		source,
+		"",
+		[]effectOperation{
+			{
+				Kind:     effectOperationChooseZoneCard,
+				CardZone: cardZoneMemory,
+			},
+			{
+				Kind:     effectOperationDiscard,
+				CardZone: cardZoneMemory,
+			},
+		},
+	))
+	game.resolveTopEffectStack()
+	view, err := game.PlayerView(player)
+	if err != nil {
+		t.Fatalf("PlayerView() error = %v", err)
+	}
+	if view.PendingChoice == nil {
+		t.Fatal("specified zone did not produce a pending choice")
+	}
+	selectPendingChoiceSubject(t, game, player, entityID(card))
+	game.resolveTopEffectStack()
+	zones = game.state.Zones[player.UID]
+	if cardIndex(zones.Memory, card) >= 0 || cardIndex(zones.Graveyard, card) < 0 {
+		t.Fatal("selected Memory card was not discarded to graveyard")
+	}
+}
+
 func TestAbilityChoiceUsesVisibleHandleAndResumesTypedOperations(t *testing.T) {
 	game := newActionGame(t)
 	source := findCard(t, game, model.PlayerOne, blazingThrowCardID)

@@ -28,7 +28,7 @@ const (
 	effectOperationCounter            effectOperationKind = "counter"
 	effectOperationDamage             effectOperationKind = "damage"
 	effectOperationContinuousModifier effectOperationKind = "continuous_modifier"
-	effectOperationChooseHandCard     effectOperationKind = "choose_hand_card"
+	effectOperationChooseZoneCard     effectOperationKind = "choose_zone_card"
 	effectOperationChooseMemoryAlly   effectOperationKind = "choose_memory_ally"
 	effectOperationDiscard            effectOperationKind = "discard"
 	effectOperationDeploy             effectOperationKind = "deploy"
@@ -52,6 +52,7 @@ type effectOperation struct {
 	MoveSourceToGraveyard     bool                `json:"move_source_to_graveyard,omitempty"`
 	DistinctSuitedCostsDamage bool                `json:"distinct_suited_costs_damage,omitempty"`
 	CanPass                   bool                `json:"can_pass,omitempty"`
+	CardZone                  cardZone            `json:"card_zone,omitempty"`
 	ContinuousEffect          continuousEffect    `json:"continuous_effect,omitempty"`
 	Options                   []objectID          `json:"options,omitempty"`
 }
@@ -137,12 +138,16 @@ func (g *Game) resolveAbility(instance abilityInstance) {
 			if g.addCounter(target, operation.Counter, operation.Amount) {
 				g.recordPublicEvent(instance.Controller, "ability", "counter", instance.SourceLKI)
 			}
-		case effectOperationChooseHandCard:
+		case effectOperationChooseZoneCard:
+			zone := operation.CardZone
+			if zone == "" {
+				zone = cardZoneHand
+			}
 			g.beginAbilityCardChoice(
 				instance,
 				operationIndex,
 				instance.Controller,
-				g.state.Zones[instance.Controller.UID].Hand,
+				cardsInZone(g.state.Zones[instance.Controller.UID], zone),
 				operation.CanPass,
 			)
 			if g.state.AbilityChoice != nil {
@@ -206,7 +211,7 @@ func (g *Game) resolveAbility(instance abilityInstance) {
 			// 重導失敗時此牌照常結算後續移動；已支付的費用不會退回。
 			_ = g.retargetAttackWithTrumpSet(instance.Controller, target)
 		case effectOperationDiscard:
-			g.discardCard(instance.Controller, cardInstanceID(target))
+			g.discardCard(instance.Controller, operation.CardZone, cardInstanceID(target))
 		case effectOperationDeploy:
 			g.deployAlly(instance.Controller, cardInstanceID(target))
 		case effectOperationPutAllyOnField:
@@ -286,15 +291,18 @@ func (g *Game) beginAbilityCardChoice(instance abilityInstance, operationIndex i
 	g.state.Knowledge.Choice.CanPass = canPass
 }
 
-func (g *Game) discardCard(player *model.Player, card cardInstanceID) {
+// discardCard 將指定區域的卡牌棄至墓地；來源未指定時依規則使用手牌。
+// 輸入為玩家、來源區域與卡牌；卡牌不在該區域時不產生副作用，成功時記錄公開事件。
+func (g *Game) discardCard(player *model.Player, from cardZone, card cardInstanceID) {
+	if from == "" {
+		from = cardZoneHand
+	}
 	zones := g.state.Zones[player.UID]
-	index := cardIndex(zones.Hand, card)
-	if index < 0 {
+	updated, err := moveCardBetweenZones(zones, from, cardZoneGraveyard, card)
+	if err != nil {
 		return
 	}
-	zones.Hand = removeCardAt(zones.Hand, index)
-	zones.Graveyard = append(zones.Graveyard, card)
-	g.state.Zones[player.UID] = zones
+	g.state.Zones[player.UID] = updated
 	g.recordPublicEvent(player, "ability", "discard", card)
 }
 

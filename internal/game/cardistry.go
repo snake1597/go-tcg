@@ -207,7 +207,7 @@ func (g *Game) cardistryAbility(player *model.Player, source objectID, card card
 		operations = append(operations, effectOperation{Kind: effectOperationDeploy})
 	case threeOfHeartsCardID:
 		operations = append(operations, effectOperation{Kind: effectOperationDraw, Amount: 1})
-		operations = append(operations, effectOperation{Kind: effectOperationChooseHandCard})
+		operations = append(operations, effectOperation{Kind: effectOperationChooseZoneCard})
 		operations = append(operations, effectOperation{Kind: effectOperationDiscard})
 	case threeOfSpadesCardID:
 		operations = append(operations, effectOperation{Kind: effectOperationChoose, Options: g.controlledSuitedAllies(player)})

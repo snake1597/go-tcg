@@ -253,7 +253,7 @@ func (g *Game) onAttackTriggers(player *model.Player, attacker objectID) []effec
 		"",
 		[]effectOperation{
 			{
-				Kind:    effectOperationChooseHandCard,
+				Kind:    effectOperationChooseZoneCard,
 				CanPass: true,
 			},
 			{

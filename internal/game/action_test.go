@@ -107,7 +107,7 @@ func TestAllyActivationUsesEffectsStackBeforeEnteringField(t *testing.T) {
 		t.Fatalf("PlayerView() error = %v", err)
 	}
 	action := actionByCardName(t, view, "Red Hare, Unrivaled Stallion")
-	source := game.getPlayerKnowledge(player).Activations[action.Handle]
+	source := game.getPlayerKnowledge(player).Activations[action.Handle].Card
 
 	if err := game.Submit(
 		player,

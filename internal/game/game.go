@@ -93,8 +93,8 @@ func (g *Game) Submit(player *model.Player, input Input) error {
 	playKnowledge := g.getPlayerKnowledge(player)
 
 	kind, exists := playKnowledge.Actions[input.Action]
-	if g.state.Knowledge.VeritaCost != nil && g.state.Knowledge.Choice != nil && g.state.Knowledge.Choice.CanPass && exists && kind == constants.ActionPass {
-		g.state.Knowledge.VeritaCost = nil
+	if g.state.Knowledge.AlternativeCost != nil && g.state.Knowledge.Choice != nil && g.state.Knowledge.Choice.CanPass && exists && kind == constants.ActionPass {
+		g.state.Knowledge.AlternativeCost = nil
 		g.state.Knowledge.Choice = nil
 		g.advanceKnowledgeRevision()
 		g.recordReplayStep(player, input)
@@ -131,13 +131,17 @@ func (g *Game) Submit(player *model.Player, input Input) error {
 				return fmt.Errorf("materialize champion: %w", err)
 			}
 		} else {
-			card, activateExists := playKnowledge.Activations[input.Action]
+			option, activateExists := playKnowledge.Activations[input.Action]
 			if activateExists {
-				if containsString(g.state.Cards[card].Types, "ALLY") {
-					if err := g.commitAllyActivation(player, card, input.Reserve); err != nil {
+				if option.Alternative {
+					if err := g.beginAlternativeCostDeclaration(player, option.Card); err != nil {
+						return fmt.Errorf("begin alternative cost: %w", err)
+					}
+				} else if containsString(g.state.Cards[option.Card].Types, "ALLY") {
+					if err := g.commitAllyActivation(player, option.Card, input.Reserve); err != nil {
 						return fmt.Errorf("commit Ally activation: %w", err)
 					}
-				} else if err := g.beginActionDeclaration(player, card, input.Reserve); err != nil {
+				} else if err := g.beginActionDeclaration(player, option.Card, input.Reserve); err != nil {
 					return fmt.Errorf("begin action declaration: %w", err)
 				}
 			} else {
@@ -218,8 +222,12 @@ func (g *Game) validateInputPayload(player *model.Player, input Input) error {
 	if input.Action == "" {
 		return fmt.Errorf("%w: missing action or choice", tcgErrors.ErrInvalidViewHandle)
 	}
-	if card, exists := g.getPlayerKnowledge(player).Activations[input.Action]; exists {
-		if len(input.MemoryPayment) > 0 || len(input.Reserve) != g.activationReserveCost(player, card) {
+	if option, exists := g.getPlayerKnowledge(player).Activations[input.Action]; exists {
+		reserveCost := g.actionReserveCost(player, option.Card)
+		if option.Alternative {
+			reserveCost = 0
+		}
+		if len(input.MemoryPayment) > 0 || len(input.Reserve) != reserveCost {
 			return fmt.Errorf("%w: unused input payload for activation", tcgErrors.ErrInvalidViewHandle)
 		}
 		return nil

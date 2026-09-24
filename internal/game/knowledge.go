@@ -18,14 +18,14 @@ type knowledgeEntity struct {
 }
 
 type knowledgeState struct {
-	Players       map[string]*playerKnowledge       `json:"players"`
-	Choice        *pendingChoice                    `json:"choice,omitempty"`
-	Declaration   *actionDeclaration                `json:"declaration,omitempty"`
-	TriggerOrder  *triggerOrder                     `json:"trigger_order,omitempty"`
-	Attack        *attackDeclaration                `json:"attack,omitempty"`
-	Wield         *wieldDeclaration                 `json:"wield,omitempty"`
-	ObjectAbility *objectAbilityDeclaration         `json:"object_ability,omitempty"`
-	VeritaCost    *veritaAlternativeCostDeclaration `json:"verita_cost,omitempty"`
+	Players         map[string]*playerKnowledge `json:"players"`
+	Choice          *pendingChoice              `json:"choice,omitempty"`
+	Declaration     *actionDeclaration          `json:"declaration,omitempty"`
+	TriggerOrder    *triggerOrder               `json:"trigger_order,omitempty"`
+	Attack          *attackDeclaration          `json:"attack,omitempty"`
+	Wield           *wieldDeclaration           `json:"wield,omitempty"`
+	ObjectAbility   *objectAbilityDeclaration   `json:"object_ability,omitempty"`
+	AlternativeCost *alternativeCostDeclaration `json:"alternative_cost,omitempty"`
 }
 
 // playerKnowledge 保存單一玩家可見牌、事件與可提交 handle 到引擎內部識別的映射。
@@ -33,7 +33,7 @@ type knowledgeState struct {
 type playerKnowledge struct {
 	Actions          map[ViewHandle]constants.ActionKind `json:"actions"`
 	Materializations map[ViewHandle]cardInstanceID       `json:"materializations"`
-	Activations      map[ViewHandle]cardInstanceID       `json:"activations"`
+	Activations      map[ViewHandle]activationOption     `json:"activations"`
 	Attacks          map[ViewHandle]objectID             `json:"attacks"`
 	Wields           map[ViewHandle]objectID             `json:"wields"`
 	Abilities        map[ViewHandle]activatedAbility     `json:"abilities"`
@@ -61,6 +61,12 @@ type activatedAbility struct {
 	Source objectID
 }
 
+// activationOption 保存玩家所選的來源卡與付款方式；兩種方式使用不同 action handle。
+type activationOption struct {
+	Card        cardInstanceID `json:"card"`
+	Alternative bool           `json:"alternative,omitempty"`
+}
+
 type pendingChoice struct {
 	Actor   *model.Player           `json:"actor"`
 	Options map[ViewHandle]entityID `json:"options"`
@@ -75,7 +81,7 @@ func (g *Game) initializeKnowledgeState() {
 		knowledge.Players[player.UID] = &playerKnowledge{
 			Actions:          make(map[ViewHandle]constants.ActionKind),
 			Materializations: make(map[ViewHandle]cardInstanceID),
-			Activations:      make(map[ViewHandle]cardInstanceID),
+			Activations:      make(map[ViewHandle]activationOption),
 			Attacks:          make(map[ViewHandle]objectID),
 			Wields:           make(map[ViewHandle]objectID),
 			Abilities:        make(map[ViewHandle]activatedAbility),
@@ -122,11 +128,25 @@ func (g *Game) refreshLegalActions() {
 				)
 				actions[handle] = constants.ActionPass
 				for _, card := range g.legalActionCards(player) {
-					handle := g.newViewHandle(
-						player,
-						constants.ViewHandleSubjectActionActivatePrefix+string(card),
-					)
-					activations[handle] = card
+					if len(g.visibleReserveCards(player, card)) >= g.actionReserveCost(player, card) {
+						handle := g.newViewHandle(
+							player,
+							constants.ViewHandleSubjectActionActivatePrefix+string(card),
+						)
+						activations[handle] = activationOption{
+							Card: card,
+						}
+					}
+					if len(g.alternativeCostCards(player, card)) > 0 {
+						handle := g.newViewHandle(
+							player,
+							constants.ViewHandleSubjectActionActivatePrefix+string(card)+":alternative",
+						)
+						activations[handle] = activationOption{
+							Card:        card,
+							Alternative: true,
+						}
+					}
 				}
 				for _, attacker := range g.legalAttackers(player) {
 					handle := g.newViewHandle(player, constants.ViewHandleSubjectActionAttackPrefix+string(attacker))
@@ -168,7 +188,7 @@ func (g *Game) refreshLegalActions() {
 				actions[handle] = constants.ActionSkipMaterialize
 			}
 		}
-		if g.state.Knowledge.Choice != nil && ((g.state.AbilityChoice != nil && g.state.AbilityChoice.CanPass && samePlayer(g.state.AbilityChoice.Instance.Controller, player)) || (g.state.Knowledge.VeritaCost != nil && g.state.Knowledge.Choice.CanPass && samePlayer(g.state.Knowledge.VeritaCost.Controller, player))) {
+		if g.state.Knowledge.Choice != nil && ((g.state.AbilityChoice != nil && g.state.AbilityChoice.CanPass && samePlayer(g.state.AbilityChoice.Instance.Controller, player)) || (g.state.Knowledge.AlternativeCost != nil && g.state.Knowledge.Choice.CanPass && samePlayer(g.state.Knowledge.AlternativeCost.Controller, player))) {
 			handle := g.newViewHandle(
 				player,
 				constants.ViewHandleSubjectActionPass,
@@ -218,15 +238,22 @@ func (g *Game) legalActions(player *model.Player) []LegalAction {
 			},
 		)
 	}
-	for handle, card := range playKnowledge.Activations {
+	for handle, option := range playKnowledge.Activations {
+		reserveCost := g.actionReserveCost(player, option.Card)
+		costMethod := "reserve"
+		if option.Alternative {
+			reserveCost = 0
+			costMethod = "alternative"
+		}
 		legalActions = append(
 			legalActions,
 			LegalAction{
 				Handle:         handle,
 				Kind:           constants.ActionActivate,
-				CardName:       g.state.Entities[entityID(card)].Name,
-				ReserveCost:    g.activationReserveCost(player, card),
-				ReserveOptions: g.visibleReserveCards(player, card),
+				CardName:       g.state.Entities[entityID(option.Card)].Name,
+				CostMethod:     costMethod,
+				ReserveCost:    reserveCost,
+				ReserveOptions: g.visibleReserveCards(player, option.Card),
 			},
 		)
 	}
@@ -292,16 +319,6 @@ func (g *Game) legalActions(player *model.Player) []LegalAction {
 		},
 	)
 	return legalActions
-}
-
-// activationReserveCost 回傳 PlayerView 與 Input payload 契約共同使用的實際 Reserve 張數。
-// 輸入為啟動玩家與手牌卡牌；輸出為一般 reserve cost，或 Verita 可用替代費用時的零，無副作用。
-func (g *Game) activationReserveCost(player *model.Player, card cardInstanceID) int {
-	alternativeCostCards := g.veritaAlternativeCostCards(player)
-	if g.state.Cards[card].Definition == veritaCardID && len(alternativeCostCards) > 0 {
-		return 0
-	}
-	return g.actionReserveCost(player, card)
 }
 
 // visibleReserveCards 投影可支付指定行動 reserve cost 的其他手牌。
@@ -718,8 +735,8 @@ func (g *Game) submitChoice(player *model.Player, input Input) error {
 		g.advanceKnowledgeRevision()
 		return nil
 	}
-	if g.state.Knowledge.VeritaCost != nil {
-		if err := g.submitVeritaAlternativeCostChoice(
+	if g.state.Knowledge.AlternativeCost != nil {
+		if err := g.submitAlternativeCostChoice(
 			player,
 			cardInstanceID(subject),
 		); err != nil {

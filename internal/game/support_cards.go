@@ -243,56 +243,6 @@ func containsCard(cards []cardInstanceID, want cardInstanceID) bool {
 	return false
 }
 
-func (g *Game) canUseVeritaAlternativeCost(player *model.Player, cards []cardInstanceID) bool {
-	if len(cards) < 3 {
-		return false
-	}
-	total := 0
-	seen := make(map[cardInstanceID]bool, len(cards))
-	for _, card := range cards {
-		if seen[card] || cardIndex(g.state.Zones[player.UID].Graveyard, card) < 0 || !g.cardHasSubtype(card, "SUITED") || !containsString(g.state.Cards[card].Types, "ALLY") {
-			return false
-		}
-		seen[card] = true
-		total += g.printedReserveCost(card)
-	}
-	return total == 10
-}
-
-// veritaAlternativeCostCards 依墓地順序搜尋第一組至少三張、印刷 reserve cost 總和為 10 的 Suited ally。
-// 沒有合格組合時回傳 nil；此函式只找付款組合，實際放逐由 payVeritaAlternativeCost 執行。
-func (g *Game) veritaAlternativeCostCards(player *model.Player) []cardInstanceID {
-	graveyard := g.state.Zones[player.UID].Graveyard
-	return g.findVeritaAlternativeCostCards(player, graveyard, nil, 0)
-}
-
-func (g *Game) findVeritaAlternativeCostCards(player *model.Player, cards, selected []cardInstanceID, start int) []cardInstanceID {
-	if len(selected) >= 3 && g.canUseVeritaAlternativeCost(player, selected) {
-		return append([]cardInstanceID(nil), selected...)
-	}
-	for index := start; index < len(cards); index++ {
-		candidate := append(selected, cards[index])
-		if result := g.findVeritaAlternativeCostCards(player, cards, candidate, index+1); len(result) > 0 {
-			return result
-		}
-	}
-	return nil
-}
-
-func (g *Game) payVeritaAlternativeCost(player *model.Player, cards []cardInstanceID) error {
-	if !g.canUseVeritaAlternativeCost(player, cards) {
-		return fmt.Errorf("invalid Verita alternative cost")
-	}
-	zones := g.state.Zones[player.UID]
-	for _, card := range cards {
-		index := cardIndex(zones.Graveyard, card)
-		zones.Graveyard = removeCardAt(zones.Graveyard, index)
-		zones.Banishment = append(zones.Banishment, card)
-	}
-	g.state.Zones[player.UID] = zones
-	return nil
-}
-
 func (g *Game) activateSmokeBombs(player *model.Player, source, target objectID) error {
 	object, exists := g.state.Objects[source]
 	targetObject, targetExists := g.state.Objects[target]
