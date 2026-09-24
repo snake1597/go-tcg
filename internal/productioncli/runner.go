@@ -54,7 +54,7 @@ func Run(arguments []string, input io.Reader, output io.Writer, repositoryRoot s
 		return fmt.Errorf("--submission-limit must be positive")
 	}
 
-	match, setupErr := game.NewStandardGame(game.StandardGameConfig{
+	match, err := game.NewStandardGame(game.StandardGameConfig{
 		Players: []*model.Player{
 			model.PlayerOne,
 			model.PlayerTwo,
@@ -62,8 +62,8 @@ func Run(arguments []string, input io.Reader, output io.Writer, repositoryRoot s
 		RepositoryRoot: repositoryRoot,
 		Seed:           *seed,
 	})
-	if setupErr != nil {
-		return fmt.Errorf("start standard game: %w", setupErr)
+	if err != nil {
+		return fmt.Errorf("start standard game: %w", err)
 	}
 
 	opponent := bot.NewHeuristic(
@@ -80,10 +80,7 @@ func Run(arguments []string, input io.Reader, output io.Writer, repositoryRoot s
 			return
 		}
 		if writeErr := writeReplay(*replayPath, match.Replay()); writeErr != nil {
-			err = errors.Join(
-				err,
-				fmt.Errorf("write replay: %w", writeErr),
-			)
+			err = errors.Join(err, fmt.Errorf("write replay: %w", writeErr))
 		}
 	}()
 
@@ -144,14 +141,14 @@ func Run(arguments []string, input io.Reader, output io.Writer, repositoryRoot s
 			}
 
 			acceptedSubmissions++
-			writeSubmissionSummary(
-				output,
-				"bot "+player.UID,
-				player,
-				view,
-				botInput,
-				afterView,
-			)
+			writeSubmissionSummary(writeSubmissionSummaryInput{
+				output:     output,
+				actorLabel: "bot " + player.UID,
+				actor:      player,
+				before:     view,
+				input:      botInput,
+				after:      afterView,
+			})
 			continue
 		}
 
@@ -176,74 +173,85 @@ func Run(arguments []string, input io.Reader, output io.Writer, repositoryRoot s
 		}
 
 		acceptedSubmissions++
-		writeSubmissionSummary(
-			output,
-			player.UID,
-			player,
-			view,
-			selected,
-			afterView,
-		)
+		writeSubmissionSummary(writeSubmissionSummaryInput{
+			output:     output,
+			actorLabel: player.UID,
+			actor:      player,
+			before:     view,
+			input:      selected,
+			after:      afterView,
+		})
 	}
 }
 
+// writeSubmissionSummaryInput 集中描述單次成功提交的顯示內容。
+// 輸入為輸出串流、提交者資訊、提交前後視圖與已接受輸入；輸出與副作用由 writeSubmissionSummary 負責。
+type writeSubmissionSummaryInput struct {
+	output     io.Writer
+	actorLabel string
+	actor      *model.Player
+	before     game.PlayerView
+	input      game.Input
+	after      game.PlayerView
+}
+
 // writeSubmissionSummary 將成功提交描述為玩家行動、待決選擇或 Opportunity pass，並說明公開的堆疊與 Opportunity 轉移結果。
-// 輸入為輸出串流、顯示名稱、提交玩家、提交前後 PlayerView 與已接受 Input；輸出為零值，副作用僅為寫入公開流程文字。
-func writeSubmissionSummary(output io.Writer, actorLabel string, actor *model.Player, before game.PlayerView, input game.Input, after game.PlayerView) {
-	if before.PendingChoice != nil {
-		if input.Choice != "" {
-			fmt.Fprintf(output, "%s 已完成一項選擇。\n", actorLabel)
+// 輸入為單次成功提交的 writeSubmissionSummaryInput；輸出為零值，副作用僅為寫入公開流程文字。
+func writeSubmissionSummary(summary writeSubmissionSummaryInput) {
+	if summary.before.PendingChoice != nil {
+		if summary.input.Choice != "" {
+			fmt.Fprintf(summary.output, "%s 已完成一項選擇。\n", summary.actorLabel)
 		} else {
-			fmt.Fprintf(output, "%s 略過一項選擇。\n", actorLabel)
+			fmt.Fprintf(summary.output, "%s 略過一項選擇。\n", summary.actorLabel)
 		}
-		writeRetainedOpportunity(output, actor, after)
+		writeRetainedOpportunity(summary.output, summary.actor, summary.after)
 		return
 	}
 
-	action, found := legalActionForInput(before, input)
+	action, found := legalActionForInput(summary.before, summary.input)
 	if !found {
-		fmt.Fprintf(output, "%s 已完成一次提交。\n", actorLabel)
+		fmt.Fprintf(summary.output, "%s 已完成一次提交。\n", summary.actorLabel)
 		return
 	}
 
 	if action.Kind != constants.ActionPass {
 		if action.Kind == constants.ActionActivate && action.CardName != "" {
-			fmt.Fprintf(output, "%s 啟動 %s。\n", actorLabel, action.CardName)
+			fmt.Fprintf(summary.output, "%s 啟動 %s。\n", summary.actorLabel, action.CardName)
 		} else {
 			label := actionLabel(action)
 			fmt.Fprintf(
-				output,
+				summary.output,
 				"%s 選擇 %s。\n",
-				actorLabel,
+				summary.actorLabel,
 				label,
 			)
 		}
-		writeRetainedOpportunity(output, actor, after)
+		writeRetainedOpportunity(summary.output, summary.actor, summary.after)
 		return
 	}
 
-	if !sameVisibleEffectsStack(before.EffectsStack, after.EffectsStack) {
-		top := before.EffectsStack[len(before.EffectsStack)-1]
-		fmt.Fprintf(output, "%s 選擇 pass。\n", actorLabel)
-		fmt.Fprintf(output, "雙方連續 pass，結算堆疊頂端：%s。\n", top.SourceName)
-		if len(after.EffectsStack) > 0 {
+	if !sameVisibleEffectsStack(summary.before.EffectsStack, summary.after.EffectsStack) {
+		top := summary.before.EffectsStack[len(summary.before.EffectsStack)-1]
+		fmt.Fprintf(summary.output, "%s 選擇 pass。\n", summary.actorLabel)
+		fmt.Fprintf(summary.output, "雙方連續 pass，結算堆疊頂端：%s。\n", top.SourceName)
+		if len(summary.after.EffectsStack) > 0 {
 			fmt.Fprintf(
-				output,
+				summary.output,
 				"Effects Stack 尚有 %d 個項目；重新開啟回應窗口，Opportunity 交給 %s。\n",
-				len(after.EffectsStack),
-				playerName(after.OpportunityHolder),
+				len(summary.after.EffectsStack),
+				playerName(summary.after.OpportunityHolder),
 			)
 		} else {
-			fmt.Fprintln(output, "Effects Stack 已清空。")
+			fmt.Fprintln(summary.output, "Effects Stack 已清空。")
 		}
 		return
 	}
 
 	fmt.Fprintf(
-		output,
+		summary.output,
 		"%s 選擇 pass，Opportunity 移交給 %s。\n",
-		actorLabel,
-		playerName(after.OpportunityHolder),
+		summary.actorLabel,
+		playerName(summary.after.OpportunityHolder),
 	)
 }
 
@@ -530,9 +538,10 @@ func actionLabel(action game.LegalAction) string {
 	label := string(action.Kind)
 	if action.CardName != "" {
 		label += "：" + action.CardName
-		if action.CostMethod == "alternative" {
+		switch action.CostMethod {
+		case "alternative":
 			label += "（替代費用）"
-		} else if action.CostMethod == "reserve" {
+		case "reserve":
 			label += "（Reserve）"
 		}
 	}

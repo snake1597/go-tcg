@@ -37,6 +37,7 @@ func newStandardSetup(
 			break
 		}
 	}
+
 	if !game.state.Finished {
 		game.state.Scheduler = schedulerFrame{
 			Kind:       schedulerStable,
@@ -46,8 +47,10 @@ func newStandardSetup(
 		}
 		game.runStandardScheduler()
 	}
+
 	game.advanceKnowledgeRevision()
 	game.captureReplayInitialState()
+
 	return game, nil
 }
 
@@ -116,9 +119,5 @@ func (g *Game) nextRandom() uint64 {
 }
 
 func (g *Game) resolveSpiritOfFireOnEnter(player *model.Player) bool {
-	return g.drawCardsWithDeckOut(
-		player,
-		7,
-		spiritOfFireOnEnterCause,
-	)
+	return g.drawCardsWithDeckOut(player, 7, spiritOfFireOnEnterCause)
 }
