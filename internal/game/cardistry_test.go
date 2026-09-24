@@ -30,7 +30,7 @@ func TestCardistryMemoryPaymentIsDeclaredRecordedAndReplayed(t *testing.T) {
 			Revision: view.Revision,
 			Action:   cardistryAction(t, game, player),
 			MemoryPayment: []ViewHandle{
-				game.state.Knowledge.Players[player.UID].Cards[entityID(floatingMemory)],
+				game.getPlayerKnowledge(player).Cards[entityID(floatingMemory)],
 			},
 		},
 	); err != nil {
@@ -65,7 +65,7 @@ func TestCardistryInvalidMemoryPaymentDoesNotChangeState(t *testing.T) {
 		player,
 		cardistrySource(t, game, player),
 		[]ViewHandle{
-			game.state.Knowledge.Players[player.UID].Cards[entityID(notFloatingMemory)],
+			game.getPlayerKnowledge(player).Cards[entityID(notFloatingMemory)],
 		},
 	)
 	if err == nil {
@@ -83,7 +83,7 @@ func TestCardistryRejectedActivationsDoNotChangeState(t *testing.T) {
 			game := newCardistryGame(t, twoOfSpadesCardID)
 			player := model.PlayerOne
 			var pass ViewHandle
-			for handle, kind := range game.state.Knowledge.Players[player.UID].Actions {
+			for handle, kind := range game.getPlayerKnowledge(player).Actions {
 				if kind == constants.ActionPass {
 					pass = handle
 					break
@@ -573,7 +573,7 @@ func gCardistrySource(game *Game, card cardInstanceID) bool {
 
 func cardistryAction(t *testing.T, game *Game, player *model.Player) ViewHandle {
 	t.Helper()
-	for handle, ability := range game.state.Knowledge.Players[player.UID].Abilities {
+	for handle, ability := range game.getPlayerKnowledge(player).Abilities {
 		if ability.Kind == activatedAbilityCardistry && ability.Source == objectID("cardistry:source") {
 			return handle
 		}

@@ -910,7 +910,7 @@ func TestMaterializingHinderedRegaliaEntersRested(t *testing.T) {
 		t.Fatalf("PlayerView() error = %v", err)
 	}
 	materialize := materializationActionByCardName(t, view, "The Duchess's Thornes")
-	source := game.state.Knowledge.Players[player.UID].Materializations[materialize.Handle]
+	source := game.getPlayerKnowledge(player).Materializations[materialize.Handle]
 	if err := game.Submit(
 		player,
 		Input{

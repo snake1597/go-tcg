@@ -89,7 +89,10 @@ func (g *Game) Submit(player *model.Player, input Input) error {
 		)
 		return nil
 	}
-	kind, exists := g.state.Knowledge.Players[player.UID].Actions[input.Action]
+
+	playKnowledge := g.getPlayerKnowledge(player)
+
+	kind, exists := playKnowledge.Actions[input.Action]
 	if g.state.Knowledge.VeritaCost != nil && g.state.Knowledge.Choice != nil && g.state.Knowledge.Choice.CanPass && exists && kind == constants.ActionPass {
 		g.state.Knowledge.VeritaCost = nil
 		g.state.Knowledge.Choice = nil
@@ -108,8 +111,8 @@ func (g *Game) Submit(player *model.Player, input Input) error {
 		return nil
 	}
 	if len(input.MemoryPayment) > 0 {
-		ability, abilityExists := g.state.Knowledge.Players[player.UID].Abilities[input.Action]
-		_, materializationExists := g.state.Knowledge.Players[player.UID].Materializations[input.Action]
+		ability, abilityExists := playKnowledge.Abilities[input.Action]
+		_, materializationExists := playKnowledge.Materializations[input.Action]
 		if (!abilityExists || ability.Kind != activatedAbilityCardistry) && !materializationExists {
 			return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, input.Action)
 		}
@@ -118,7 +121,7 @@ func (g *Game) Submit(player *model.Player, input Input) error {
 		return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, input.Action)
 	}
 	if !exists {
-		card, materializeExists := g.state.Knowledge.Players[player.UID].Materializations[input.Action]
+		card, materializeExists := playKnowledge.Materializations[input.Action]
 		if materializeExists {
 			if err := g.materialize(
 				player,
@@ -128,7 +131,7 @@ func (g *Game) Submit(player *model.Player, input Input) error {
 				return fmt.Errorf("materialize champion: %w", err)
 			}
 		} else {
-			card, activateExists := g.state.Knowledge.Players[player.UID].Activations[input.Action]
+			card, activateExists := playKnowledge.Activations[input.Action]
 			if activateExists {
 				if containsString(g.state.Cards[card].Types, "ALLY") {
 					if err := g.commitAllyActivation(player, card, input.Reserve); err != nil {
@@ -138,13 +141,13 @@ func (g *Game) Submit(player *model.Player, input Input) error {
 					return fmt.Errorf("begin action declaration: %w", err)
 				}
 			} else {
-				attacker, attackExists := g.state.Knowledge.Players[player.UID].Attacks[input.Action]
+				attacker, attackExists := playKnowledge.Attacks[input.Action]
 				if attackExists {
 					if err := g.beginAttack(player, attacker); err != nil {
 						return fmt.Errorf("begin attack: %w", err)
 					}
 				} else {
-					ability, abilityExists := g.state.Knowledge.Players[player.UID].Abilities[input.Action]
+					ability, abilityExists := playKnowledge.Abilities[input.Action]
 					if abilityExists {
 						switch ability.Kind {
 						case activatedAbilityCardistry:
@@ -159,7 +162,7 @@ func (g *Game) Submit(player *model.Player, input Input) error {
 							return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, input.Action)
 						}
 					} else {
-						weapon, wieldExists := g.state.Knowledge.Players[player.UID].Wields[input.Action]
+						weapon, wieldExists := playKnowledge.Wields[input.Action]
 						if !wieldExists {
 							return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, input.Action)
 						}
@@ -215,22 +218,22 @@ func (g *Game) validateInputPayload(player *model.Player, input Input) error {
 	if input.Action == "" {
 		return fmt.Errorf("%w: missing action or choice", tcgErrors.ErrInvalidViewHandle)
 	}
-	if card, exists := g.state.Knowledge.Players[player.UID].Activations[input.Action]; exists {
+	if card, exists := g.getPlayerKnowledge(player).Activations[input.Action]; exists {
 		if len(input.MemoryPayment) > 0 || len(input.Reserve) != g.activationReserveCost(player, card) {
 			return fmt.Errorf("%w: unused input payload for activation", tcgErrors.ErrInvalidViewHandle)
 		}
 		return nil
 	}
-	if ability, exists := g.state.Knowledge.Players[player.UID].Abilities[input.Action]; exists {
+	if ability, exists := g.getPlayerKnowledge(player).Abilities[input.Action]; exists {
 		if len(input.Reserve) > 0 || (ability.Kind != activatedAbilityCardistry && len(input.MemoryPayment) > 0) {
 			return fmt.Errorf("%w: unused input payload for ability", tcgErrors.ErrInvalidViewHandle)
 		}
 		return nil
 	}
-	_, actionExists := g.state.Knowledge.Players[player.UID].Actions[input.Action]
-	_, materializationExists := g.state.Knowledge.Players[player.UID].Materializations[input.Action]
-	_, attackExists := g.state.Knowledge.Players[player.UID].Attacks[input.Action]
-	_, wieldExists := g.state.Knowledge.Players[player.UID].Wields[input.Action]
+	_, actionExists := g.getPlayerKnowledge(player).Actions[input.Action]
+	_, materializationExists := g.getPlayerKnowledge(player).Materializations[input.Action]
+	_, attackExists := g.getPlayerKnowledge(player).Attacks[input.Action]
+	_, wieldExists := g.getPlayerKnowledge(player).Wields[input.Action]
 	if materializationExists {
 		if len(input.Reserve) > 0 {
 			return fmt.Errorf("%w: unused input payload for materialization", tcgErrors.ErrInvalidViewHandle)

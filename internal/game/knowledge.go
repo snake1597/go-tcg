@@ -41,6 +41,12 @@ type playerKnowledge struct {
 	Events           []VisibleEvent                      `json:"events"`
 }
 
+// getPlayerKnowledge 回傳指定玩家的可見資訊與 handle 映射。
+// 輸入為已加入本局的玩家；輸出為其 playerKnowledge；不會修改遊戲狀態。
+func (g *Game) getPlayerKnowledge(player *model.Player) *playerKnowledge {
+	return g.state.Knowledge.Players[player.UID]
+}
+
 type activatedAbilityKind string
 
 const (
@@ -86,7 +92,7 @@ func (g *Game) initializeKnowledgeState() {
 // 遊戲結束時清空所有行動，但既有卡牌追蹤 handle 不由此函式重建。
 func (g *Game) refreshLegalActions() {
 	for _, player := range g.players {
-		knowledge := g.state.Knowledge.Players[player.UID]
+		knowledge := g.getPlayerKnowledge(player)
 		actions := knowledge.Actions
 		materializations := knowledge.Materializations
 		activations := knowledge.Activations
@@ -173,7 +179,7 @@ func (g *Game) refreshLegalActions() {
 }
 
 func (g *Game) hasAction(player *model.Player, kind constants.ActionKind) bool {
-	for _, candidate := range g.state.Knowledge.Players[player.UID].Actions {
+	for _, candidate := range g.getPlayerKnowledge(player).Actions {
 		if candidate == kind {
 			return true
 		}
@@ -184,7 +190,8 @@ func (g *Game) hasAction(player *model.Player, kind constants.ActionKind) bool {
 // legalActions 將引擎目前允許的所有行動投影為指定玩家可提交的穩定編號順序。
 // 輸入為檢視玩家；輸出為先按行動種類、再按不透明 handle 排序的合法行動，無副作用。
 func (g *Game) legalActions(player *model.Player) []LegalAction {
-	actions := g.state.Knowledge.Players[player.UID].Actions
+	playKnowledge := g.getPlayerKnowledge(player)
+	actions := playKnowledge.Actions
 	legalActions := make([]LegalAction, 0, len(actions))
 	for handle, kind := range actions {
 		legalActions = append(
@@ -195,7 +202,7 @@ func (g *Game) legalActions(player *model.Player) []LegalAction {
 			},
 		)
 	}
-	for handle, card := range g.state.Knowledge.Players[player.UID].Materializations {
+	for handle, card := range playKnowledge.Materializations {
 		memoryCost := g.characteristicsForCard(card).MemoryCost
 		legalActions = append(
 			legalActions,
@@ -211,7 +218,7 @@ func (g *Game) legalActions(player *model.Player) []LegalAction {
 			},
 		)
 	}
-	for handle, card := range g.state.Knowledge.Players[player.UID].Activations {
+	for handle, card := range playKnowledge.Activations {
 		legalActions = append(
 			legalActions,
 			LegalAction{
@@ -223,7 +230,7 @@ func (g *Game) legalActions(player *model.Player) []LegalAction {
 			},
 		)
 	}
-	for handle, attacker := range g.state.Knowledge.Players[player.UID].Attacks {
+	for handle, attacker := range playKnowledge.Attacks {
 		card, exists := g.cardForObject(attacker)
 		if !exists {
 			continue
@@ -237,14 +244,14 @@ func (g *Game) legalActions(player *model.Player) []LegalAction {
 			},
 		)
 	}
-	for handle, weapon := range g.state.Knowledge.Players[player.UID].Wields {
+	for handle, weapon := range playKnowledge.Wields {
 		legalActions = append(legalActions, LegalAction{
 			Handle:   handle,
 			Kind:     constants.ActionWield,
 			CardName: g.state.Entities[entityID(g.state.Objects[weapon].Card)].Name,
 		})
 	}
-	for handle, ability := range g.state.Knowledge.Players[player.UID].Abilities {
+	for handle, ability := range playKnowledge.Abilities {
 		switch ability.Kind {
 		case activatedAbilityCardistry:
 			card := g.state.Objects[ability.Source].Card
@@ -307,7 +314,7 @@ func (g *Game) visibleReserveCards(player *model.Player, source cardInstanceID) 
 		if card == source {
 			continue
 		}
-		handle, exists := g.state.Knowledge.Players[player.UID].Cards[entityID(card)]
+		handle, exists := g.getPlayerKnowledge(player).Cards[entityID(card)]
 		if !exists {
 			continue
 		}
@@ -328,7 +335,7 @@ func (g *Game) visibleMemoryPaymentSources(player *model.Player) []VisibleCard {
 	cards := g.memoryPaymentCards(player)
 	options := make([]VisibleCard, 0, len(cards))
 	for _, card := range cards {
-		handle, exists := g.state.Knowledge.Players[player.UID].Cards[entityID(card)]
+		handle, exists := g.getPlayerKnowledge(player).Cards[entityID(card)]
 		if !exists {
 			continue
 		}
@@ -387,7 +394,7 @@ func (g *Game) heuristicRank(player *model.Player, action LegalAction) int {
 // attackWinsGame 判斷指定合法攻擊是否能以公開攻擊力擊敗任一可攻擊對方 Champion。
 // 輸入為攻擊玩家與 action handle；輸出為是否有立即獲勝目標，無副作用且僅檢查公開場上物件。
 func (g *Game) attackWinsGame(player *model.Player, handle ViewHandle) bool {
-	attacker, exists := g.state.Knowledge.Players[player.UID].Attacks[handle]
+	attacker, exists := g.getPlayerKnowledge(player).Attacks[handle]
 	if !exists {
 		return false
 	}
@@ -432,7 +439,7 @@ func (g *Game) visibleChampions(_ *model.Player) []VisibleChampion {
 // visibleCards 回傳玩家已取得追蹤 handle 的卡牌，而非直接列出區域內的所有牌。
 // 結果按 handle 排序；隱藏或公開卡牌時，呼叫端須同步維護追蹤映射。
 func (g *Game) visibleCards(player *model.Player) []VisibleCard {
-	cards := g.state.Knowledge.Players[player.UID].Cards
+	cards := g.getPlayerKnowledge(player).Cards
 	visibleCards := make([]VisibleCard, 0, len(cards))
 	for card, handle := range cards {
 		visibleCards = append(
@@ -458,7 +465,7 @@ func (g *Game) visibleHand(player *model.Player) []VisibleCard {
 	zones := g.state.Zones[player.UID]
 	hand := make([]VisibleCard, 0, len(zones.Hand))
 	for _, card := range zones.Hand {
-		handle, exists := g.state.Knowledge.Players[player.UID].Cards[entityID(card)]
+		handle, exists := g.getPlayerKnowledge(player).Cards[entityID(card)]
 		if !exists {
 			continue
 		}
@@ -573,8 +580,9 @@ func (g *Game) recordVisibleEvent(player *model.Player, kind string, card entity
 		Kind:     kind,
 		CardName: g.state.Entities[card].Name,
 	}
-	g.state.Knowledge.Players[player.UID].Events = append(
-		g.state.Knowledge.Players[player.UID].Events,
+	knowledge := g.getPlayerKnowledge(player)
+	knowledge.Events = append(
+		knowledge.Events,
 		event,
 	)
 }
@@ -582,12 +590,12 @@ func (g *Game) recordVisibleEvent(player *model.Player, kind string, card entity
 func (g *Game) visibleEvents(player *model.Player) []VisibleEvent {
 	return append(
 		[]VisibleEvent(nil),
-		g.state.Knowledge.Players[player.UID].Events...,
+		g.getPlayerKnowledge(player).Events...,
 	)
 }
 
 func (g *Game) setPendingCardChoice(player *model.Player, card entityID) {
-	handle, exists := g.state.Knowledge.Players[player.UID].Cards[card]
+	handle, exists := g.getPlayerKnowledge(player).Cards[card]
 	if !exists {
 		return
 	}
@@ -609,7 +617,7 @@ func (g *Game) pendingChoice(player *model.Player) *PendingChoice {
 	for handle, subject := range choice.Options {
 		options = append(options, handle)
 		cardName := ""
-		if _, visible := g.state.Knowledge.Players[player.UID].Cards[subject]; visible {
+		if _, visible := g.getPlayerKnowledge(player).Cards[subject]; visible {
 			cardName = g.state.Entities[subject].Name
 		} else if card, objectExists := g.cardForObject(objectID(subject)); objectExists {
 			cardName = g.state.Entities[entityID(card.ID)].Name

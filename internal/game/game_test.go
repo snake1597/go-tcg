@@ -205,7 +205,7 @@ func TestSubmitRejectsUnusedPayloadByActionKind(t *testing.T) {
 		{
 			name: "plain action rejects reserve",
 			setup: func(game *Game) Input {
-				game.state.Knowledge.Players[model.PlayerOne.UID].Actions["plain"] = constants.ActionPass
+				game.getPlayerKnowledge(model.PlayerOne).Actions["plain"] = constants.ActionPass
 				return Input{
 					Revision: game.state.Revision,
 					Action:   "plain",
@@ -218,7 +218,7 @@ func TestSubmitRejectsUnusedPayloadByActionKind(t *testing.T) {
 		{
 			name: "materialization rejects reserve",
 			setup: func(game *Game) Input {
-				game.state.Knowledge.Players[model.PlayerOne.UID].Materializations["materialize"] = "source"
+				game.getPlayerKnowledge(model.PlayerOne).Materializations["materialize"] = "source"
 				return Input{
 					Revision: game.state.Revision,
 					Action:   "materialize",
@@ -231,7 +231,7 @@ func TestSubmitRejectsUnusedPayloadByActionKind(t *testing.T) {
 		{
 			name: "card activation rejects memory payment",
 			setup: func(game *Game) Input {
-				game.state.Knowledge.Players[model.PlayerOne.UID].Activations["activate"] = "source"
+				game.getPlayerKnowledge(model.PlayerOne).Activations["activate"] = "source"
 				return Input{
 					Revision: game.state.Revision,
 					Action:   "activate",
@@ -244,7 +244,7 @@ func TestSubmitRejectsUnusedPayloadByActionKind(t *testing.T) {
 		{
 			name: "attack rejects reserve",
 			setup: func(game *Game) Input {
-				game.state.Knowledge.Players[model.PlayerOne.UID].Attacks["attack"] = "attacker"
+				game.getPlayerKnowledge(model.PlayerOne).Attacks["attack"] = "attacker"
 				return Input{
 					Revision: game.state.Revision,
 					Action:   "attack",
@@ -257,7 +257,7 @@ func TestSubmitRejectsUnusedPayloadByActionKind(t *testing.T) {
 		{
 			name: "wield rejects memory payment",
 			setup: func(game *Game) Input {
-				game.state.Knowledge.Players[model.PlayerOne.UID].Wields["wield"] = "weapon"
+				game.getPlayerKnowledge(model.PlayerOne).Wields["wield"] = "weapon"
 				return Input{
 					Revision: game.state.Revision,
 					Action:   "wield",
@@ -270,7 +270,7 @@ func TestSubmitRejectsUnusedPayloadByActionKind(t *testing.T) {
 		{
 			name: "cardistry rejects reserve",
 			setup: func(game *Game) Input {
-				game.state.Knowledge.Players[model.PlayerOne.UID].Abilities["cardistry"] = activatedAbility{
+				game.getPlayerKnowledge(model.PlayerOne).Abilities["cardistry"] = activatedAbility{
 					Kind:   activatedAbilityCardistry,
 					Source: "source",
 				}
@@ -286,7 +286,7 @@ func TestSubmitRejectsUnusedPayloadByActionKind(t *testing.T) {
 		{
 			name: "object ability rejects reserve",
 			setup: func(game *Game) Input {
-				game.state.Knowledge.Players[model.PlayerOne.UID].Abilities["ability"] = activatedAbility{
+				game.getPlayerKnowledge(model.PlayerOne).Abilities["ability"] = activatedAbility{
 					Kind:   activatedAbilityObject,
 					Source: "source",
 				}
@@ -469,8 +469,8 @@ func TestStateHashUsesCanonicalVersionedState(t *testing.T) {
 // 輸入為固定 seed 的測試對局；輸出為每個玩家的完整 playerKnowledge；副作用僅限測試資料寫入。
 func TestKnowledgeStateGroupsViewsByPlayer(t *testing.T) {
 	game := newTestGame(42)
-	first := game.state.Knowledge.Players[model.PlayerOne.UID]
-	second := game.state.Knowledge.Players[model.PlayerTwo.UID]
+	first := game.getPlayerKnowledge(model.PlayerOne)
+	second := game.getPlayerKnowledge(model.PlayerTwo)
 	if first == nil || second == nil {
 		t.Fatalf("Knowledge.Players = %#v, want both players", game.state.Knowledge.Players)
 	}
