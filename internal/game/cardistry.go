@@ -73,8 +73,6 @@ func (g *Game) cardistryBaseCost(card cardInstanceID) (int, bool) {
 		return 4, false
 	case fourOfHeartsCardID:
 		return 4, false
-	case threeOfHeartsCardID:
-		return 3, false
 	case threeOfSpadesCardID:
 		return 3, false
 	case twoOfHeartsCardID:
@@ -240,10 +238,6 @@ func (g *Game) cardistryAbility(player *model.Player, source objectID, card card
 		operations = append(operations, effectOperation{Kind: effectOperationDrawToMemory, Amount: 1})
 		operations = append(operations, effectOperation{Kind: effectOperationChooseMemoryAlly})
 		operations = append(operations, effectOperation{Kind: effectOperationDeploy})
-	case threeOfHeartsCardID:
-		operations = append(operations, effectOperation{Kind: effectOperationDraw, Amount: 1})
-		operations = append(operations, effectOperation{Kind: effectOperationChooseZoneCard})
-		operations = append(operations, effectOperation{Kind: effectOperationDiscard})
 	case threeOfSpadesCardID:
 		operations = append(operations, effectOperation{Kind: effectOperationChoose, Options: g.controlledSuitedAllies(player)})
 		operations = append(operations, g.temporaryModifierOperation(0, 2))

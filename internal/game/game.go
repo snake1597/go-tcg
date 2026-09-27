@@ -51,7 +51,7 @@ func NewGame(config StandardGameConfig) *Game {
 
 func currentVersions() Versions {
 	return Versions{
-		Engine:   "grand-archive-v2",
+		Engine:   "grand-archive-v3",
 		Rules:    "602c917f2f8fd4df7198429a72eb596bf7f647c6",
 		CardData: "card-data-v3",
 		Deck:     "standard-fire-v2",
@@ -101,11 +101,11 @@ func (g *Game) Submit(player *model.Player, input Input) error {
 		g.recordReplayStep(player, input)
 		return nil
 	}
-	if g.state.AbilityChoice != nil && g.state.AbilityChoice.CanPass && exists && kind == constants.ActionPass {
-		if g.state.AbilityChoice.Instance.RuntimeCopy {
-			g.destroyRuntimeCopy(g.state.AbilityChoice.Instance.Source)
+	if g.state.ResolutionFrame != nil && g.state.ResolutionFrame.CanPass && exists && kind == constants.ActionPass {
+		if g.state.ResolutionFrame.Instance.RuntimeCopy {
+			g.destroyRuntimeCopy(g.state.ResolutionFrame.Instance.Source)
 		}
-		g.state.AbilityChoice = nil
+		g.state.ResolutionFrame = nil
 		g.state.Knowledge.Choice = nil
 		g.advanceKnowledgeRevision()
 		g.recordReplayStep(player, input)

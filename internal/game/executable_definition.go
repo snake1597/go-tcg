@@ -31,8 +31,10 @@ const reductionDistinctSuitedCosts abilityCostReduction = "distinct-suited-reser
 type authoredEffectKind string
 
 const (
-	effectKindDraw   authoredEffectKind = "draw"
-	effectKindDamage authoredEffectKind = "damage"
+	effectKindDraw       authoredEffectKind = "draw"
+	effectKindDamage     authoredEffectKind = "damage"
+	effectKindChooseCard authoredEffectKind = "choose-card"
+	effectKindDiscard    authoredEffectKind = "discard"
 )
 
 type abilityReference string
@@ -81,10 +83,21 @@ type damageEffectDefinition struct {
 	amount valueExpression
 }
 
+type chooseCardEffectDefinition struct {
+	zone    cardZone
+	binding resolutionBinding
+}
+
+type discardEffectDefinition struct {
+	binding resolutionBinding
+}
+
 type authoredEffectDefinition struct {
-	kind   authoredEffectKind
-	draw   *drawEffectDefinition
-	damage *damageEffectDefinition
+	kind       authoredEffectKind
+	draw       *drawEffectDefinition
+	damage     *damageEffectDefinition
+	chooseCard *chooseCardEffectDefinition
+	discard    *discardEffectDefinition
 }
 
 type authoredAbilityDefinition struct {
@@ -100,9 +113,11 @@ type authoredAbilityDefinition struct {
 
 // compiledEffect 保存已驗證的具體效果 payload，不讓 authoring tag 進入對局狀態。
 type compiledEffect struct {
-	kind   authoredEffectKind
-	draw   drawEffectDefinition
-	damage damageEffectDefinition
+	kind       authoredEffectKind
+	draw       drawEffectDefinition
+	damage     damageEffectDefinition
+	chooseCard chooseCardEffectDefinition
+	discard    discardEffectDefinition
 }
 
 // compiledAbilityDefinition 是建局前完成驗證的能力中介表示。
@@ -136,6 +151,43 @@ func wonderlandsReignAbilities() []authoredAbilityDefinition {
 					draw: &drawEffectDefinition{
 						amount:    1,
 						recipient: referenceController,
+					},
+				},
+			},
+		},
+	}
+}
+
+// threeOfHeartsAbilities 集中宣告 Three of Hearts 的抽牌、具名選牌及棄牌 Cardistry Slot。
+// 輸入為零；輸出為獨立的 Go 編寫資料，副作用為零。
+func threeOfHeartsAbilities() []authoredAbilityDefinition {
+	return []authoredAbilityDefinition{
+		{
+			slot:      "ability:1db8hz4prm:front:cardistry-draw-discard",
+			kind:      abilityKindCardistry,
+			timing:    timingMainPhase,
+			usage:     usageOncePerObject,
+			reduction: reductionDistinctSuitedCosts,
+			baseCost:  3,
+			effects: []authoredEffectDefinition{
+				{
+					kind: effectKindDraw,
+					draw: &drawEffectDefinition{
+						amount:    1,
+						recipient: referenceController,
+					},
+				},
+				{
+					kind: effectKindChooseCard,
+					chooseCard: &chooseCardEffectDefinition{
+						zone:    cardZoneHand,
+						binding: "discard-card",
+					},
+				},
+				{
+					kind: effectKindDiscard,
+					discard: &discardEffectDefinition{
+						binding: "discard-card",
 					},
 				},
 			},
@@ -185,6 +237,8 @@ func authoredAbilitiesForCard(id CardID) []authoredAbilityDefinition {
 		return wonderlandsReignAbilities()
 	case straightFlareCardID:
 		return straightFlareAbilities()
+	case threeOfHeartsCardID:
+		return threeOfHeartsAbilities()
 	}
 	return nil
 }
@@ -261,6 +315,7 @@ func compileAbilityDefinitions(definition CardDefinition, authored []authoredAbi
 			selector := *ability.target
 			result.target = &selector
 		}
+		bindings := make(map[resolutionBinding]struct{})
 		for index, effect := range ability.effects {
 			field := fmt.Sprintf("effects[%d]", index)
 			switch effect.kind {
@@ -294,6 +349,35 @@ func compileAbilityDefinitions(definition CardDefinition, authored []authoredAbi
 						target: effect.damage.target,
 						amount: cloneValueExpression(effect.damage.amount),
 					},
+				})
+			case effectKindChooseCard:
+				if ability.kind != abilityKindCardistry || effect.chooseCard == nil || effect.draw != nil || effect.damage != nil || effect.discard != nil {
+					return nil, fmt.Errorf("%s: %s.choose_card payload is required only for Cardistry", context, field)
+				}
+				if effect.chooseCard.zone != cardZoneHand || effect.chooseCard.binding == "" {
+					return nil, fmt.Errorf("%s: %s.choose_card requires hand zone and binding", context, field)
+				}
+				if _, exists := bindings[effect.chooseCard.binding]; exists {
+					return nil, fmt.Errorf("%s: %s.choose_card.binding %q is duplicated", context, field, effect.chooseCard.binding)
+				}
+				bindings[effect.chooseCard.binding] = struct{}{}
+				result.effects = append(result.effects, compiledEffect{
+					kind:       effectKindChooseCard,
+					chooseCard: *effect.chooseCard,
+				})
+			case effectKindDiscard:
+				if ability.kind != abilityKindCardistry || effect.discard == nil || effect.draw != nil || effect.damage != nil || effect.chooseCard != nil {
+					return nil, fmt.Errorf("%s: %s.discard payload is required only for Cardistry", context, field)
+				}
+				if effect.discard.binding == "" {
+					return nil, fmt.Errorf("%s: %s.discard.binding must not be empty", context, field)
+				}
+				if _, exists := bindings[effect.discard.binding]; !exists {
+					return nil, fmt.Errorf("%s: %s.discard.binding %q has no preceding choice", context, field, effect.discard.binding)
+				}
+				result.effects = append(result.effects, compiledEffect{
+					kind:    effectKindDiscard,
+					discard: *effect.discard,
 				})
 			default:
 				return nil, fmt.Errorf("%s: %s.kind unknown %q", context, field, effect.kind)
@@ -381,6 +465,17 @@ func (ability compiledAbilityDefinition) operations() []effectOperation {
 				TargetReference: effect.damage.target,
 				Value:           &amount,
 			})
+		case effectKindChooseCard:
+			operations = append(operations, effectOperation{
+				Kind:     effectOperationChooseZoneCard,
+				CardZone: effect.chooseCard.zone,
+				Binding:  effect.chooseCard.binding,
+			})
+		case effectKindDiscard:
+			operations = append(operations, effectOperation{
+				Kind:    effectOperationDiscard,
+				Binding: effect.discard.binding,
+			})
 		}
 	}
 	return operations
@@ -417,7 +512,7 @@ func (g *Game) compiledCardistry(card cardInstanceID) (compiledAbilityDefinition
 // 輸入為零；輸出為目前引擎版本釘選的定義或驗證錯誤，副作用為零。
 func compileReplayDefinitions() (map[CardID]CardDefinition, error) {
 	definitions := make(map[CardID]CardDefinition)
-	for _, id := range []CardID{wonderlandsReignCardID, straightFlareCardID} {
+	for _, id := range []CardID{wonderlandsReignCardID, straightFlareCardID, threeOfHeartsCardID} {
 		definition := CardDefinition{
 			id: id,
 			face: CardFace{

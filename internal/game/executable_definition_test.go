@@ -24,6 +24,28 @@ func TestCompileWonderlandsReignDefinition(t *testing.T) {
 	}
 }
 
+// TestCompileThreeOfHeartsDefinitionRejectsUnboundDiscard 驗證 Three of Hearts 的棄牌只能引用同一能力中先前具名的選牌 binding。
+// 輸入為含未知 binding 的 Three of Hearts 編寫資料；輸出為附帶欄位脈絡的編譯錯誤，副作用為零。
+func TestCompileThreeOfHeartsDefinitionRejectsUnboundDiscard(t *testing.T) {
+	definition := CardDefinition{
+		id: threeOfHeartsCardID,
+		face: CardFace{
+			id: CardFaceID("face:1db8hz4prm:front"),
+		},
+	}
+	authored := threeOfHeartsAbilities()
+	authored[0].effects[2].discard.binding = "unknown-card"
+	_, err := compileAbilityDefinitions(definition, authored)
+	if err == nil {
+		t.Fatal("compileAbilityDefinitions() error = nil")
+	}
+	for _, want := range []string{"1db8hz4prm", "discard.binding", "unknown-card"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Fatalf("error %q missing %q", err, want)
+		}
+	}
+}
+
 // TestCompileAbilityDefinitionsRejectsInvalidData 驗證 compiler 拒絕重複 ID、錯誤關聯、未知 kind 與 payload。
 // 輸入為數組無效 Go 定義；輸出為含 Definition、Face、Slot 與欄位的錯誤，副作用為零。
 func TestCompileAbilityDefinitionsRejectsInvalidData(t *testing.T) {

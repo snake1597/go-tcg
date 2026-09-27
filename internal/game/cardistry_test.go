@@ -99,6 +99,179 @@ func TestCardistryMemoryPaymentIsDeclaredRecordedAndReplayed(t *testing.T) {
 	}
 }
 
+// TestThreeOfHeartsCompiledChoiceBindsSelectedCardAndReplays 驗證 Three of Hearts 由編譯定義建立 actor 專屬選牌，並以同一張 Card Instance 完成棄牌與重播。
+// 輸入為固定標準對局與 Three of Hearts；輸出為已棄牌與可驗證 replay，副作用為推進對局的 Cardistry 結算。
+func TestThreeOfHeartsCompiledChoiceBindsSelectedCardAndReplays(t *testing.T) {
+	game := newCardistryGame(t, threeOfHeartsCardID)
+	player := model.PlayerOne
+	source := cardistrySource(t, game, player)
+	if _, compiled := game.compiledCardistry(game.state.Objects[source].Card); !compiled {
+		t.Fatal("Three of Hearts Cardistry is not compiled")
+	}
+	fillMemory(t, game, player, 3, "")
+	game.advanceKnowledgeRevision()
+	game.captureReplayInitialState()
+
+	if err := game.Submit(
+		player,
+		Input{
+			Revision: game.state.Revision,
+			Action:   cardistryAction(t, game, player),
+		},
+	); err != nil {
+		t.Fatalf("Submit() Cardistry error = %v", err)
+	}
+	passOpportunityRound(t, game, player)
+
+	view, err := game.PlayerView(player)
+	if err != nil {
+		t.Fatalf("PlayerView() error = %v", err)
+	}
+	if view.PendingChoice == nil || len(view.PendingChoice.Options) == 0 {
+		t.Fatalf("PendingChoice = %#v, want card choice", view.PendingChoice)
+	}
+	if opponentView, err := game.PlayerView(model.PlayerTwo); err != nil || opponentView.PendingChoice != nil {
+		t.Fatalf("opponent PendingChoice = %#v, error = %v; want nil, nil", opponentView.PendingChoice, err)
+	}
+	choice := view.PendingChoice.Options[0]
+	selected := game.state.Knowledge.Choice.Options[choice]
+	if err := game.Submit(
+		player,
+		Input{
+			Revision: view.Revision,
+			Choice:   choice,
+		},
+	); err != nil {
+		t.Fatalf("Submit() choice error = %v", err)
+	}
+	if len(game.state.EffectsStack) != 1 || game.state.EffectsStack[0].Ability == nil || game.state.EffectsStack[0].Ability.Bindings["discard-card"] != selected {
+		t.Fatalf("resumed ability = %#v, want selected card bound by name", game.state.EffectsStack)
+	}
+	passOpportunityRound(t, game, player)
+	if cardIndex(game.state.Zones[player.UID].Graveyard, cardInstanceID(selected)) < 0 {
+		t.Fatalf("selected card %q was not discarded", selected)
+	}
+	if err := game.Replay().Verify(); err != nil {
+		t.Fatalf("Replay().Verify() error = %v", err)
+	}
+}
+
+// TestThreeOfHeartsRejectedChoicePreservesState 驗證選牌 handle 過期、跨玩家、偽造或失效時，Submit 不改變任何權威狀態。
+// 輸入為已暫停於 Three of Hearts 選牌的對局與各種無效輸入；輸出為拒絕錯誤，副作用為零。
+func TestThreeOfHeartsRejectedChoicePreservesState(t *testing.T) {
+	newPendingChoice := func(t *testing.T) (*Game, ViewHandle) {
+		t.Helper()
+		game := newCardistryGame(t, threeOfHeartsCardID)
+		fillMemory(t, game, model.PlayerOne, 3, "")
+		game.advanceKnowledgeRevision()
+		if err := game.Submit(
+			model.PlayerOne,
+			Input{
+				Revision: game.state.Revision,
+				Action:   cardistryAction(t, game, model.PlayerOne),
+			},
+		); err != nil {
+			t.Fatalf("Submit() Cardistry error = %v", err)
+		}
+		passOpportunityRound(t, game, model.PlayerOne)
+		view, err := game.PlayerView(model.PlayerOne)
+		if err != nil {
+			t.Fatalf("PlayerView() error = %v", err)
+		}
+		if view.PendingChoice == nil || len(view.PendingChoice.Options) == 0 {
+			t.Fatalf("PendingChoice = %#v, want card choice", view.PendingChoice)
+		}
+		return game, view.PendingChoice.Options[0]
+	}
+
+	testCases := []struct {
+		name  string
+		input func(*Game, ViewHandle) Input
+	}{
+		{
+			name: "forged handle",
+			input: func(game *Game, _ ViewHandle) Input {
+				return Input{
+					Revision: game.state.Revision,
+					Choice:   "forged",
+				}
+			},
+		},
+		{
+			name: "cross player handle",
+			input: func(game *Game, choice ViewHandle) Input {
+				return Input{
+					Revision: game.state.Revision,
+					Choice:   choice,
+				}
+			},
+		},
+		{
+			name: "stale revision",
+			input: func(game *Game, choice ViewHandle) Input {
+				return Input{
+					Revision: game.state.Revision - 1,
+					Choice:   choice,
+				}
+			},
+		},
+	}
+	for _, testCase := range testCases {
+		t.Run(
+			testCase.name,
+			func(t *testing.T) {
+				game, choice := newPendingChoice(t)
+				player := model.PlayerOne
+				if testCase.name == "cross player handle" {
+					player = model.PlayerTwo
+				}
+				before := game.StateHash()
+				if err := game.Submit(player, testCase.input(game, choice)); err == nil {
+					t.Fatal("Submit() error = nil, want rejection")
+				}
+				if got := game.StateHash(); got != before {
+					t.Fatalf("StateHash() = %q, want unchanged %q", got, before)
+				}
+			},
+		)
+	}
+
+	t.Run(
+		"selected card left zone",
+		func(t *testing.T) {
+			game, choice := newPendingChoice(t)
+			selected := cardInstanceID(game.state.Knowledge.Choice.Options[choice])
+			moveCardToGraveyard(t, game, model.PlayerOne, selected)
+			before := game.StateHash()
+			if err := game.Submit(
+				model.PlayerOne,
+				Input{
+					Revision: game.state.Revision,
+					Choice:   choice,
+				},
+			); err == nil {
+				t.Fatal("Submit() error = nil, want rejection")
+			}
+			if got := game.StateHash(); got != before {
+				t.Fatalf("StateHash() = %q, want unchanged %q", got, before)
+			}
+		},
+	)
+}
+
+// TestThreeOfHeartsRequiresCompiledDefinition 驗證 Three of Hearts 缺少已編譯定義時不可啟動，不會退回舊的 Card ID 分支。
+// 輸入為移除 Three of Hearts 定義的標準對局；輸出為不可啟動結果，副作用為零。
+func TestThreeOfHeartsRequiresCompiledDefinition(t *testing.T) {
+	game := newCardistryGame(t, threeOfHeartsCardID)
+	player := model.PlayerOne
+	source := cardistrySource(t, game, player)
+	fillMemory(t, game, player, 3, "")
+	delete(game.definitions, threeOfHeartsCardID)
+	if game.canActivateCardistry(player, source) {
+		t.Fatal("canActivateCardistry() = true without compiled Three of Hearts definition")
+	}
+}
+
 func TestCardistryInvalidMemoryPaymentDoesNotChangeState(t *testing.T) {
 	game := newCardistryGame(t, wonderlandsReignCardID)
 	player := model.PlayerOne
@@ -369,7 +542,7 @@ func TestDuchessCopyCanBeDeclinedAndRuntimeCopyIsDestroyed(t *testing.T) {
 		t.Fatalf("PlayerView() error = %v", err)
 	}
 	if view.PendingChoice == nil || !view.PendingChoice.CanPass {
-		t.Fatalf("PendingChoice = %#v, ability choice = %#v, stack = %#v, want optional copy activation", view.PendingChoice, game.state.AbilityChoice, game.state.EffectsStack)
+		t.Fatalf("PendingChoice = %#v, resolution frame = %#v, stack = %#v, want optional copy activation", view.PendingChoice, game.state.ResolutionFrame, game.state.EffectsStack)
 	}
 	var pass LegalAction
 	for _, action := range view.LegalActions {
@@ -390,8 +563,8 @@ func TestDuchessCopyCanBeDeclinedAndRuntimeCopyIsDestroyed(t *testing.T) {
 	); err != nil {
 		t.Fatalf("Submit() decline error = %v", err)
 	}
-	if len(game.state.EffectsStack) != 0 || game.state.AbilityChoice != nil {
-		t.Fatalf("copy state = stack %#v, choice %#v, want no pending copy", game.state.EffectsStack, game.state.AbilityChoice)
+	if len(game.state.EffectsStack) != 0 || game.state.ResolutionFrame != nil {
+		t.Fatalf("copy state = stack %#v, frame %#v, want no pending copy", game.state.EffectsStack, game.state.ResolutionFrame)
 	}
 	if cardIndex(game.state.Zones[player.UID].Banishment, source) < 0 {
 		t.Fatalf("source zones = %#v, want source banished", game.state.Zones[player.UID])

@@ -41,10 +41,10 @@ const (
 const (
 	CardDataSchemaVersion = 1
 	// CanonicalStateSchemaVersion 標示 StateHash 使用的 canonical state 結構版本。
-	CanonicalStateSchemaVersion = 6
+	CanonicalStateSchemaVersion = 7
 	CardDataSourcePattern       = "./card/*.json"
 	// ReplayFormatVersion 標示包含 Input.Reserve 與 Input.MemoryPayment 的 canonical replay 格式版本。
-	ReplayFormatVersion  = 5
+	ReplayFormatVersion  = 6
 	FixedDeckVersion     = "standard-fire-v2"
 	FixedCardDataVersion = "card-data-v3"
 )

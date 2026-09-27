@@ -9,15 +9,19 @@ import (
 type abilityInstanceID uint64
 
 type abilityInstance struct {
-	ID          abilityInstanceID `json:"id"`
-	Slot        AbilitySlotID     `json:"slot,omitempty"`
-	Controller  *model.Player     `json:"controller"`
-	Source      cardInstanceID    `json:"source"`
-	SourceLKI   cardInstanceID    `json:"source_lki"`
-	Target      objectID          `json:"target,omitempty"`
-	RuntimeCopy bool              `json:"runtime_copy,omitempty"`
-	Operations  []effectOperation `json:"operations"`
+	ID          abilityInstanceID              `json:"id"`
+	Slot        AbilitySlotID                  `json:"slot,omitempty"`
+	Controller  *model.Player                  `json:"controller"`
+	Source      cardInstanceID                 `json:"source"`
+	SourceLKI   cardInstanceID                 `json:"source_lki"`
+	Target      objectID                       `json:"target,omitempty"`
+	RuntimeCopy bool                           `json:"runtime_copy,omitempty"`
+	Bindings    map[resolutionBinding]entityID `json:"bindings,omitempty"`
+	Operations  []effectOperation              `json:"operations"`
 }
+
+// resolutionBinding 是 Resolution Frame 中供後續操作引用的具名選擇結果。
+type resolutionBinding string
 
 type effectOperationKind string
 
@@ -55,13 +59,19 @@ type effectOperation struct {
 	Value                 *valueExpression    `json:"value,omitempty"`
 	CanPass               bool                `json:"can_pass,omitempty"`
 	CardZone              cardZone            `json:"card_zone,omitempty"`
+	Binding               resolutionBinding   `json:"binding,omitempty"`
 	ContinuousEffect      continuousEffect    `json:"continuous_effect,omitempty"`
 	Options               []objectID          `json:"options,omitempty"`
 }
 
-type abilityChoice struct {
+// resolutionFrame 保存能力在等待玩家選擇時的完整可序列化續行資料。
+// 它以具名 binding 保存所選 Card Instance，不保存 closure 或可變 definition pointer。
+type resolutionFrame struct {
 	Instance   abilityInstance   `json:"instance"`
 	Operations []effectOperation `json:"operations"`
+	Binding    resolutionBinding `json:"binding,omitempty"`
+	Candidates []cardInstanceID  `json:"candidates,omitempty"`
+	CardZone   cardZone          `json:"card_zone,omitempty"`
 	CanPass    bool              `json:"can_pass,omitempty"`
 }
 
@@ -156,8 +166,10 @@ func (g *Game) resolveAbility(instance abilityInstance) {
 				instance.Controller,
 				cardsInZone(g.state.Zones[instance.Controller.UID], zone),
 				operation.CanPass,
+				operation.Binding,
+				zone,
 			)
-			if g.state.AbilityChoice != nil {
+			if g.state.ResolutionFrame != nil {
 				g.advanceKnowledgeRevision()
 			}
 			return
@@ -168,8 +180,10 @@ func (g *Game) resolveAbility(instance abilityInstance) {
 				instance.Controller,
 				g.qualifiedMemoryAllies(instance.Controller),
 				operation.CanPass,
+				"",
+				cardZoneMemory,
 			)
-			if g.state.AbilityChoice != nil {
+			if g.state.ResolutionFrame != nil {
 				g.advanceKnowledgeRevision()
 			}
 			return
@@ -180,8 +194,10 @@ func (g *Game) resolveAbility(instance abilityInstance) {
 				instance.Controller,
 				g.eligibleDuchessCopies(instance.Controller),
 				operation.CanPass,
+				"",
+				cardZoneGraveyard,
 			)
-			if g.state.AbilityChoice != nil {
+			if g.state.ResolutionFrame != nil {
 				g.advanceKnowledgeRevision()
 			}
 			return
@@ -218,7 +234,11 @@ func (g *Game) resolveAbility(instance abilityInstance) {
 			// 重導失敗時此牌照常結算後續移動；已支付的費用不會退回。
 			_ = g.retargetAttackWithTrumpSet(instance.Controller, target)
 		case effectOperationDiscard:
-			g.discardCard(instance.Controller, operation.CardZone, cardInstanceID(target))
+			card := cardInstanceID(target)
+			if operation.Binding != "" {
+				card = cardInstanceID(instance.Bindings[operation.Binding])
+			}
+			g.discardCard(instance.Controller, operation.CardZone, card)
 		case effectOperationDeploy:
 			g.deployAlly(instance.Controller, cardInstanceID(target))
 		case effectOperationPutAllyOnField:
@@ -259,7 +279,7 @@ func (g *Game) resolveAbility(instance abilityInstance) {
 			}
 			completed = false
 			canPass := operation.CanPass || instance.RuntimeCopy
-			g.state.AbilityChoice = &abilityChoice{
+			g.state.ResolutionFrame = &resolutionFrame{
 				Instance:   instance,
 				Operations: append([]effectOperation(nil), instance.Operations[operationIndex+1:]...),
 				CanPass:    canPass,
@@ -281,7 +301,7 @@ func (g *Game) destroyRuntimeCopy(source cardInstanceID) {
 
 // beginAbilityCardChoice 保存選牌後要繼續執行的 operation，並建立玩家專屬選項。
 // 沒有可選牌時不建立選擇；呼叫此函式的結算分支仍會直接返回，不繼續後續操作。
-func (g *Game) beginAbilityCardChoice(instance abilityInstance, operationIndex int, player *model.Player, cards []cardInstanceID, canPass bool) {
+func (g *Game) beginAbilityCardChoice(instance abilityInstance, operationIndex int, player *model.Player, cards []cardInstanceID, canPass bool, binding resolutionBinding, zone cardZone) {
 	if len(cards) == 0 {
 		return
 	}
@@ -289,9 +309,12 @@ func (g *Game) beginAbilityCardChoice(instance abilityInstance, operationIndex i
 	for _, card := range cards {
 		options = append(options, objectID(card))
 	}
-	g.state.AbilityChoice = &abilityChoice{
+	g.state.ResolutionFrame = &resolutionFrame{
 		Instance:   instance,
 		Operations: append([]effectOperation(nil), instance.Operations[operationIndex+1:]...),
+		Binding:    binding,
+		Candidates: append([]cardInstanceID(nil), cards...),
+		CardZone:   zone,
 		CanPass:    canPass,
 	}
 	g.setDeclarationChoice(player, options)

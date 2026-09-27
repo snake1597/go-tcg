@@ -193,7 +193,7 @@ func (g *Game) refreshLegalActions() {
 				actions[handle] = constants.ActionSkipMaterialize
 			}
 		}
-		if g.state.Knowledge.Choice != nil && ((g.state.AbilityChoice != nil && g.state.AbilityChoice.CanPass && samePlayer(g.state.AbilityChoice.Instance.Controller, player)) || (g.state.Knowledge.AlternativeCost != nil && g.state.Knowledge.Choice.CanPass && samePlayer(g.state.Knowledge.AlternativeCost.Controller, player))) {
+		if g.state.Knowledge.Choice != nil && ((g.state.ResolutionFrame != nil && g.state.ResolutionFrame.CanPass && samePlayer(g.state.ResolutionFrame.Instance.Controller, player)) || (g.state.Knowledge.AlternativeCost != nil && g.state.Knowledge.Choice.CanPass && samePlayer(g.state.Knowledge.AlternativeCost.Controller, player))) {
 			handle := g.newViewHandle(
 				player,
 				constants.ViewHandleSubjectActionPass,
@@ -769,11 +769,22 @@ func (g *Game) submitChoice(player *model.Player, input Input) error {
 		g.advanceKnowledgeRevision()
 		return nil
 	}
-	if g.state.AbilityChoice != nil {
-		continuation := g.state.AbilityChoice
-		continuation.Instance.Target = objectID(subject)
+	if g.state.ResolutionFrame != nil {
+		continuation := g.state.ResolutionFrame
+		if continuation.Binding != "" {
+			card := cardInstanceID(subject)
+			if !containsCard(continuation.Candidates, card) || cardIndex(cardsInZone(g.state.Zones[player.UID], continuation.CardZone), card) < 0 {
+				return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, input.Choice)
+			}
+			if continuation.Instance.Bindings == nil {
+				continuation.Instance.Bindings = make(map[resolutionBinding]entityID)
+			}
+			continuation.Instance.Bindings[continuation.Binding] = subject
+		} else {
+			continuation.Instance.Target = objectID(subject)
+		}
 		continuation.Instance.Operations = continuation.Operations
-		g.state.AbilityChoice = nil
+		g.state.ResolutionFrame = nil
 		g.state.Knowledge.Choice = nil
 		g.pushAbility(continuation.Instance)
 		g.grantOpportunity(player)

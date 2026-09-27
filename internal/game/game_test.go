@@ -30,17 +30,17 @@ func TestNewGamePinsReplayVersionsAndSeed(t *testing.T) {
 	replay := game.Replay()
 
 	wantVersions := Versions{
-		Engine:   "grand-archive-v2",
+		Engine:   "grand-archive-v3",
 		Rules:    "602c917f2f8fd4df7198429a72eb596bf7f647c6",
 		CardData: "card-data-v3",
 		Deck:     "standard-fire-v2",
 		PRNG:     "splitmix64-v1",
 	}
-	if replay.FormatVersion != 5 {
-		t.Fatalf("Replay().FormatVersion = %d, want 5", replay.FormatVersion)
+	if replay.FormatVersion != 6 {
+		t.Fatalf("Replay().FormatVersion = %d, want 6", replay.FormatVersion)
 	}
-	if constants.CanonicalStateSchemaVersion != 6 {
-		t.Fatalf("CanonicalStateSchemaVersion = %d, want 6", constants.CanonicalStateSchemaVersion)
+	if constants.CanonicalStateSchemaVersion != 7 {
+		t.Fatalf("CanonicalStateSchemaVersion = %d, want 7", constants.CanonicalStateSchemaVersion)
 	}
 	if replay.Versions != wantVersions {
 		t.Fatalf("Replay().Versions = %#v, want %#v", replay.Versions, wantVersions)
@@ -456,7 +456,7 @@ func TestSubmitRejectsActionAfterGameFinishes(t *testing.T) {
 
 func TestStateHashUsesCanonicalVersionedState(t *testing.T) {
 	game := newTestGame(42)
-	const want = "0b64a3897212e0ef5b795f9bab789300079ae6be0c6de0adf6c2669e86c012c3"
+	const want = "acf06b26bd4c454f63c9931ae1d12ef37adad5a9f5483ec547f72d601b75f848"
 
 	if got := game.StateHash(); got != want {
 		t.Fatalf("StateHash() = %q, want canonical digest %q", got, want)

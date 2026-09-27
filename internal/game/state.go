@@ -24,7 +24,7 @@ type gameState struct {
 	EffectSources      []cardInstanceID
 	EffectsStack       []effectStackItem
 	ContinuousEffects  []continuousEffect
-	AbilityChoice      *abilityChoice
+	ResolutionFrame    *resolutionFrame
 	ReplacementEffects []replacementEffect
 	ReplacementChoice  *replacementChoice
 	CardistryUsed      map[objectID]bool
@@ -61,7 +61,7 @@ type canonicalState struct {
 	EffectSources      []cardInstanceID                `json:"effect_sources,omitempty"`
 	EffectsStack       []effectStackItem               `json:"effects_stack,omitempty"`
 	ContinuousEffects  []continuousEffect              `json:"continuous_effects,omitempty"`
-	AbilityChoice      *abilityChoice                  `json:"ability_choice,omitempty"`
+	ResolutionFrame    *resolutionFrame                `json:"resolution_frame,omitempty"`
 	ReplacementEffects []replacementEffect             `json:"replacement_effects,omitempty"`
 	ReplacementChoice  *replacementChoice              `json:"replacement_choice,omitempty"`
 	CardistryUsed      map[objectID]bool               `json:"cardistry_used,omitempty"`
@@ -96,7 +96,7 @@ func (g *Game) StateHash() string {
 		EffectSources:      g.state.EffectSources,
 		EffectsStack:       g.state.EffectsStack,
 		ContinuousEffects:  g.state.ContinuousEffects,
-		AbilityChoice:      g.state.AbilityChoice,
+		ResolutionFrame:    g.state.ResolutionFrame,
 		ReplacementEffects: g.state.ReplacementEffects,
 		ReplacementChoice:  g.state.ReplacementChoice,
 		CardistryUsed:      g.state.CardistryUsed,

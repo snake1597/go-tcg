@@ -732,8 +732,8 @@ func TestHeatedVengeanceTracksChampionDamageAndResolvesOptionalOnAttack(t *testi
 	}
 	game.flushTriggers(triggers)
 	game.resolveTopEffectStack()
-	if game.state.AbilityChoice == nil || !game.state.AbilityChoice.CanPass {
-		t.Fatalf("Heated Vengeance choice = %#v, want optional self-damage choice", game.state.AbilityChoice)
+	if game.state.ResolutionFrame == nil || !game.state.ResolutionFrame.CanPass {
+		t.Fatalf("Heated Vengeance frame = %#v, want optional self-damage choice", game.state.ResolutionFrame)
 	}
 	delete(game.state.Objects, heated)
 	selectPendingChoice(t, game, player, 0)
