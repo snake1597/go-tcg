@@ -11,6 +11,7 @@ type abilityDefinitionKind string
 const (
 	abilityKindCardistry abilityDefinitionKind = "cardistry"
 	abilityKindAction    abilityDefinitionKind = "action"
+	abilityKindTriggered abilityDefinitionKind = "triggered"
 )
 
 type abilityTiming string
@@ -42,7 +43,12 @@ type abilityReference string
 const (
 	referenceController     abilityReference = "controller"
 	referenceDeclaredTarget abilityReference = "declared-target"
+	referenceEventTarget    abilityReference = "event-target"
 )
+
+type eventKind string
+
+const eventKindWield eventKind = "wield"
 
 type selectorKind string
 
@@ -92,6 +98,10 @@ type discardEffectDefinition struct {
 	binding resolutionBinding
 }
 
+type triggerDefinition struct {
+	event eventKind
+}
+
 type authoredEffectDefinition struct {
 	kind       authoredEffectKind
 	draw       *drawEffectDefinition
@@ -108,6 +118,7 @@ type authoredAbilityDefinition struct {
 	reduction abilityCostReduction
 	baseCost  int
 	target    *targetSelector
+	trigger   *triggerDefinition
 	effects   []authoredEffectDefinition
 }
 
@@ -129,6 +140,7 @@ type compiledAbilityDefinition struct {
 	reduction abilityCostReduction
 	baseCost  int
 	target    *targetSelector
+	trigger   *triggerDefinition
 	effects   []compiledEffect
 }
 
@@ -229,6 +241,32 @@ func straightFlareAbilities() []authoredAbilityDefinition {
 	}
 }
 
+// impactHammerAbilities 宣告 Impact Hammer 觀察 wield event 後對該事件 unit 造成傷害的 triggered Slot。
+// 輸入為零；輸出為新的 Go 編寫資料，副作用為零。
+func impactHammerAbilities() []authoredAbilityDefinition {
+	return []authoredAbilityDefinition{
+		{
+			slot: "ability:chsbalegbs:front:on-wield-self-damage",
+			kind: abilityKindTriggered,
+			trigger: &triggerDefinition{
+				event: eventKindWield,
+			},
+			effects: []authoredEffectDefinition{
+				{
+					kind: effectKindDamage,
+					damage: &damageEffectDefinition{
+						target: referenceEventTarget,
+						amount: valueExpression{
+							Kind:     valueConstant,
+							Constant: 3,
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
 // authoredAbilitiesForCard 將固定卡牌的 Go 能力編寫資料交給同一個 compiler。
 // 輸入為 Card ID；輸出為該卡目前已遷移的能力資料，副作用為零。
 func authoredAbilitiesForCard(id CardID) []authoredAbilityDefinition {
@@ -239,6 +277,8 @@ func authoredAbilitiesForCard(id CardID) []authoredAbilityDefinition {
 		return straightFlareAbilities()
 	case threeOfHeartsCardID:
 		return threeOfHeartsAbilities()
+	case impactHammerCardID:
+		return impactHammerAbilities()
 	}
 	return nil
 }
@@ -268,10 +308,8 @@ func compileAbilityDefinitions(definition CardDefinition, authored []authoredAbi
 		if _, exists := allowed[ability.slot]; !exists {
 			return nil, fmt.Errorf("%s: slot is not registered for definition", context)
 		}
-		if ability.kind != abilityKindCardistry && ability.kind != abilityKindAction {
-			return nil, fmt.Errorf("%s: unknown kind %q", context, ability.kind)
-		}
-		if ability.kind == abilityKindCardistry {
+		switch ability.kind {
+		case abilityKindCardistry:
 			cardistryCount++
 			if cardistryCount > 1 {
 				return nil, fmt.Errorf("%s: kind permits only one Cardistry slot per face", context)
@@ -291,13 +329,25 @@ func compileAbilityDefinitions(definition CardDefinition, authored []authoredAbi
 			if ability.target != nil {
 				return nil, fmt.Errorf("%s: target unsupported for Cardistry", context)
 			}
-		} else {
+		case abilityKindAction:
 			if ability.timing != "" || ability.usage != "" || ability.reduction != "" || ability.baseCost != 0 {
 				return nil, fmt.Errorf("%s: action cost or timing payload unsupported", context)
 			}
 			if ability.target == nil || ability.target.kind != selectorUnits {
 				return nil, fmt.Errorf("%s: target selector must be units", context)
 			}
+			if ability.trigger != nil {
+				return nil, fmt.Errorf("%s: trigger unsupported for Action", context)
+			}
+		case abilityKindTriggered:
+			if ability.timing != "" || ability.usage != "" || ability.reduction != "" || ability.baseCost != 0 || ability.target != nil {
+				return nil, fmt.Errorf("%s: triggered declaration payload unsupported", context)
+			}
+			if ability.trigger == nil || ability.trigger.event != eventKindWield {
+				return nil, fmt.Errorf("%s: trigger.event must be wield", context)
+			}
+		default:
+			return nil, fmt.Errorf("%s: unknown kind %q", context, ability.kind)
 		}
 		if len(ability.effects) == 0 {
 			return nil, fmt.Errorf("%s: effects must not be empty", context)
@@ -314,6 +364,10 @@ func compileAbilityDefinitions(definition CardDefinition, authored []authoredAbi
 		if ability.target != nil {
 			selector := *ability.target
 			result.target = &selector
+		}
+		if ability.trigger != nil {
+			trigger := *ability.trigger
+			result.trigger = &trigger
 		}
 		bindings := make(map[resolutionBinding]struct{})
 		for index, effect := range ability.effects {
@@ -334,11 +388,15 @@ func compileAbilityDefinitions(definition CardDefinition, authored []authoredAbi
 					draw: *effect.draw,
 				})
 			case effectKindDamage:
-				if ability.kind != abilityKindAction || effect.damage == nil || effect.draw != nil {
-					return nil, fmt.Errorf("%s: %s.damage payload is required only for Action", context, field)
+				if (ability.kind != abilityKindAction && ability.kind != abilityKindTriggered) || effect.damage == nil || effect.draw != nil {
+					return nil, fmt.Errorf("%s: %s.damage payload is required only for Action or triggered", context, field)
 				}
-				if effect.damage.target != referenceDeclaredTarget {
-					return nil, fmt.Errorf("%s: %s.damage.target must reference declared target", context, field)
+				expectedTarget := referenceDeclaredTarget
+				if ability.kind == abilityKindTriggered {
+					expectedTarget = referenceEventTarget
+				}
+				if effect.damage.target != expectedTarget {
+					return nil, fmt.Errorf("%s: %s.damage.target has wrong reference %q", context, field, effect.damage.target)
 				}
 				if err := validateValueExpression(effect.damage.amount); err != nil {
 					return nil, fmt.Errorf("%s: %s.damage.amount: %w", context, field, err)
@@ -512,7 +570,7 @@ func (g *Game) compiledCardistry(card cardInstanceID) (compiledAbilityDefinition
 // 輸入為零；輸出為目前引擎版本釘選的定義或驗證錯誤，副作用為零。
 func compileReplayDefinitions() (map[CardID]CardDefinition, error) {
 	definitions := make(map[CardID]CardDefinition)
-	for _, id := range []CardID{wonderlandsReignCardID, straightFlareCardID, threeOfHeartsCardID} {
+	for _, id := range []CardID{wonderlandsReignCardID, straightFlareCardID, threeOfHeartsCardID, impactHammerCardID} {
 		definition := CardDefinition{
 			id: id,
 			face: CardFace{

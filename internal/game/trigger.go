@@ -31,39 +31,56 @@ func (g *Game) wieldWeapons(player *model.Player, unit objectID, weapons []cardI
 		Simultaneous: len(weapons) > 1,
 		Events:       make([]gameEvent, 0, len(weapons)),
 	}
-	triggers := make([]effectStackItem, 0, len(weapons))
 	for _, weapon := range weapons {
 		g.state.NextEvent++
 		batch.Events = append(batch.Events, gameEvent{
 			Sequence: g.state.NextEvent,
 			Kind:     "wield",
 			Card:     weapon,
+			Target:   unit,
 		})
-		if g.state.Cards[weapon].Definition == impactHammerCardID {
-			ability := g.newAbilityInstance(
-				player,
-				weapon,
-				unit,
-				[]effectOperation{
-					{
-						Kind:   effectOperationDamage,
-						Amount: 3,
-					},
-				},
+	}
+	g.state.Events = append(g.state.Events, batch)
+	triggers := g.triggeredAbilities(batch)
+	g.flushTriggers(triggers)
+	return nil
+}
+
+// triggeredAbilities 從已提交事件批次找出事件來源卡的 triggered 定義，並建立固定事件目標與來源 LKI 的 Ability Instance。
+// 輸入為同一規則 checkpoint 已完成的事件批次；輸出為依批次事件順序排列的 Stack 項目，副作用僅遞增 Ability Instance 身分。
+func (g *Game) triggeredAbilities(batch eventBatch) []effectStackItem {
+	triggers := []effectStackItem{}
+	for _, event := range batch.Events {
+		source, sourceExists := g.state.Cards[event.Card]
+		if !sourceExists {
+			continue
+		}
+		definition, definitionExists := g.definitions[source.Definition]
+		if !definitionExists {
+			continue
+		}
+		for _, ability := range definition.abilities {
+			if ability.kind != abilityKindTriggered || ability.trigger == nil || string(ability.trigger.event) != event.Kind {
+				continue
+			}
+			instance := g.newAbilityInstance(
+				source.Owner,
+				event.Card,
+				event.Target,
+				ability.operations(),
 			)
+			instance.Slot = ability.slot
 			triggers = append(triggers, effectStackItem{
 				Kind:       effectStackAbility,
-				Controller: player,
-				Source:     weapon,
-				SourceLKI:  weapon,
-				Target:     unit,
-				Ability:    &ability,
+				Controller: source.Owner,
+				Source:     event.Card,
+				SourceLKI:  event.Card,
+				Target:     event.Target,
+				Ability:    &instance,
 			})
 		}
 	}
-	g.state.Events = append(g.state.Events, batch)
-	g.flushTriggers(triggers)
-	return nil
+	return triggers
 }
 
 // flushTriggers 將本批觸發送入效果堆疊；空批次不改變狀態。

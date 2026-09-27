@@ -6,6 +6,7 @@ type gameEvent struct {
 	Sequence uint64         `json:"sequence"`
 	Kind     string         `json:"kind"`
 	Card     cardInstanceID `json:"card"`
+	Target   objectID       `json:"target,omitempty"`
 }
 
 // eventBatch 保存同一原因產生的一批可重播事件。

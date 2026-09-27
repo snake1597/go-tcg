@@ -3,6 +3,7 @@ package game
 import (
 	"testing"
 
+	"go-tcg/internal/constants"
 	"go-tcg/internal/model"
 )
 
@@ -67,6 +68,56 @@ func TestSameControllerOrdersSimultaneousTriggersBeforeOpportunity(t *testing.T)
 	}
 	if game.state.Scheduler.OpportunityHolder != model.PlayerOne {
 		t.Fatalf("OpportunityHolder = %q, want trigger controller", game.state.Scheduler.OpportunityHolder)
+	}
+}
+
+// TestImpactHammerTriggeredDefinitionUsesPlayerViewAndReplay 驗證正式 Wield 輸入提交事件後，以定義建立觸發、結算傷害並維持 replay 可驗證。
+// 輸入為 Player View 的 Wield action 與 target choice；輸出為含事件目標的已提交 batch、3 點傷害及可驗證 replay，副作用為完成一段對局流程。
+func TestImpactHammerTriggeredDefinitionUsesPlayerViewAndReplay(t *testing.T) {
+	game := newActionGame(t)
+	fixtureWeapon := objectID("weapon:fixture")
+	delete(game.state.Objects, fixtureWeapon)
+	weaponCard := findCard(t, game, model.PlayerOne, impactHammerCardID)
+	weapon := objectID("weapon:impact-hammer-replay")
+	game.state.Objects[weapon] = fieldObject{
+		ID:    weapon,
+		Card:  weaponCard,
+		Owner: model.PlayerOne,
+		Types: []string{
+			"WEAPON",
+		},
+	}
+	game.advanceKnowledgeRevision()
+	game.captureReplayInitialState()
+	view, err := game.PlayerView(model.PlayerOne)
+	if err != nil {
+		t.Fatalf("PlayerView() error = %v", err)
+	}
+	action := actionByKind(t, view, constants.ActionWield)
+	if err := game.Submit(model.PlayerOne, Input{
+		Revision: view.Revision,
+		Action:   action.Handle,
+	}); err != nil {
+		t.Fatalf("Submit() Wield error = %v", err)
+	}
+	target := game.state.Champions[model.PlayerTwo.UID]
+	targetSubject := entityID(target.ID)
+	selectPendingChoiceSubject(t, game, model.PlayerOne, targetSubject)
+	eventCount := len(game.state.Events)
+	batch := game.state.Events[eventCount-1]
+	if len(batch.Events) != 1 || batch.Events[0].Kind != string(eventKindWield) || batch.Events[0].Card != weaponCard || batch.Events[0].Target != target.ID {
+		t.Fatalf("wield event batch = %#v, want Impact Hammer wield target", batch)
+	}
+	if len(game.state.EffectsStack) != 1 || game.state.EffectsStack[0].Ability == nil || game.state.EffectsStack[0].Ability.Slot != "ability:chsbalegbs:front:on-wield-self-damage" {
+		t.Fatalf("EffectsStack = %#v, want Impact Hammer triggered ability", game.state.EffectsStack)
+	}
+	passOpportunityRound(t, game, model.PlayerOne)
+	if got := game.state.Champions[model.PlayerTwo.UID].Damage; got != 3 {
+		t.Fatalf("wield target damage = %d, want 3", got)
+	}
+	replay := game.Replay()
+	if err := replay.Verify(); err != nil {
+		t.Fatalf("Replay().Verify() error = %v", err)
 	}
 }
 

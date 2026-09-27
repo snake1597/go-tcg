@@ -24,6 +24,32 @@ func TestCompileWonderlandsReignDefinition(t *testing.T) {
 	}
 }
 
+// TestCompileImpactHammerTriggeredDefinition 驗證 Impact Hammer 的 On Wield 能力由定義宣告事件條件與事件目標傷害。
+// 輸入為 Impact Hammer 的卡牌與牌面；輸出為帶穩定 Slot、wield 事件條件及事件目標參照的 triggered 定義，副作用為零。
+func TestCompileImpactHammerTriggeredDefinition(t *testing.T) {
+	definition := CardDefinition{
+		id: impactHammerCardID,
+		face: CardFace{
+			id: CardFaceID("face:chsbalegbs:front"),
+		},
+	}
+	authored := impactHammerAbilities()
+	abilities, err := compileAbilityDefinitions(
+		definition,
+		authored,
+	)
+	if err != nil {
+		t.Fatalf("compileAbilityDefinitions() error = %v", err)
+	}
+	if len(abilities) != 1 || abilities[0].kind != abilityKindTriggered || abilities[0].trigger == nil || abilities[0].trigger.event != eventKindWield {
+		t.Fatalf("compiled triggered ability = %#v, want one On Wield definition", abilities)
+	}
+	operations := abilities[0].operations()
+	if len(operations) != 1 || operations[0].Kind != effectOperationDamage || operations[0].TargetReference != referenceEventTarget || operations[0].Value == nil || operations[0].Value.Kind != valueConstant || operations[0].Value.Constant != 3 {
+		t.Fatalf("triggered operations = %#v, want 3 damage to wield event target", operations)
+	}
+}
+
 // TestCompileThreeOfHeartsDefinitionRejectsUnboundDiscard 驗證 Three of Hearts 的棄牌只能引用同一能力中先前具名的選牌 binding。
 // 輸入為含未知 binding 的 Three of Hearts 編寫資料；輸出為附帶欄位脈絡的編譯錯誤，副作用為零。
 func TestCompileThreeOfHeartsDefinitionRejectsUnboundDiscard(t *testing.T) {

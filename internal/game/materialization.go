@@ -8,11 +8,10 @@ import (
 )
 
 const (
-	spiritOfFireCardID       CardID = "LMyKyVC2O9"
-	tonorisCardID            CardID = "zb14m4c8lj"
-	tonorisOnEnterCause             = "ability:zb14m4c8lj:front:on-enter-taunt"
-	impactHammerCardID       CardID = "chsbalegbs"
-	impactHammerOnWieldCause        = "ability:chsbalegbs:front:on-wield-self-damage"
+	spiritOfFireCardID  CardID = "LMyKyVC2O9"
+	tonorisCardID       CardID = "zb14m4c8lj"
+	tonorisOnEnterCause        = "ability:zb14m4c8lj:front:on-enter-taunt"
+	impactHammerCardID  CardID = "chsbalegbs"
 )
 
 // legalMaterializations 回傳目前玩家在 Materialize 階段可從 Material Deck 使用的牌。
