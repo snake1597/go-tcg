@@ -228,7 +228,7 @@ func (g *Game) drawTurnCard(player *model.Player) bool {
 }
 
 // drawCardsWithDeckOut 將指定張數由主牌組頂移入手牌，並在牌組抽空時結束對局。
-// 此行為僅適用於標準回合與開局抽牌；能力抽牌使用 drawCards，且不會造成敗北。
+// 輸入為玩家、抽牌張數與事件原因；輸出為是否完成抽牌，副作用為移動卡牌、記錄事件或結束對局。
 func (g *Game) drawCardsWithDeckOut(player *model.Player, count int, cause string) bool {
 	batch := eventBatch{
 		Player: player,
@@ -236,23 +236,13 @@ func (g *Game) drawCardsWithDeckOut(player *model.Player, count int, cause strin
 		Events: make([]gameEvent, 0, count),
 	}
 	for range count {
-		zones := g.state.Zones[player.UID]
-		if len(zones.MainDeck) == 0 {
+		card, drawn := g.drawOneCard(player, cardZoneHand)
+		if !drawn {
 			if len(batch.Events) > 0 {
 				g.state.Events = append(g.state.Events, batch)
 			}
-			g.state.Finished = true
-			g.state.Winner = g.otherPlayer(player)
-			g.state.Scheduler = schedulerFrame{
-				Kind: schedulerFinished,
-			}
 			return false
 		}
-		card := zones.MainDeck[len(zones.MainDeck)-1]
-		zones.MainDeck = zones.MainDeck[:len(zones.MainDeck)-1]
-		zones.Hand = append(zones.Hand, card)
-		g.state.Zones[player.UID] = zones
-		g.grantCardTracking(player, entityID(card))
 		g.state.NextEvent++
 		batch.Events = append(batch.Events, gameEvent{
 			Sequence: g.state.NextEvent,
@@ -263,4 +253,33 @@ func (g *Game) drawCardsWithDeckOut(player *model.Player, count int, cause strin
 	}
 	g.state.Events = append(g.state.Events, batch)
 	return true
+}
+
+// drawOneCard 從 Main Deck 頂端抽一張牌到指定區域，牌組為空時使玩家敗北。
+// 輸入為玩家與 Hand 或 Memory；輸出為抽出的卡牌和成功旗標，副作用為區域、追蹤權或終局狀態變更。
+func (g *Game) drawOneCard(player *model.Player, destination cardZone) (cardInstanceID, bool) {
+	zones := g.state.Zones[player.UID]
+	if len(zones.MainDeck) == 0 {
+		g.state.Finished = true
+		g.state.Winner = g.otherPlayer(player)
+		g.state.Scheduler = schedulerFrame{
+			Kind: schedulerFinished,
+		}
+		return "", false
+	}
+	card := zones.MainDeck[len(zones.MainDeck)-1]
+	zones.MainDeck = zones.MainDeck[:len(zones.MainDeck)-1]
+	switch destination {
+	case cardZoneHand:
+		zones.Hand = append(zones.Hand, card)
+	case cardZoneMemory:
+		zones.Memory = append(zones.Memory, card)
+	default:
+		message := fmt.Sprintf("invalid draw destination %q", destination)
+		panic(message)
+	}
+	g.state.Zones[player.UID] = zones
+	cardEntity := entityID(card)
+	g.grantCardTracking(player, cardEntity)
+	return card, true
 }

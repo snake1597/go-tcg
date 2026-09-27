@@ -34,7 +34,7 @@ func TestDuchessThornesObservesAllyCardistryAndDiscountIsConsumed(t *testing.T) 
 	if err := game.activateDuchessThornes(player, thornes); err != nil {
 		t.Fatalf("activateDuchessThornes() error = %v", err)
 	}
-	if got := game.cardistryCost(player, 6); got != 0 {
+	if got := game.cardistryCost(player, 6, reductionDistinctSuitedCosts); got != 0 {
 		t.Fatalf("discounted Cardistry cost = %d, want 0", got)
 	}
 }

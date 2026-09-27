@@ -35,7 +35,14 @@ func (g *Game) legalCardistries(player *model.Player) []objectID {
 
 func (g *Game) canActivateCardistry(player *model.Player, source objectID) bool {
 	object, exists := g.state.Objects[source]
-	if !exists || !samePlayer(object.Owner, player) || g.state.CardistryUsed[source] {
+	if !exists || !samePlayer(object.Owner, player) {
+		return false
+	}
+	if ability, compiled := g.compiledCardistry(object.Card); compiled {
+		if ability.usage == usageOncePerObject && g.state.CardistryUsed[source] {
+			return false
+		}
+	} else if g.state.CardistryUsed[source] {
 		return false
 	}
 	baseCost, fast := g.cardistryBaseCost(object.Card)
@@ -45,15 +52,20 @@ func (g *Game) canActivateCardistry(player *model.Player, source objectID) bool 
 	if !fast && (!samePlayer(g.state.Scheduler.TurnPlayer, player) || g.state.Scheduler.Phase != constants.PhaseMain || len(g.state.EffectsStack) != 0) {
 		return false
 	}
+	reduction := g.cardistryReduction(object.Card)
+	cost := g.cardistryCost(player, baseCost, reduction)
 	return g.canPayMemoryCost(
 		player,
-		g.cardistryCost(player, baseCost),
+		cost,
 	)
 }
 
 // cardistryBaseCost 回傳已實作卡牌的 Cardistry 基礎費用與 Fast 屬性。
 // 未實作或找不到定義時以費用 -1 表示不可啟動。
 func (g *Game) cardistryBaseCost(card cardInstanceID) (int, bool) {
+	if ability, exists := g.compiledCardistry(card); exists {
+		return ability.baseCost, ability.timing == timingFast
+	}
 	switch g.state.Cards[card].Definition {
 	case fiveOfSpadesCardID:
 		return 5, false
@@ -69,8 +81,6 @@ func (g *Game) cardistryBaseCost(card cardInstanceID) (int, bool) {
 		return 2, false
 	case twoOfSpadesCardID:
 		return 2, true
-	case wonderlandsReignCardID:
-		return 10, false
 	case duchessCardID:
 		return 6, false
 	default:
@@ -78,9 +88,22 @@ func (g *Game) cardistryBaseCost(card cardInstanceID) (int, bool) {
 	}
 }
 
-// cardistryCost 按受控 Suited 物件的不同印刷 reserve cost 數量與玩家折扣減費，最低為 0。
-// 相同印刷費用的多個物件只貢獻一次減費。
-func (g *Game) cardistryCost(player *model.Player, baseCost int) int {
+// cardistryReduction 回傳已編譯卡牌的費用減免規則；未遷移 Cardistry 使用既有共通規則。
+// 輸入為卡牌實例；輸出為費用減免種類，副作用為零。
+func (g *Game) cardistryReduction(card cardInstanceID) abilityCostReduction {
+	if ability, exists := g.compiledCardistry(card); exists {
+		return ability.reduction
+	}
+	return reductionDistinctSuitedCosts
+}
+
+// cardistryCost 按定義中的減免規則及玩家折扣計算費用，最低為 0。
+// 輸入為玩家、基礎費用與減免種類；輸出為應付 Memory 數量，副作用為零。
+func (g *Game) cardistryCost(player *model.Player, baseCost int, reduction abilityCostReduction) int {
+	if reduction != reductionDistinctSuitedCosts {
+		message := fmt.Sprintf("unsupported Cardistry cost reduction %q", reduction)
+		panic(message)
+	}
 	costs := make(map[int]struct{})
 	for _, object := range g.state.Objects {
 		if samePlayer(object.Owner, player) && g.cardHasSubtype(object.Card, "SUITED") {
@@ -102,16 +125,24 @@ func (g *Game) activateCardistry(player *model.Player, source objectID, memoryPa
 	}
 	object := g.state.Objects[source]
 	baseCost, _ := g.cardistryBaseCost(object.Card)
+	reduction := g.cardistryReduction(object.Card)
+	cost := g.cardistryCost(player, baseCost, reduction)
 	if err := g.payMemoryCost(
 		player,
-		g.cardistryCost(player, baseCost),
+		cost,
 		memoryPayment,
 		"banish-floating-memory",
 		"banish-memory",
 	); err != nil {
 		return err
 	}
-	g.state.CardistryUsed[source] = true
+	if ability, compiled := g.compiledCardistry(object.Card); compiled {
+		if ability.usage == usageOncePerObject {
+			g.state.CardistryUsed[source] = true
+		}
+	} else {
+		g.state.CardistryUsed[source] = true
+	}
 	delete(g.state.CardistryDiscounts, player.UID)
 	g.pushAbility(g.cardistryAbility(player, source, object.Card))
 	g.recordPublicEvent(player, "cardistry", "ability-activated", object.Card)
@@ -193,10 +224,14 @@ func (g *Game) memoryPaymentCardForHandle(player *model.Player, handle ViewHandl
 }
 
 func (g *Game) cardistryAbility(player *model.Player, source objectID, card cardInstanceID) abilityInstance {
+	if ability, exists := g.compiledCardistry(card); exists {
+		operations := ability.operations()
+		instance := g.newAbilityInstance(player, card, source, operations)
+		instance.Slot = ability.slot
+		return instance
+	}
 	operations := []effectOperation{}
 	switch g.state.Cards[card].Definition {
-	case wonderlandsReignCardID:
-		operations = append(operations, effectOperation{Kind: effectOperationDraw, Amount: 1})
 	case fiveOfSpadesCardID:
 		operations = append(operations, g.temporaryModifierOperation(5, 0))
 	case fourOfSpadesCardID:

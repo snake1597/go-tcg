@@ -14,12 +14,32 @@ func TestCardistryMemoryPaymentIsDeclaredRecordedAndReplayed(t *testing.T) {
 	moveCardToGraveyard(t, game, player, floatingMemory)
 	game.grantCardTracking(player, entityID(floatingMemory))
 	fillMemory(t, game, player, 8, floatingMemory)
+	zones := game.state.Zones[player.UID]
+	knownTop := -1
+	for index, card := range zones.MainDeck {
+		if game.state.Cards[card].Definition == twoOfHeartsCardID {
+			knownTop = index
+			break
+		}
+	}
+	if knownTop < 0 {
+		t.Fatal("fixture needs a Two of Hearts in Main Deck")
+	}
+	lastIndex := len(zones.MainDeck) - 1
+	zones.MainDeck[knownTop], zones.MainDeck[lastIndex] = zones.MainDeck[lastIndex], zones.MainDeck[knownTop]
+	game.state.Zones[player.UID] = zones
 	game.advanceKnowledgeRevision()
 	game.captureReplayInitialState()
 
 	view, err := game.PlayerView(player)
 	if err != nil {
 		t.Fatalf("PlayerView() error = %v", err)
+	}
+	cardistryHandle := cardistryAction(t, game, player)
+	for _, action := range view.LegalActions {
+		if action.Handle == cardistryHandle && action.AbilitySlot != "ability:0mf1ug6yfi:front:cardistry-draw" {
+			t.Fatalf("Cardistry slot = %q, want stable Wonderland's Reign slot", action.AbilitySlot)
+		}
 	}
 	if got := cardistryAction(t, game, player); got == "" {
 		t.Fatal("cardistry action = empty, want a legal action with Floating Memory")
@@ -42,9 +62,37 @@ func TestCardistryMemoryPaymentIsDeclaredRecordedAndReplayed(t *testing.T) {
 	if !hasGameEvent(game, "banish-floating-memory") || !hasGameEvent(game, "banish-memory") || !hasGameEvent(game, "ability-activated") {
 		t.Fatalf("events = %#v, want Floating Memory payment, memory payment, and activation", game.state.Events)
 	}
+	stackView, err := game.PlayerView(player)
+	if err != nil {
+		t.Fatalf("PlayerView() after activation error = %v", err)
+	}
+	if len(stackView.EffectsStack) == 0 || stackView.EffectsStack[len(stackView.EffectsStack)-1].AbilitySlot != "ability:0mf1ug6yfi:front:cardistry-draw" {
+		t.Fatalf("Effects Stack view = %#v, want Wonderland's Reign slot", stackView.EffectsStack)
+	}
+	opponentBefore, err := game.PlayerView(model.PlayerTwo)
+	if err != nil {
+		t.Fatalf("opponent PlayerView() error = %v", err)
+	}
+	handCount := len(stackView.Hand)
 	passOpportunityRound(t, game, player)
 	if !hasGameEvent(game, "draw") {
 		t.Fatalf("events = %#v, want draw event", game.state.Events)
+	}
+	resolvedView, err := game.PlayerView(player)
+	if err != nil {
+		t.Fatalf("resolved PlayerView() error = %v", err)
+	}
+	if len(resolvedView.Hand) != handCount+1 || resolvedView.Hand[len(resolvedView.Hand)-1].Name != "Two of Hearts" {
+		t.Fatalf("hand = %#v, want top card Two of Hearts drawn", resolvedView.Hand)
+	}
+	opponentAfter, err := game.PlayerView(model.PlayerTwo)
+	if err != nil {
+		t.Fatalf("opponent PlayerView() after draw error = %v", err)
+	}
+	for _, event := range opponentAfter.VisibleEvents[len(opponentBefore.VisibleEvents):] {
+		if event.Kind == "draw" {
+			t.Fatalf("opponent saw private draw: %#v", event)
+		}
 	}
 	if err := game.Replay().Verify(); err != nil {
 		t.Fatalf("Replay().Verify() error = %v", err)
@@ -169,18 +217,55 @@ func TestCardistryRejectedActivationsDoNotChangeState(t *testing.T) {
 	)
 }
 
-func TestCardistryDrawFromEmptyDeckHasNoDrawEvent(t *testing.T) {
+// TestCardistryDrawFromEmptyDeckLosesGame 驗證能力從空牌組抽牌時，玩家依抽空規則敗北。
+// 輸入為空主牌組的 Wonderland's Reign 能力；輸出為對手勝利且沒有虛構抽牌事件，副作用為結束對局。
+func TestCardistryDrawFromEmptyDeckLosesGame(t *testing.T) {
 	game := newCardistryGame(t, wonderlandsReignCardID)
 	player := model.PlayerOne
+	fillMemory(t, game, player, 10, "")
 	zones := game.state.Zones[player.UID]
 	zones.MainDeck = nil
 	game.state.Zones[player.UID] = zones
-	source := cardistrySource(t, game, player)
-	beforeEvents := len(game.state.Events)
-	game.pushAbility(game.cardistryAbility(player, source, game.state.Objects[source].Card))
-	game.resolveTopEffectStack()
-	if got := len(game.state.Events); got != beforeEvents {
-		t.Fatalf("event count = %d, want unchanged %d after draw from an empty deck", got, beforeEvents)
+	game.advanceKnowledgeRevision()
+	game.captureReplayInitialState()
+	view, err := game.PlayerView(player)
+	if err != nil {
+		t.Fatalf("PlayerView() error = %v", err)
+	}
+	var action ViewHandle
+	for _, candidate := range view.LegalActions {
+		if candidate.AbilitySlot == "ability:0mf1ug6yfi:front:cardistry-draw" {
+			action = candidate.Handle
+			break
+		}
+	}
+	if action == "" {
+		t.Fatal("PlayerView has no Wonderland's Reign action")
+	}
+	if err := game.Submit(
+		player,
+		Input{
+			Revision: view.Revision,
+			Action:   action,
+		},
+	); err != nil {
+		t.Fatalf("Submit() error = %v", err)
+	}
+	passOpportunityRound(t, game, player)
+	result, err := game.PlayerView(player)
+	if err != nil {
+		t.Fatalf("PlayerView() after resolution error = %v", err)
+	}
+	if !result.Finished || result.Winner == nil || result.Winner.UID != model.PlayerTwo.UID {
+		t.Fatalf("finished = %v, winner = %v; want player two win", result.Finished, result.Winner)
+	}
+	for _, event := range result.VisibleEvents[len(view.VisibleEvents):] {
+		if event.Kind == "draw" {
+			t.Fatalf("empty deck produced draw event %#v", event)
+		}
+	}
+	if err := game.Replay().Verify(); err != nil {
+		t.Fatalf("Replay().Verify() error = %v", err)
 	}
 }
 

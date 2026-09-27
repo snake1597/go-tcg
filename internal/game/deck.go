@@ -68,6 +68,7 @@ type CardDefinition struct {
 	dataVersion string
 	face        CardFace
 	card        Card
+	abilities   []compiledAbilityDefinition
 }
 
 type CardFace struct {
@@ -222,6 +223,13 @@ func loadCardDefinitions(cardDirectory, manifestPath string) (map[CardID]CardDef
 				card: card,
 			},
 			card: card,
+		}
+		definition.abilities, err = compileAbilityDefinitions(
+			definition,
+			authoredAbilitiesForCard(id),
+		)
+		if err != nil {
+			return nil, fmt.Errorf("compile card definition: %w", err)
 		}
 		definitions[id] = definition
 	}

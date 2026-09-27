@@ -18,6 +18,7 @@ func newStandardSetup(
 	secondDeck DeckManifest,
 ) (*Game, error) {
 	game := NewGame(configuration)
+	game.definitions = definitions
 
 	decks := []DeckManifest{
 		firstDeck,

@@ -2,6 +2,8 @@
 
 首版只會建立一種固定的鏡像 Standard 對局。卡牌行為由 Game Module 的 Go 程式碼執行；此文件只說明載入資料與建局的最小關係，不維護另一份 runtime 支援清單。
 
+Wonderland's Reign 的 `ability:0mf1ug6yfi:front:cardistry-draw` 是首個 Go 可執行能力定義。其 Slot、啟動時機、每物件一次的限制、費用折扣、基礎費用與抽牌效果集中在 `internal/game/executable_definition.go`，載入卡面時編譯驗證，再交給既有 Ability Runtime 執行。卡面資料與編寫資料只保存在不可變定義，不寫入 Game State；replay 依固定引擎版本重建同一份定義。
+
 ## 資料來源
 
 - `card/*.json` 是卡面資料來源。
@@ -27,6 +29,7 @@ runtime 只保護「無法安全建立對局」的條件：
 NewStandardGame
 ├── 驗證玩家
 ├── 載入並驗證 card-data manifest
+├── 編譯並驗證已遷移的可執行能力定義
 ├── 取得 fixedStandardDeck
 ├── 驗證卡片引用與起始 Champion
 └── newStandardSetup

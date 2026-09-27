@@ -59,6 +59,7 @@ const (
 type activatedAbility struct {
 	Kind   activatedAbilityKind
 	Source objectID
+	Slot   AbilitySlotID
 }
 
 // activationOption 保存玩家所選的來源卡與付款方式；兩種方式使用不同 action handle。
@@ -161,10 +162,14 @@ func (g *Game) refreshLegalActions() {
 				}
 				for _, source := range g.legalCardistries(player) {
 					handle := g.newViewHandle(player, constants.ViewHandleSubjectActionCardistryPrefix+string(source))
-					abilities[handle] = activatedAbility{
+					ability := activatedAbility{
 						Kind:   activatedAbilityCardistry,
 						Source: source,
 					}
+					if compiled, exists := g.compiledCardistry(g.state.Objects[source].Card); exists {
+						ability.Slot = compiled.slot
+					}
+					abilities[handle] = ability
 				}
 				for _, source := range g.legalObjectAbilities(player) {
 					handle := g.newViewHandle(player, constants.ViewHandleSubjectActionAbilityPrefix+string(source))
@@ -283,12 +288,14 @@ func (g *Game) legalActions(player *model.Player) []LegalAction {
 		case activatedAbilityCardistry:
 			card := g.state.Objects[ability.Source].Card
 			baseCost, _ := g.cardistryBaseCost(card)
-			cost := g.cardistryCost(player, baseCost)
+			reduction := g.cardistryReduction(card)
+			cost := g.cardistryCost(player, baseCost, reduction)
 			memoryCount := len(g.state.Zones[player.UID].Memory)
 			legalActions = append(legalActions, LegalAction{
 				Handle:                handle,
 				Kind:                  constants.ActionActivate,
 				CardName:              g.cardName(card),
+				AbilitySlot:           ability.Slot,
 				MemoryPaymentRequired: max(cost-memoryCount, 0),
 				MemoryPaymentOptions:  g.visibleMemoryPaymentSources(player),
 			})
@@ -574,12 +581,17 @@ func (g *Game) visibleEffectsStack() []VisibleEffectStackItem {
 		if source == "" {
 			source = item.SourceLKI
 		}
+		var slot AbilitySlotID
+		if item.Ability != nil {
+			slot = item.Ability.Slot
+		}
 		stack = append(
 			stack,
 			VisibleEffectStackItem{
-				Kind:       string(item.Kind),
-				Controller: item.Controller,
-				SourceName: g.cardName(source),
+				Kind:        string(item.Kind),
+				Controller:  item.Controller,
+				SourceName:  g.cardName(source),
+				AbilitySlot: slot,
 			},
 		)
 	}

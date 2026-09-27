@@ -10,6 +10,7 @@ type abilityInstanceID uint64
 
 type abilityInstance struct {
 	ID          abilityInstanceID `json:"id"`
+	Slot        AbilitySlotID     `json:"slot,omitempty"`
 	Controller  *model.Player     `json:"controller"`
 	Source      cardInstanceID    `json:"source"`
 	SourceLKI   cardInstanceID    `json:"source_lki"`
@@ -99,6 +100,9 @@ func (g *Game) resolveAbility(instance abilityInstance) {
 		}
 	}()
 	for operationIndex, operation := range instance.Operations {
+		if g.state.Finished {
+			return
+		}
 		target := operation.Target
 		if target == "" {
 			target = instance.Target
@@ -306,28 +310,47 @@ func (g *Game) discardCard(player *model.Player, from cardZone, card cardInstanc
 	g.recordPublicEvent(player, "ability", "discard", card)
 }
 
+// drawToMemory 逐張由主牌組頂抽至 Memory，並於抽空時停止結算及使玩家敗北。
+// 輸入為玩家及張數；輸出為零，副作用為區域、公開事件、追蹤權及可能的終局狀態變更。
 func (g *Game) drawToMemory(player *model.Player, amount int) {
-	zones := g.state.Zones[player.UID]
-	for draw := 0; draw < amount && len(zones.MainDeck) > 0; draw++ {
-		card := zones.MainDeck[0]
-		zones.MainDeck = removeCardAt(zones.MainDeck, 0)
-		zones.Memory = append(zones.Memory, card)
-		g.recordPublicEvent(player, "ability", "draw-to-memory", card)
+	for range amount {
+		card, drawn := g.drawOneCard(player, cardZoneMemory)
+		if !drawn {
+			return
+		}
+		g.recordDrawEvent(player, "draw-to-memory", card)
 	}
-	g.state.Zones[player.UID] = zones
 }
 
-// drawCards 將最多 amount 張牌由主牌組頂移入手牌，逐張記錄公開抽牌事件。
-// 牌組不足時只抽剩餘牌；空牌組不產生事件，也不在此函式判定敗北。
+// drawCards 逐張由主牌組頂抽至手牌，並於抽空時停止結算及使玩家敗北。
+// 輸入為玩家及張數；輸出為零，副作用為區域、公開事件、追蹤權及可能的終局狀態變更。
 func (g *Game) drawCards(player *model.Player, amount int) {
-	zones := g.state.Zones[player.UID]
-	for draw := 0; draw < amount && len(zones.MainDeck) > 0; draw++ {
-		card := zones.MainDeck[0]
-		zones.MainDeck = removeCardAt(zones.MainDeck, 0)
-		zones.Hand = append(zones.Hand, card)
-		g.recordPublicEvent(player, "ability", "draw", card)
+	for range amount {
+		card, drawn := g.drawOneCard(player, cardZoneHand)
+		if !drawn {
+			return
+		}
+		g.recordDrawEvent(player, "draw", card)
 	}
-	g.state.Zones[player.UID] = zones
+}
+
+// recordDrawEvent 保存能力抽牌事件，僅讓抽牌玩家看見私有區域的卡名。
+// 輸入為玩家、抽牌種類與卡牌；輸出為零，副作用為新增 Game Event 與該玩家的可見事件。
+func (g *Game) recordDrawEvent(player *model.Player, kind string, card cardInstanceID) {
+	g.state.NextEvent++
+	g.state.Events = append(g.state.Events, eventBatch{
+		Player: player,
+		Cause:  "ability",
+		Events: []gameEvent{
+			{
+				Sequence: g.state.NextEvent,
+				Kind:     kind,
+				Card:     card,
+			},
+		},
+	})
+	cardEntity := entityID(card)
+	g.recordVisibleEvent(player, kind, cardEntity)
 }
 
 func (g *Game) addCounter(target objectID, counter string, amount int) bool {

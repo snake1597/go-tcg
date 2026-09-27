@@ -10,10 +10,11 @@ import (
 )
 
 type Game struct {
-	versions Versions
-	players  []*model.Player
-	state    gameState
-	replay   Replay
+	versions    Versions
+	players     []*model.Player
+	definitions map[CardID]CardDefinition
+	state       gameState
+	replay      Replay
 }
 
 // NewGame 建立引擎的空白狀態並固定亂數種子與版本。
@@ -50,7 +51,7 @@ func NewGame(config StandardGameConfig) *Game {
 
 func currentVersions() Versions {
 	return Versions{
-		Engine:   "grand-archive-v1",
+		Engine:   "grand-archive-v2",
 		Rules:    "602c917f2f8fd4df7198429a72eb596bf7f647c6",
 		CardData: "card-data-v3",
 		Deck:     "standard-fire-v2",

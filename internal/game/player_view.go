@@ -8,9 +8,10 @@ import (
 )
 
 type LegalAction struct {
-	Handle   ViewHandle           `json:"handle"`
-	Kind     constants.ActionKind `json:"kind"`
-	CardName string               `json:"card_name,omitempty"`
+	Handle      ViewHandle           `json:"handle"`
+	Kind        constants.ActionKind `json:"kind"`
+	CardName    string               `json:"card_name,omitempty"`
+	AbilitySlot AbilitySlotID        `json:"ability_slot,omitempty"`
 	// CostMethod 區分一般 Reserve 與來源卡宣告的替代費用。
 	CostMethod string `json:"cost_method,omitempty"`
 	// ReserveCost 與 ReserveOptions 定義 activation 必須提交的手牌付款張數與可選 handles。
@@ -55,9 +56,10 @@ type VisibleFieldObject struct {
 }
 
 type VisibleEffectStackItem struct {
-	Kind       string        `json:"kind"`
-	Controller *model.Player `json:"controller"`
-	SourceName string        `json:"source_name"`
+	Kind        string        `json:"kind"`
+	Controller  *model.Player `json:"controller"`
+	SourceName  string        `json:"source_name"`
+	AbilitySlot AbilitySlotID `json:"ability_slot,omitempty"`
 }
 
 type VisibleEvent struct {

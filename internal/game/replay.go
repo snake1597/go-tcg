@@ -87,6 +87,12 @@ func (r Replay) Verify() error {
 			Seed:    r.InitialSeed,
 		},
 	)
+	definitions, err := compileReplayDefinitions()
+	if err != nil {
+		message := err.Error()
+		return newReplayVersionMismatch(message)
+	}
+	game.definitions = definitions
 	game.state = cloneGameState(*r.InitialState)
 	game.players = append(
 		[]*model.Player(nil),
