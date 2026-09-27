@@ -4,8 +4,8 @@
 
 **Blocked by:** None — can start immediately.
 
-**Status:** ready-for-agent
+**Status:** completed
 
-- [ ] Cardistry 使用狀態、折扣、next effect／ability／object identity，以及其餘行為相關 canonical 欄位都參與 hash；逐一改變時 hash 必須不同。
-- [ ] 相同輸入序列的逐步 replay hash 相同；被拒絕的輸入不改變 hash、PRNG cursor、Knowledge State、event 或費用。
-- [ ] 通過完整 repository quality gate；Standard Game、Support Set、replay 與鏡像對戰無回歸。
+- [x] Cardistry 使用狀態、折扣、next effect／ability／object identity，以及其餘行為相關 canonical 欄位都參與 hash；逐一改變時 hash 必須不同。
+- [x] 相同輸入序列的逐步 replay hash 相同；被拒絕的輸入不改變 hash、PRNG cursor、Knowledge State、event 或費用。
+- [x] 通過完整 repository quality gate；Standard Game、Support Set、replay 與鏡像對戰無回歸。

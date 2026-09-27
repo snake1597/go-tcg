@@ -99,10 +99,15 @@ func (g *Game) StateHash() string {
 		AbilityChoice:      g.state.AbilityChoice,
 		ReplacementEffects: g.state.ReplacementEffects,
 		ReplacementChoice:  g.state.ReplacementChoice,
+		CardistryUsed:      g.state.CardistryUsed,
+		CardistryDiscounts: g.state.CardistryDiscounts,
 		Scheduler:          g.state.Scheduler,
 		Events:             g.state.Events,
 		NextHandle:         g.state.NextHandle,
 		NextEvent:          g.state.NextEvent,
+		NextEffect:         g.state.NextEffect,
+		NextAbility:        g.state.NextAbility,
+		NextObject:         g.state.NextObject,
 	}
 	state, err := json.Marshal(canonical)
 	if err != nil {
