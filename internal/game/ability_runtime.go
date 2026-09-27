@@ -45,17 +45,18 @@ const (
 // effectOperation 只保存可序列化的操作資料，讓能力與待選狀態可以重播。
 // 操作可使用宣告時的目標，也可透過 choose 在結算期間取得目標；不保存執行閉包。
 type effectOperation struct {
-	Kind                      effectOperationKind `json:"kind"`
-	Target                    objectID            `json:"target,omitempty"`
-	Source                    objectID            `json:"source,omitempty"`
-	Amount                    int                 `json:"amount,omitempty"`
-	Counter                   string              `json:"counter,omitempty"`
-	MoveSourceToGraveyard     bool                `json:"move_source_to_graveyard,omitempty"`
-	DistinctSuitedCostsDamage bool                `json:"distinct_suited_costs_damage,omitempty"`
-	CanPass                   bool                `json:"can_pass,omitempty"`
-	CardZone                  cardZone            `json:"card_zone,omitempty"`
-	ContinuousEffect          continuousEffect    `json:"continuous_effect,omitempty"`
-	Options                   []objectID          `json:"options,omitempty"`
+	Kind                  effectOperationKind `json:"kind"`
+	Target                objectID            `json:"target,omitempty"`
+	TargetReference       abilityReference    `json:"target_reference,omitempty"`
+	Source                objectID            `json:"source,omitempty"`
+	Amount                int                 `json:"amount,omitempty"`
+	Counter               string              `json:"counter,omitempty"`
+	MoveSourceToGraveyard bool                `json:"move_source_to_graveyard,omitempty"`
+	Value                 *valueExpression    `json:"value,omitempty"`
+	CanPass               bool                `json:"can_pass,omitempty"`
+	CardZone              cardZone            `json:"card_zone,omitempty"`
+	ContinuousEffect      continuousEffect    `json:"continuous_effect,omitempty"`
+	Options               []objectID          `json:"options,omitempty"`
 }
 
 type abilityChoice struct {
@@ -104,14 +105,16 @@ func (g *Game) resolveAbility(instance abilityInstance) {
 			return
 		}
 		target := operation.Target
-		if target == "" {
+		if operation.TargetReference == referenceDeclaredTarget {
+			target = instance.Target
+		} else if target == "" {
 			target = instance.Target
 		}
 		switch operation.Kind {
 		case effectOperationDamage:
 			amount := operation.Amount
-			if operation.DistinctSuitedCostsDamage {
-				amount += g.distinctSuitedPrintedReserveCosts(instance.Controller)
+			if operation.Value != nil {
+				amount = g.evaluateValue(*operation.Value, instance.Controller)
 			}
 			if g.isLegalTarget(target) {
 				continuation := instance

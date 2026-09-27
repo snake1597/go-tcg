@@ -214,7 +214,7 @@ func (g *Game) applyReplacement(intent *replacementIntent, effect replacementEff
 }
 
 // commitReplacementIntent 提交無候選的傷害或 recover；零或負 recover 不視為 recover，因而不改變 state。
-// 輸入為已完成 replacement 判定的 intent；成功時寫入傷害與完整 cause-chain event 並回傳 true。
+// 輸入為已完成 replacement 判定的 intent；成功時寫入傷害與完整 cause-chain event，並於傷害後執行死亡檢查，回傳 true。
 func (g *Game) commitReplacementIntent(intent replacementIntent) bool {
 	if intent.Amount <= 0 {
 		if intent.Kind == replacementIntentDamage {
@@ -237,6 +237,9 @@ func (g *Game) commitReplacementIntent(intent replacementIntent) bool {
 		return false
 	}
 	g.recordReplacementEvent(intent)
+	if intent.Kind == replacementIntentDamage {
+		g.resolveCombatStateBasedWithCause("ability:on-kill", "ability:damage")
+	}
 	return true
 }
 

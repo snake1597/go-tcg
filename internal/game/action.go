@@ -72,7 +72,10 @@ func (g *Game) canActivateAction(player *model.Player, card cardInstanceID) bool
 		targets := g.trumpSetTargets(player)
 		return len(targets) > 0
 	}
-	return candidate.Definition == blazingThrowCardID || candidate.Definition == fieryInterferenceCardID || candidate.Definition == straightFlareCardID
+	if _, exists := g.compiledAction(card); exists {
+		return true
+	}
+	return candidate.Definition == blazingThrowCardID || candidate.Definition == fieryInterferenceCardID
 }
 
 // beginActionDeclaration 為行動建立選目標的宣告，尚不移走來源牌或支付費用。
@@ -80,6 +83,9 @@ func (g *Game) canActivateAction(player *model.Player, card cardInstanceID) bool
 // Action 依其目標規則建立宣告；替代費用在啟動入口單獨選擇。
 func (g *Game) beginActionDeclaration(player *model.Player, card cardInstanceID, reserve []ViewHandle) error {
 	targets := g.legalTargets()
+	if ability, exists := g.compiledAction(card); exists {
+		targets = g.selectTargets(*ability.target)
+	}
 	if g.state.Cards[card].Definition == trumpSetCardID {
 		targets = g.trumpSetTargets(player)
 	}
@@ -194,6 +200,9 @@ func (g *Game) submitActionDeclarationChoice(player *model.Player, subject entit
 		if !g.isLegalTarget(target) || (g.state.Cards[declaration.Source].Definition == trumpSetCardID && !containsObject(g.trumpSetTargets(player), target)) {
 			return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, subject)
 		}
+		if ability, exists := g.compiledAction(declaration.Source); exists && !g.targetMatchesSelector(*ability.target, target) {
+			return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, subject)
+		}
 		declaration.Target = target
 		if g.state.Cards[declaration.Source].Definition == blazingThrowCardID {
 			declaration.Stage = declarationWeapon
@@ -272,6 +281,9 @@ func (g *Game) commitActionDeclaration() error {
 
 func (g *Game) canCommitActionDeclaration(declaration *actionDeclaration) bool {
 	if !g.isLegalTarget(declaration.Target) {
+		return false
+	}
+	if ability, exists := g.compiledAction(declaration.Source); exists && !g.targetMatchesSelector(*ability.target, declaration.Target) {
 		return false
 	}
 	candidate, exists := g.state.Cards[declaration.Source]
@@ -373,47 +385,51 @@ func (g *Game) isLegalWeapon(player *model.Player, id objectID) bool {
 func (g *Game) actionAbilityInstance(declaration *actionDeclaration) abilityInstance {
 	operations := []effectOperation{}
 	source := g.state.Cards[declaration.Source]
-	switch source.Definition {
-	case blazingThrowCardID:
-		operations = append(operations, effectOperation{
-			Kind:   effectOperationDamage,
-			Amount: 4,
-		})
-	case fieryInterferenceCardID:
-		operations = append(operations, effectOperation{
-			Kind:   effectOperationDamage,
-			Amount: 2,
-		})
-		operations = append(operations, effectOperation{
-			Kind: effectOperationContinuousModifier,
-			ContinuousEffect: continuousEffect{
-				Scope:         effectScopeObject,
-				Layer:         effectLayerAbility,
-				ExpiresAtTurn: g.state.Scheduler.TurnNumber + 1,
-				Modifier: continuousModifier{
-					ProhibitRecover: true,
+	var slot AbilitySlotID
+	if ability, exists := g.compiledAction(declaration.Source); exists {
+		operations = ability.operations()
+		slot = ability.slot
+	} else {
+		switch source.Definition {
+		case blazingThrowCardID:
+			operations = append(operations, effectOperation{
+				Kind:   effectOperationDamage,
+				Amount: 4,
+			})
+		case fieryInterferenceCardID:
+			operations = append(operations, effectOperation{
+				Kind:   effectOperationDamage,
+				Amount: 2,
+			})
+			operations = append(operations, effectOperation{
+				Kind: effectOperationContinuousModifier,
+				ContinuousEffect: continuousEffect{
+					Scope:         effectScopeObject,
+					Layer:         effectLayerAbility,
+					ExpiresAtTurn: g.state.Scheduler.TurnNumber + 1,
+					Modifier: continuousModifier{
+						ProhibitRecover: true,
+					},
 				},
-			},
-		})
-	case straightFlareCardID:
-		operations = append(operations, effectOperation{
-			Kind:                      effectOperationDamage,
-			Amount:                    1,
-			DistinctSuitedCostsDamage: true,
-		})
-	case trumpSetCardID:
-		operations = append(operations, effectOperation{Kind: effectOperationRetargetAttack})
+			})
+		case trumpSetCardID:
+			operations = append(operations, effectOperation{
+				Kind: effectOperationRetargetAttack,
+			})
+		}
 	}
 	operations = append(operations, effectOperation{
 		Kind:                  effectOperationMove,
 		MoveSourceToGraveyard: true,
 	})
-	return g.newAbilityInstance(
+	instance := g.newAbilityInstance(
 		declaration.Controller,
 		declaration.Source,
 		declaration.Target,
 		operations,
 	)
+	instance.Slot = slot
+	return instance
 }
 
 // removeEffectSource 從 Effects Stack 的來源區移除指定卡牌實例。
@@ -455,17 +471,6 @@ func (g *Game) isChampion(target objectID) bool {
 		}
 	}
 	return false
-}
-
-func (g *Game) distinctSuitedPrintedReserveCosts(player *model.Player) int {
-	costs := make(map[int]struct{})
-	for _, object := range g.state.Objects {
-		if !samePlayer(object.Owner, player) || !g.cardHasSubtype(object.Card, "SUITED") {
-			continue
-		}
-		costs[g.printedReserveCost(object.Card)] = struct{}{}
-	}
-	return len(costs)
 }
 
 func (g *Game) cardHasSubtype(card cardInstanceID, want string) bool {

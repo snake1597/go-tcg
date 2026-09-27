@@ -246,6 +246,10 @@ func (g *Game) legalActions(player *model.Player) []LegalAction {
 	for handle, option := range playKnowledge.Activations {
 		reserveCost := g.actionReserveCost(player, option.Card)
 		costMethod := "reserve"
+		var slot AbilitySlotID
+		if ability, exists := g.compiledAction(option.Card); exists {
+			slot = ability.slot
+		}
 		if option.Alternative {
 			reserveCost = 0
 			costMethod = "alternative"
@@ -256,6 +260,7 @@ func (g *Game) legalActions(player *model.Player) []LegalAction {
 				Handle:         handle,
 				Kind:           constants.ActionActivate,
 				CardName:       g.state.Entities[entityID(option.Card)].Name,
+				AbilitySlot:    slot,
 				CostMethod:     costMethod,
 				ReserveCost:    reserveCost,
 				ReserveOptions: g.visibleReserveCards(player, option.Card),
