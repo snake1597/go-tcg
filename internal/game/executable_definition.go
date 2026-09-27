@@ -12,6 +12,7 @@ const (
 	abilityKindCardistry abilityDefinitionKind = "cardistry"
 	abilityKindAction    abilityDefinitionKind = "action"
 	abilityKindTriggered abilityDefinitionKind = "triggered"
+	abilityKindStatic    abilityDefinitionKind = "static"
 )
 
 type abilityTiming string
@@ -102,6 +103,34 @@ type triggerDefinition struct {
 	event eventKind
 }
 
+type staticPredicateKind string
+
+const (
+	staticPredicateSelf                       staticPredicateKind = "self"
+	staticPredicateControlsQualifiedHumanAlly staticPredicateKind = "controls-qualified-human-ally"
+)
+
+type effectSubLayer string
+
+const effectSubLayerNone effectSubLayer = "none"
+
+type staticDuration string
+
+const staticDurationWhilePredicate staticDuration = "while-predicate"
+
+type sourcePresence string
+
+const sourcePresenceRequired sourcePresence = "required"
+
+type staticEffectDefinition struct {
+	predicate      staticPredicateKind
+	layer          effectLayer
+	sublayer       effectSubLayer
+	modifier       continuousModifier
+	duration       staticDuration
+	sourcePresence sourcePresence
+}
+
 type authoredEffectDefinition struct {
 	kind       authoredEffectKind
 	draw       *drawEffectDefinition
@@ -119,6 +148,7 @@ type authoredAbilityDefinition struct {
 	baseCost  int
 	target    *targetSelector
 	trigger   *triggerDefinition
+	static    *staticEffectDefinition
 	effects   []authoredEffectDefinition
 }
 
@@ -141,6 +171,7 @@ type compiledAbilityDefinition struct {
 	baseCost  int
 	target    *targetSelector
 	trigger   *triggerDefinition
+	static    *staticEffectDefinition
 	effects   []compiledEffect
 }
 
@@ -267,6 +298,43 @@ func impactHammerAbilities() []authoredAbilityDefinition {
 	}
 }
 
+// redHareAbilities 宣告 Red Hare 的 Pride 與條件式靜態修正，讓中央 evaluator 套用攻擊限制與能力。
+// 輸入為零；輸出為不共享可變狀態的 Go 編寫資料，副作用為零。
+func redHareAbilities() []authoredAbilityDefinition {
+	pride := 3
+	return []authoredAbilityDefinition{
+		{
+			slot: "ability:5du8f077ua:front:pride",
+			kind: abilityKindStatic,
+			static: &staticEffectDefinition{
+				predicate: staticPredicateSelf,
+				layer:     effectLayerAbility,
+				sublayer:  effectSubLayerNone,
+				modifier: continuousModifier{
+					SetPride: &pride,
+				},
+				duration:       staticDurationWhilePredicate,
+				sourcePresence: sourcePresenceRequired,
+			},
+		},
+		{
+			slot: "ability:5du8f077ua:front:qualified-human",
+			kind: abilityKindStatic,
+			static: &staticEffectDefinition{
+				predicate: staticPredicateControlsQualifiedHumanAlly,
+				layer:     effectLayerAbility,
+				sublayer:  effectSubLayerNone,
+				modifier: continuousModifier{
+					RemovePride:          true,
+					GrantRedHareOnAttack: true,
+				},
+				duration:       staticDurationWhilePredicate,
+				sourcePresence: sourcePresenceRequired,
+			},
+		},
+	}
+}
+
 // authoredAbilitiesForCard 將固定卡牌的 Go 能力編寫資料交給同一個 compiler。
 // 輸入為 Card ID；輸出為該卡目前已遷移的能力資料，副作用為零。
 func authoredAbilitiesForCard(id CardID) []authoredAbilityDefinition {
@@ -279,6 +347,8 @@ func authoredAbilitiesForCard(id CardID) []authoredAbilityDefinition {
 		return threeOfHeartsAbilities()
 	case impactHammerCardID:
 		return impactHammerAbilities()
+	case redHareCardID:
+		return redHareAbilities()
 	}
 	return nil
 }
@@ -346,10 +416,17 @@ func compileAbilityDefinitions(definition CardDefinition, authored []authoredAbi
 			if ability.trigger == nil || ability.trigger.event != eventKindWield {
 				return nil, fmt.Errorf("%s: trigger.event must be wield", context)
 			}
+		case abilityKindStatic:
+			if ability.timing != "" || ability.usage != "" || ability.reduction != "" || ability.baseCost != 0 || ability.target != nil || ability.trigger != nil || len(ability.effects) != 0 {
+				return nil, fmt.Errorf("%s: static declaration payload unsupported", context)
+			}
+			if err := validateStaticEffectDefinition(ability.static); err != nil {
+				return nil, fmt.Errorf("%s: static: %w", context, err)
+			}
 		default:
 			return nil, fmt.Errorf("%s: unknown kind %q", context, ability.kind)
 		}
-		if len(ability.effects) == 0 {
+		if ability.kind != abilityKindStatic && len(ability.effects) == 0 {
 			return nil, fmt.Errorf("%s: effects must not be empty", context)
 		}
 		result := compiledAbilityDefinition{
@@ -368,6 +445,10 @@ func compileAbilityDefinitions(definition CardDefinition, authored []authoredAbi
 		if ability.trigger != nil {
 			trigger := *ability.trigger
 			result.trigger = &trigger
+		}
+		if ability.static != nil {
+			static := cloneStaticEffectDefinition(*ability.static)
+			result.static = &static
 		}
 		bindings := make(map[resolutionBinding]struct{})
 		for index, effect := range ability.effects {
@@ -449,6 +530,78 @@ func compileAbilityDefinitions(definition CardDefinition, authored []authoredAbi
 		}
 	}
 	return compiled, nil
+}
+
+// validateStaticEffectDefinition 限制目前支援集合可使用的 static predicate、layer、duration 與 modifier。
+// 輸入為編寫的靜態效果；輸出為驗證錯誤或 nil，副作用為零。
+func validateStaticEffectDefinition(effect *staticEffectDefinition) error {
+	if effect == nil {
+		return fmt.Errorf("definition is required")
+	}
+	if effect.layer != effectLayerAbility || effect.sublayer != effectSubLayerNone || effect.duration != staticDurationWhilePredicate || effect.sourcePresence != sourcePresenceRequired {
+		return fmt.Errorf("layer, sublayer, duration, or source presence unsupported")
+	}
+	switch effect.predicate {
+	case staticPredicateSelf:
+		if !isPrideStaticModifier(effect.modifier) {
+			return fmt.Errorf("self predicate requires nonnegative Pride modifier")
+		}
+	case staticPredicateControlsQualifiedHumanAlly:
+		if !isQualifiedHumanStaticModifier(effect.modifier) {
+			return fmt.Errorf("qualified Human predicate requires Pride removal and granted On Attack")
+		}
+	default:
+		return fmt.Errorf("predicate unsupported %q", effect.predicate)
+	}
+	return nil
+}
+
+// isPrideStaticModifier 驗證 Pride static 只設定非負 Pride，不混入未支援的特徵修正。
+// 輸入為靜態能力的 modifier；輸出為是否符合 Pride 定義，副作用為零。
+func isPrideStaticModifier(modifier continuousModifier) bool {
+	return modifier.SetPride != nil &&
+		*modifier.SetPride >= 0 &&
+		modifier.SetPower == nil &&
+		modifier.SetLife == nil &&
+		modifier.PowerDelta == 0 &&
+		modifier.LifeDelta == 0 &&
+		modifier.ReserveCostDelta == 0 &&
+		!modifier.GrantImmortality &&
+		!modifier.ProhibitRecover &&
+		!modifier.SwitchPowerLife &&
+		!modifier.GrantStealth &&
+		!modifier.GrantTrueSight &&
+		!modifier.RemovePride &&
+		!modifier.GrantRedHareOnAttack
+}
+
+// isQualifiedHumanStaticModifier 驗證條件式 static 只移除 Pride 並授予對應的 On Attack ability。
+// 輸入為靜態能力的 modifier；輸出為是否符合 qualified Human 定義，副作用為零。
+func isQualifiedHumanStaticModifier(modifier continuousModifier) bool {
+	return modifier.SetPride == nil &&
+		modifier.SetPower == nil &&
+		modifier.SetLife == nil &&
+		modifier.PowerDelta == 0 &&
+		modifier.LifeDelta == 0 &&
+		modifier.ReserveCostDelta == 0 &&
+		!modifier.GrantImmortality &&
+		!modifier.ProhibitRecover &&
+		!modifier.SwitchPowerLife &&
+		!modifier.GrantStealth &&
+		!modifier.GrantTrueSight &&
+		modifier.RemovePride &&
+		modifier.GrantRedHareOnAttack
+}
+
+// cloneStaticEffectDefinition 複製 static 定義及其指標欄位，隔離編寫資料和編譯結果。
+// 輸入為已驗證的靜態效果；輸出為獨立的靜態效果，副作用為零。
+func cloneStaticEffectDefinition(effect staticEffectDefinition) staticEffectDefinition {
+	clone := effect
+	if effect.modifier.SetPride != nil {
+		pride := *effect.modifier.SetPride
+		clone.modifier.SetPride = &pride
+	}
+	return clone
 }
 
 // validateValueExpression 驗證整數樹的 kind、運算元與 reference 型別。
@@ -570,7 +723,7 @@ func (g *Game) compiledCardistry(card cardInstanceID) (compiledAbilityDefinition
 // 輸入為零；輸出為目前引擎版本釘選的定義或驗證錯誤，副作用為零。
 func compileReplayDefinitions() (map[CardID]CardDefinition, error) {
 	definitions := make(map[CardID]CardDefinition)
-	for _, id := range []CardID{wonderlandsReignCardID, straightFlareCardID, threeOfHeartsCardID, impactHammerCardID} {
+	for _, id := range []CardID{wonderlandsReignCardID, straightFlareCardID, threeOfHeartsCardID, impactHammerCardID, redHareCardID} {
 		definition := CardDefinition{
 			id: id,
 			face: CardFace{

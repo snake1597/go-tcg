@@ -44,6 +44,7 @@ type continuousModifier struct {
 	SwitchPowerLife      bool `json:"switch_power_life,omitempty"`
 	GrantStealth         bool `json:"grant_stealth,omitempty"`
 	GrantTrueSight       bool `json:"grant_true_sight,omitempty"`
+	SetPride             *int `json:"set_pride,omitempty"`
 	RemovePride          bool `json:"remove_pride,omitempty"`
 	GrantRedHareOnAttack bool `json:"grant_red_hare_on_attack,omitempty"`
 }
@@ -58,6 +59,7 @@ type continuousEffect struct {
 	Scope         effectScope        `json:"scope"`
 	Layer         effectLayer        `json:"layer"`
 	PowerLife     powerLifeSubLayer  `json:"power_life_sub_layer,omitempty"`
+	SubLayer      effectSubLayer     `json:"sub_layer,omitempty"`
 	Timestamp     uint64             `json:"timestamp"`
 	DependsOn     []uint64           `json:"depends_on,omitempty"`
 	ExpiresAtTurn uint64             `json:"expires_at_turn,omitempty"`
@@ -128,9 +130,6 @@ func characteristicsFromCard(card cardInstance) characteristics {
 		ReserveCost: card.ReserveCost,
 		MemoryCost:  card.MemoryCost,
 	}
-	if card.Definition == redHareCardID {
-		result.Pride = 3
-	}
 	return result
 }
 
@@ -148,6 +147,9 @@ func applyContinuousModifier(result *characteristics, modifier continuousModifie
 	result.RecoverProhibited = result.RecoverProhibited || modifier.ProhibitRecover
 	result.Stealth = result.Stealth || modifier.GrantStealth
 	result.TrueSight = result.TrueSight || modifier.GrantTrueSight
+	if modifier.SetPride != nil {
+		result.Pride = *modifier.SetPride
+	}
 	if modifier.RemovePride {
 		result.Pride = 0
 	}
@@ -291,21 +293,25 @@ func (g *Game) staticEffectsFor(target objectID) []continuousEffect {
 				},
 			)
 		}
-		if sourceID == target && card.Definition == redHareCardID && g.controlsQualifiedHumanAlly(source.Owner, sourceID) {
-			effects = append(
-				effects,
-				continuousEffect{
-					Source:     sourceID,
-					Controller: source.Owner,
-					Scope:      effectScopeObject,
-					Layer:      effectLayerAbility,
-					Timestamp:  uint64(len(effects)),
-					Modifier: continuousModifier{
-						GrantRedHareOnAttack: true,
-						RemovePride:          true,
+		definition, definitionExists := g.definitions[card.Definition]
+		if definitionExists {
+			for _, ability := range definition.abilities {
+				if ability.kind != abilityKindStatic || ability.static == nil || !g.staticAbilityApplies(ability.static, sourceID, source, target) {
+					continue
+				}
+				effects = append(
+					effects,
+					continuousEffect{
+						Source:     sourceID,
+						Controller: source.Owner,
+						Scope:      effectScopeObject,
+						Layer:      ability.static.layer,
+						SubLayer:   ability.static.sublayer,
+						Timestamp:  uint64(len(effects)),
+						Modifier:   ability.static.modifier,
 					},
-				},
-			)
+				)
+			}
 		}
 		if card.Definition == veritaCardID && sourceID != target && targetExists && samePlayer(source.Owner, targetObject.Owner) && containsString(targetObject.Types, "ALLY") && g.cardHasSubtype(targetObject.Card, "SUITED") {
 			effects = append(
@@ -324,6 +330,22 @@ func (g *Game) staticEffectsFor(target objectID) []continuousEffect {
 		}
 	}
 	return effects
+}
+
+// staticAbilityApplies 判定來源仍在場且該 static predicate 是否套用到目前查詢目標。
+// 輸入為已編譯定義、來源與目標；輸出為是否應建立 continuous effect，副作用為零。
+func (g *Game) staticAbilityApplies(ability *staticEffectDefinition, sourceID objectID, source fieldObject, target objectID) bool {
+	if ability.sourcePresence != sourcePresenceRequired || sourceID != target {
+		return false
+	}
+	switch ability.predicate {
+	case staticPredicateSelf:
+		return true
+	case staticPredicateControlsQualifiedHumanAlly:
+		return g.controlsQualifiedHumanAlly(source.Owner, sourceID)
+	default:
+		return false
+	}
 }
 
 func (g *Game) controlsQualifiedHumanAlly(player *model.Player, exclude objectID) bool {

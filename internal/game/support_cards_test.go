@@ -772,6 +772,7 @@ func TestHeatedVengeanceTracksChampionDamageAndResolvesOptionalOnAttack(t *testi
 func TestRedHarePermissionAndGrantedAttackAbilityUseDerivedCharacteristics(t *testing.T) {
 	game := newActionGame(t)
 	player := model.PlayerOne
+	game.state.Scheduler.TurnNumber = 3
 	redHareCard := findCard(t, game, player, redHareCardID)
 	redHare := objectID("ally:red-hare")
 	game.state.Objects[redHare] = fieldObject{
@@ -784,6 +785,16 @@ func TestRedHarePermissionAndGrantedAttackAbilityUseDerivedCharacteristics(t *te
 	}
 	if game.canAttackWith(player, redHare) || game.characteristicsFor(redHare).GrantedOnAttack {
 		t.Fatal("Red Hare gained permission or its granted ability without a qualifying Human ally")
+	}
+	game.advanceKnowledgeRevision()
+	view, err := game.PlayerView(player)
+	if err != nil {
+		t.Fatalf("PlayerView() error = %v", err)
+	}
+	for _, action := range view.LegalActions {
+		if action.Kind == constants.ActionAttack && action.CardName == "Red Hare, Unrivaled Stallion" {
+			t.Fatalf("Red Hare attack action = %#v without a qualifying Human ally, want absent", action)
+		}
 	}
 	duchessCard := findCard(t, game, player, duchessCardID)
 	duchess := objectID("ally:duchess")
@@ -799,6 +810,32 @@ func TestRedHarePermissionAndGrantedAttackAbilityUseDerivedCharacteristics(t *te
 	if !game.canAttackWith(player, redHare) || game.characteristicsFor(redHare).Pride != 0 || !game.characteristicsFor(redHare).GrantedOnAttack {
 		t.Fatalf("Red Hare characteristics = %#v, want removed Pride and granted On Attack", game.characteristicsFor(redHare))
 	}
+	game.advanceKnowledgeRevision()
+	view, err = game.PlayerView(player)
+	if err != nil {
+		t.Fatalf("PlayerView() error = %v", err)
+	}
+	var redHareAttack LegalAction
+	for _, action := range view.LegalActions {
+		if action.Kind == constants.ActionAttack && action.CardName == "Red Hare, Unrivaled Stallion" {
+			redHareAttack = action
+			break
+		}
+	}
+	if redHareAttack.Handle == "" {
+		t.Fatalf("LegalActions = %#v, want Red Hare attack action", view.LegalActions)
+	}
+	if err := game.Submit(
+		player,
+		Input{
+			Revision: view.Revision,
+			Action:   redHareAttack.Handle,
+		},
+	); err != nil {
+		t.Fatalf("Submit() Red Hare attack error = %v", err)
+	}
+	game.state.Knowledge.Attack = nil
+	game.state.Knowledge.Choice = nil
 	triggers := game.onAttackTriggers(player, redHare)
 	if len(triggers) != 1 || triggers[0].Ability == nil || !triggers[0].Ability.Operations[0].CanPass {
 		t.Fatalf("granted On Attack triggers = %#v, want optional Ability Instance", triggers)

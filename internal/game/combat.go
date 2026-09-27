@@ -244,7 +244,7 @@ func (g *Game) onAttackTriggers(player *model.Player, attacker objectID) []effec
 			},
 		}
 	}
-	if card.Definition != redHareCardID || !g.characteristicsFor(attacker).GrantedOnAttack || len(g.state.Zones[player.UID].Hand) == 0 {
+	if !g.characteristicsFor(attacker).GrantedOnAttack || len(g.state.Zones[player.UID].Hand) == 0 {
 		return nil
 	}
 	ability := g.newAbilityInstance(
