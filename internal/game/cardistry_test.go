@@ -297,6 +297,123 @@ func TestCardistryInvalidMemoryPaymentDoesNotChangeState(t *testing.T) {
 	}
 }
 
+// TestCardistryStaleDeclarationDoesNotChangeState 驗證 Player View 過期後的 Cardistry 宣告會在付款與建 instance 前遭拒絕。
+// 輸入為已過期 revision 的 Cardistry handle；輸出為提交錯誤與相同 state hash，副作用為零。
+func TestCardistryStaleDeclarationDoesNotChangeState(t *testing.T) {
+	game := newCardistryGame(t, wonderlandsReignCardID)
+	player := model.PlayerOne
+	fillMemory(t, game, player, 10, "")
+	game.advanceKnowledgeRevision()
+	view, err := game.PlayerView(player)
+	if err != nil {
+		t.Fatalf("PlayerView() error = %v", err)
+	}
+	action := cardistryAction(
+		t,
+		game,
+		player,
+	)
+	before := game.StateHash()
+	if err := game.Submit(
+		player,
+		Input{
+			Revision: view.Revision - 1,
+			Action:   action,
+		},
+	); err == nil {
+		t.Fatal("Submit() error = nil, want stale revision rejection")
+	}
+	if got := game.StateHash(); got != before {
+		t.Fatalf("StateHash() = %q, want unchanged %q", got, before)
+	}
+}
+
+// TestCardistryCreatesIndependentInstanceForReenteredObject 驗證同一卡牌以新 Object 進場後有獨立 usage 與 Ability Instance。
+// 輸入為已成功啟動並重新進場的 Wonderland's Reign；輸出為不同 instance ID 與相同 Card Instance LKI，副作用為兩次成功的 Cardistry 宣告。
+func TestCardistryCreatesIndependentInstanceForReenteredObject(t *testing.T) {
+	game := newCardistryGame(t, wonderlandsReignCardID)
+	player := model.PlayerOne
+	source := cardistrySource(t, game, player)
+	card := game.state.Objects[source].Card
+	fillMemory(t, game, player, 20, "")
+	game.advanceKnowledgeRevision()
+
+	view, err := game.PlayerView(player)
+	if err != nil {
+		t.Fatalf("PlayerView() error = %v", err)
+	}
+	firstAction := cardistryAction(
+		t,
+		game,
+		player,
+	)
+	if err := game.Submit(
+		player,
+		Input{
+			Revision: view.Revision,
+			Action:   firstAction,
+		},
+	); err != nil {
+		t.Fatalf("first Submit() error = %v", err)
+	}
+	if len(game.state.EffectsStack) != 1 || game.state.EffectsStack[0].Ability == nil {
+		t.Fatalf("EffectsStack = %#v, want first Ability Instance", game.state.EffectsStack)
+	}
+	first := *game.state.EffectsStack[0].Ability
+	if first.SourceLKI != card {
+		t.Fatalf("first SourceLKI = %q, want %q", first.SourceLKI, card)
+	}
+	passOpportunityRound(t, game, player)
+
+	delete(game.state.Objects, source)
+	returned := objectID("cardistry:returned")
+	game.state.Objects[returned] = fieldObject{
+		ID:    returned,
+		Card:  card,
+		Owner: player,
+		Types: game.state.Cards[card].Types,
+	}
+	game.advanceKnowledgeRevision()
+	if !game.state.CardistryUsed[source] || game.state.CardistryUsed[returned] {
+		t.Fatalf("CardistryUsed = %#v, want only departed Object marked used", game.state.CardistryUsed)
+	}
+	game.captureReplayInitialState()
+	view, err = game.PlayerView(player)
+	if err != nil {
+		t.Fatalf("PlayerView() after reentry error = %v", err)
+	}
+	var returnedAction ViewHandle
+	for _, action := range view.LegalActions {
+		if action.Kind == constants.ActionActivate && action.AbilitySlot == "ability:0mf1ug6yfi:front:cardistry-draw" {
+			returnedAction = action.Handle
+			break
+		}
+	}
+	if returnedAction == "" {
+		t.Fatal("PlayerView() has no Cardistry action for reentered object")
+	}
+	if err := game.Submit(
+		player,
+		Input{
+			Revision: view.Revision,
+			Action:   returnedAction,
+		},
+	); err != nil {
+		t.Fatalf("second Submit() error = %v", err)
+	}
+	if len(game.state.EffectsStack) != 1 || game.state.EffectsStack[0].Ability == nil {
+		t.Fatalf("EffectsStack = %#v, want second Ability Instance", game.state.EffectsStack)
+	}
+	second := game.state.EffectsStack[0].Ability
+	if second.ID == first.ID || second.SourceLKI != card {
+		t.Fatalf("second Ability Instance = %#v, want new ID and SourceLKI %q", second, card)
+	}
+	passOpportunityRound(t, game, player)
+	if err := game.Replay().Verify(); err != nil {
+		t.Fatalf("Replay().Verify() error = %v", err)
+	}
+}
+
 func TestCardistryRejectedActivationsDoNotChangeState(t *testing.T) {
 	t.Run(
 		"Floating Memory is only accepted with Cardistry",
