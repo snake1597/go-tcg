@@ -103,6 +103,73 @@ func TestCompileRedHareStaticDefinitions(t *testing.T) {
 	}
 }
 
+// TestCompileInfernalVesselReplacementDefinition 驗證 Infernal Vessel 以 event filter 與 transformation 宣告 recover replacement。
+// 輸入為 Infernal Vessel 的卡牌與牌面；輸出為具穩定 Slot、recover event filter 和減少 3 的編譯定義，副作用為零。
+func TestCompileInfernalVesselReplacementDefinition(t *testing.T) {
+	definition := CardDefinition{
+		id: infernalVesselCardID,
+		face: CardFace{
+			id: CardFaceID("face:vgWgu1DUYv:front"),
+		},
+	}
+	abilities, err := compileAbilityDefinitions(
+		definition,
+		infernalVesselAbilities(),
+	)
+	if err != nil {
+		t.Fatalf("compileAbilityDefinitions() error = %v", err)
+	}
+	if len(abilities) != 1 || abilities[0].kind != abilityKindReplacement || abilities[0].replacement == nil {
+		t.Fatalf("compiled abilities = %#v, want one replacement definition", abilities)
+	}
+	if abilities[0].slot != "ability:vgWgu1DUYv:front:recover-reduce" || abilities[0].replacement.event != replacementEventRecover || abilities[0].replacement.transformation != replacementTransformReduce || abilities[0].replacement.amount != 3 {
+		t.Fatalf("replacement definition = %#v, want recover reduced by 3", abilities[0].replacement)
+	}
+	for _, testCase := range []struct {
+		name   string
+		change func(*authoredAbilityDefinition)
+		field  string
+	}{
+		{
+			name: "unknown event",
+			change: func(ability *authoredAbilityDefinition) {
+				ability.replacement.event = "damage"
+			},
+			field: "event",
+		},
+		{
+			name: "unknown transformation",
+			change: func(ability *authoredAbilityDefinition) {
+				ability.replacement.transformation = "prevent"
+			},
+			field: "transformation",
+		},
+		{
+			name: "wrong reduction",
+			change: func(ability *authoredAbilityDefinition) {
+				ability.replacement.amount = 2
+			},
+			field: "amount",
+		},
+	} {
+		t.Run(
+			testCase.name,
+			func(t *testing.T) {
+				authored := infernalVesselAbilities()
+				invalid := authored[0]
+				testCase.change(&invalid)
+				_, err := compileAbilityDefinitions(
+					definition,
+					[]authoredAbilityDefinition{invalid},
+				)
+				if err == nil || !strings.Contains(err.Error(), testCase.field) || !strings.Contains(err.Error(), string(definition.id)) {
+					t.Fatalf("compile error = %v, want %s with definition context", err, testCase.field)
+				}
+			},
+		)
+	}
+}
+
 // TestCompileThreeOfHeartsDefinitionRejectsUnboundDiscard 驗證 Three of Hearts 的棄牌只能引用同一能力中先前具名的選牌 binding。
 // 輸入為含未知 binding 的 Three of Hearts 編寫資料；輸出為附帶欄位脈絡的編譯錯誤，副作用為零。
 func TestCompileThreeOfHeartsDefinitionRejectsUnboundDiscard(t *testing.T) {

@@ -9,10 +9,11 @@ import (
 type abilityDefinitionKind string
 
 const (
-	abilityKindCardistry abilityDefinitionKind = "cardistry"
-	abilityKindAction    abilityDefinitionKind = "action"
-	abilityKindTriggered abilityDefinitionKind = "triggered"
-	abilityKindStatic    abilityDefinitionKind = "static"
+	abilityKindCardistry   abilityDefinitionKind = "cardistry"
+	abilityKindAction      abilityDefinitionKind = "action"
+	abilityKindTriggered   abilityDefinitionKind = "triggered"
+	abilityKindStatic      abilityDefinitionKind = "static"
+	abilityKindReplacement abilityDefinitionKind = "replacement"
 )
 
 type abilityTiming string
@@ -131,6 +132,20 @@ type staticEffectDefinition struct {
 	sourcePresence sourcePresence
 }
 
+type replacementEvent string
+
+const replacementEventRecover replacementEvent = "recover"
+
+type replacementTransformation string
+
+const replacementTransformReduce replacementTransformation = "recover-reduce"
+
+type replacementDefinition struct {
+	event          replacementEvent
+	transformation replacementTransformation
+	amount         int
+}
+
 type authoredEffectDefinition struct {
 	kind       authoredEffectKind
 	draw       *drawEffectDefinition
@@ -140,16 +155,17 @@ type authoredEffectDefinition struct {
 }
 
 type authoredAbilityDefinition struct {
-	slot      AbilitySlotID
-	kind      abilityDefinitionKind
-	timing    abilityTiming
-	usage     abilityUsage
-	reduction abilityCostReduction
-	baseCost  int
-	target    *targetSelector
-	trigger   *triggerDefinition
-	static    *staticEffectDefinition
-	effects   []authoredEffectDefinition
+	slot        AbilitySlotID
+	kind        abilityDefinitionKind
+	timing      abilityTiming
+	usage       abilityUsage
+	reduction   abilityCostReduction
+	baseCost    int
+	target      *targetSelector
+	trigger     *triggerDefinition
+	static      *staticEffectDefinition
+	replacement *replacementDefinition
+	effects     []authoredEffectDefinition
 }
 
 // compiledEffect 保存已驗證的具體效果 payload，不讓 authoring tag 進入對局狀態。
@@ -163,16 +179,17 @@ type compiledEffect struct {
 
 // compiledAbilityDefinition 是建局前完成驗證的能力中介表示。
 type compiledAbilityDefinition struct {
-	slot      AbilitySlotID
-	kind      abilityDefinitionKind
-	timing    abilityTiming
-	usage     abilityUsage
-	reduction abilityCostReduction
-	baseCost  int
-	target    *targetSelector
-	trigger   *triggerDefinition
-	static    *staticEffectDefinition
-	effects   []compiledEffect
+	slot        AbilitySlotID
+	kind        abilityDefinitionKind
+	timing      abilityTiming
+	usage       abilityUsage
+	reduction   abilityCostReduction
+	baseCost    int
+	target      *targetSelector
+	trigger     *triggerDefinition
+	static      *staticEffectDefinition
+	replacement *replacementDefinition
+	effects     []compiledEffect
 }
 
 var abilitySlotKeyPattern = regexp.MustCompile(`^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$`)
@@ -335,6 +352,22 @@ func redHareAbilities() []authoredAbilityDefinition {
 	}
 }
 
+// infernalVesselAbilities 宣告 Infernal Vessel 對 recover event 的 replacement 與減少數量 transformation。
+// 輸入為零；輸出為不可共用的 Go 編寫資料，副作用為零。
+func infernalVesselAbilities() []authoredAbilityDefinition {
+	return []authoredAbilityDefinition{
+		{
+			slot: "ability:vgWgu1DUYv:front:recover-reduce",
+			kind: abilityKindReplacement,
+			replacement: &replacementDefinition{
+				event:          replacementEventRecover,
+				transformation: replacementTransformReduce,
+				amount:         3,
+			},
+		},
+	}
+}
+
 // authoredAbilitiesForCard 將固定卡牌的 Go 能力編寫資料交給同一個 compiler。
 // 輸入為 Card ID；輸出為該卡目前已遷移的能力資料，副作用為零。
 func authoredAbilitiesForCard(id CardID) []authoredAbilityDefinition {
@@ -349,6 +382,8 @@ func authoredAbilitiesForCard(id CardID) []authoredAbilityDefinition {
 		return impactHammerAbilities()
 	case redHareCardID:
 		return redHareAbilities()
+	case infernalVesselCardID:
+		return infernalVesselAbilities()
 	}
 	return nil
 }
@@ -423,10 +458,17 @@ func compileAbilityDefinitions(definition CardDefinition, authored []authoredAbi
 			if err := validateStaticEffectDefinition(ability.static); err != nil {
 				return nil, fmt.Errorf("%s: static: %w", context, err)
 			}
+		case abilityKindReplacement:
+			if ability.timing != "" || ability.usage != "" || ability.reduction != "" || ability.baseCost != 0 || ability.target != nil || ability.trigger != nil || ability.static != nil || len(ability.effects) != 0 {
+				return nil, fmt.Errorf("%s: replacement declaration payload unsupported", context)
+			}
+			if err := validateReplacementDefinition(ability.replacement); err != nil {
+				return nil, fmt.Errorf("%s: replacement: %w", context, err)
+			}
 		default:
 			return nil, fmt.Errorf("%s: unknown kind %q", context, ability.kind)
 		}
-		if ability.kind != abilityKindStatic && len(ability.effects) == 0 {
+		if ability.kind != abilityKindStatic && ability.kind != abilityKindReplacement && len(ability.effects) == 0 {
 			return nil, fmt.Errorf("%s: effects must not be empty", context)
 		}
 		result := compiledAbilityDefinition{
@@ -449,6 +491,10 @@ func compileAbilityDefinitions(definition CardDefinition, authored []authoredAbi
 		if ability.static != nil {
 			static := cloneStaticEffectDefinition(*ability.static)
 			result.static = &static
+		}
+		if ability.replacement != nil {
+			replacement := *ability.replacement
+			result.replacement = &replacement
 		}
 		bindings := make(map[resolutionBinding]struct{})
 		for index, effect := range ability.effects {
@@ -530,6 +576,24 @@ func compileAbilityDefinitions(definition CardDefinition, authored []authoredAbi
 		}
 	}
 	return compiled, nil
+}
+
+// validateReplacementDefinition 限制 replacement event filter 與 transformation 為 Infernal Vessel 已證明的 recover 規則。
+// 輸入為編寫的 replacement 定義；輸出為驗證錯誤或 nil，副作用為零。
+func validateReplacementDefinition(definition *replacementDefinition) error {
+	if definition == nil {
+		return fmt.Errorf("definition is required")
+	}
+	if definition.event != replacementEventRecover {
+		return fmt.Errorf("event unsupported %q", definition.event)
+	}
+	if definition.transformation != replacementTransformReduce {
+		return fmt.Errorf("transformation unsupported %q", definition.transformation)
+	}
+	if definition.amount != 3 {
+		return fmt.Errorf("amount must be 3")
+	}
+	return nil
 }
 
 // validateStaticEffectDefinition 限制目前支援集合可使用的 static predicate、layer、duration 與 modifier。
@@ -723,7 +787,7 @@ func (g *Game) compiledCardistry(card cardInstanceID) (compiledAbilityDefinition
 // 輸入為零；輸出為目前引擎版本釘選的定義或驗證錯誤，副作用為零。
 func compileReplayDefinitions() (map[CardID]CardDefinition, error) {
 	definitions := make(map[CardID]CardDefinition)
-	for _, id := range []CardID{wonderlandsReignCardID, straightFlareCardID, threeOfHeartsCardID, impactHammerCardID, redHareCardID} {
+	for _, id := range []CardID{wonderlandsReignCardID, straightFlareCardID, threeOfHeartsCardID, impactHammerCardID, redHareCardID, infernalVesselCardID} {
 		definition := CardDefinition{
 			id: id,
 			face: CardFace{

@@ -119,8 +119,8 @@ func TestInfernalVesselRecomputesRecoverAndDoesNotChangeRecoverCosts(t *testing.
 	}
 }
 
-// TestReplacementChoiceUsesAffectedControllerAndResumesAfterRecalculation 驗證兩個 Vessel 時由 recover 玩家選順序並逐次重算。
-// 輸入為雙方各一個 Vessel 與 10 點 recover；輸出為 Player One 的 PendingChoice，副作用是最後只 recover 4 點。
+// TestReplacementChoiceUsesAffectedControllerAndResumesAfterRecalculation 驗證兩個 Vessel 時由 recover 玩家選順序、拒絕非法選擇並逐次重算。
+// 輸入為雙方各一個 Vessel、10 點 recover 與偽造 handle；輸出為 Player One 的 PendingChoice、未變動的權威狀態與最後 recover 4 點，副作用是記錄完整 cause chain。
 func TestReplacementChoiceUsesAffectedControllerAndResumesAfterRecalculation(t *testing.T) {
 	game := newActionGame(t)
 	champion := game.state.Champions[model.PlayerOne.UID]
@@ -156,21 +156,43 @@ func TestReplacementChoiceUsesAffectedControllerAndResumesAfterRecalculation(t *
 	if game.applyReplacementIntent(intent, &continuation) {
 		t.Fatal("applyReplacementIntent() completed instead of requesting replacement order")
 	}
-	choice := game.pendingChoice(model.PlayerOne)
-	if choice == nil || len(choice.Options) != 2 {
-		t.Fatalf("Player One PendingChoice = %#v, want two Vessel choices", choice)
+	view, err := game.PlayerView(model.PlayerOne)
+	if err != nil {
+		t.Fatalf("PlayerView() error = %v", err)
 	}
-	if otherChoice := game.pendingChoice(model.PlayerTwo); otherChoice != nil {
-		t.Fatalf("Player Two PendingChoice = %#v, want nil", otherChoice)
+	if view.PendingChoice == nil || len(view.PendingChoice.Options) != 2 {
+		t.Fatalf("PlayerView().PendingChoice = %#v, want two Vessel choices", view.PendingChoice)
 	}
+	otherView, err := game.PlayerView(model.PlayerTwo)
+	if err != nil {
+		t.Fatalf("PlayerView() error = %v", err)
+	}
+	if otherView.PendingChoice != nil {
+		t.Fatalf("Player Two PendingChoice = %#v, want nil", otherView.PendingChoice)
+	}
+	beforeHash := game.StateHash()
+	beforeReplay := game.Replay()
 	if err := game.Submit(model.PlayerOne, Input{
 		Revision: game.state.Revision,
-		Choice:   choice.Options[0],
+		Choice:   ViewHandle("forged-replacement-choice"),
+	}); err == nil {
+		t.Fatal("Submit() accepted forged replacement choice")
+	}
+	if game.StateHash() != beforeHash || len(game.Replay().Steps) != len(beforeReplay.Steps) {
+		t.Fatal("rejected replacement choice changed authoritative state or replay")
+	}
+	if err := game.Submit(model.PlayerOne, Input{
+		Revision: view.Revision,
+		Choice:   view.PendingChoice.Options[0],
 	}); err != nil {
 		t.Fatalf("Submit() replacement choice error = %v", err)
 	}
 	if got := game.state.Champions[model.PlayerOne.UID].Damage; got != 6 {
 		t.Fatalf("damage after two Vessel replacements = %d, want 6", got)
+	}
+	batch := game.state.Events[len(game.state.Events)-1]
+	if len(batch.CauseChain) != 4 || batch.CauseChain[0].Kind != "recover-intent" || batch.CauseChain[1].Kind != string(replacementRecoverReduce) || batch.CauseChain[2].Kind != string(replacementRecoverReduce) || batch.CauseChain[3].Kind != string(replacementIntentRecover) {
+		t.Fatalf("CauseChain = %#v, want recover intent, both replacements, and committed recover", batch.CauseChain)
 	}
 }
 

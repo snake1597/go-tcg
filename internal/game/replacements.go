@@ -44,6 +44,7 @@ type replacementEffect struct {
 	Source        objectID        `json:"source"`
 	Controller    *model.Player   `json:"controller"`
 	Target        objectID        `json:"target,omitempty"`
+	Amount        int             `json:"amount,omitempty"`
 	ExpiresAtTurn uint64          `json:"expires_at_turn,omitempty"`
 }
 
@@ -154,7 +155,7 @@ func (g *Game) submitReplacementChoice(player *model.Player, source objectID) er
 	return nil
 }
 
-// replacementCandidates 從尚未到期的 Safeguard 與場上的 Infernal Vessel 重建適用候選並依 source 穩定排序。
+// replacementCandidates 從尚未到期的 delayed replacement 與場上已編譯 Ability Definition 重建適用候選並依 source 穩定排序。
 // 輸入 intent 不會改變 state；輸出排除已套用來源，讓每次 replacement 後都會重新判定。
 func (g *Game) replacementCandidates(intent replacementIntent) []replacementEffect {
 	candidates := []replacementEffect{}
@@ -167,11 +168,22 @@ func (g *Game) replacementCandidates(intent replacementIntent) []replacementEffe
 	}
 	if intent.Kind == replacementIntentRecover {
 		for source, object := range g.state.Objects {
-			if g.state.Cards[object.Card].Definition == infernalVesselCardID && !containsObject(intent.Applied, source) {
+			if containsObject(intent.Applied, source) {
+				continue
+			}
+			definition, exists := g.definitions[g.state.Cards[object.Card].Definition]
+			if !exists {
+				continue
+			}
+			for _, ability := range definition.abilities {
+				if ability.kind != abilityKindReplacement || ability.replacement == nil || ability.replacement.event != replacementEventRecover || ability.replacement.transformation != replacementTransformReduce {
+					continue
+				}
 				effect := replacementEffect{
 					Kind:       replacementRecoverReduce,
 					Source:     source,
 					Controller: object.Owner,
+					Amount:     ability.replacement.amount,
 				}
 				candidates = append(
 					candidates,
@@ -199,7 +211,7 @@ func (g *Game) applyReplacement(intent *replacementIntent, effect replacementEff
 			intent.Amount = 0
 		}
 	case replacementRecoverReduce:
-		intent.Amount -= 3
+		intent.Amount -= effect.Amount
 	}
 	intent.Applied = append(intent.Applied, effect.Source)
 	cause := replacementCause{
