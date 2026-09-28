@@ -165,6 +165,16 @@ func (g *Game) commitAllyActivation(player *model.Player, card cardInstanceID, r
 		zones.Hand = removeCardAt(zones.Hand, paymentIndex)
 		zones.Memory = append(zones.Memory, payment)
 	}
+	return g.commitAllyActivationTransaction(
+		player,
+		card,
+		zones,
+	)
+}
+
+// commitAllyActivationTransaction 提交已驗證的 Ally 付款與來源移動，並只建立一次 Ability Instance。
+// 輸入為控制者、來源卡與已移除來源及套用付款的區域快照；輸出為提交錯誤或 nil，副作用為更新區域、Effects Stack 與 Opportunity。
+func (g *Game) commitAllyActivationTransaction(player *model.Player, card cardInstanceID, zones playerZones) error {
 	g.state.Zones[player.UID] = zones
 	g.queueAllyActivation(player, card)
 	return nil
@@ -185,6 +195,9 @@ func (g *Game) queueAllyActivation(player *model.Player, card cardInstanceID) {
 		"",
 		operations,
 	)
+	if ability, exists := g.compiledAlly(card); exists {
+		instance.Slot = ability.slot
+	}
 	g.pushAbility(instance)
 	g.grantOpportunity(player)
 }

@@ -393,7 +393,7 @@ func (g *Game) resolveCombatStateBasedPass(cause, parentFlow string) bool {
 		}
 		delete(g.state.Objects, id)
 		g.putInGraveyard(object.Card)
-		g.enqueueVeritaDeath(object.Owner, object.Card)
+		g.enqueueAllyDeath(object.Owner, object.Card)
 		g.recordCombatStateBasedEvent(cause, parentFlow, "destroy", object.Card)
 		changed = true
 	}

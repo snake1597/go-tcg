@@ -334,8 +334,18 @@ func (g *Game) sacrificeForPepperedChef(player *model.Player, chef, sacrifice ob
 	return nil
 }
 
-func (g *Game) enqueueVeritaDeath(player *model.Player, card cardInstanceID) {
-	if g.state.Cards[card].Definition != veritaCardID {
+// enqueueAllyDeath 依已編譯的死亡能力建立持續效果，讓卡牌不需透過 Card ID 分支結算。
+// 輸入為死亡 Ally 的控制者與卡牌實例；輸出為零值，副作用為建立 Ability Instance 並刷新 trigger stack。
+func (g *Game) enqueueAllyDeath(player *model.Player, card cardInstanceID) {
+	abilityDefinition, exists := g.compiledAbility(card, abilityKindTriggered)
+	if !exists || abilityDefinition.trigger == nil || abilityDefinition.trigger.event != eventKindDestroy || abilityDefinition.deathModifier == nil {
+		return
+	}
+	expiresAtTurn, err := g.expiresAtTurnForModifierDuration(
+		player,
+		abilityDefinition.deathModifier.duration,
+	)
+	if err != nil {
 		return
 	}
 	operations := make([]effectOperation, 0)
@@ -347,10 +357,8 @@ func (g *Game) enqueueVeritaDeath(player *model.Player, card cardInstanceID) {
 				Scope:         effectScopeObject,
 				Layer:         effectLayerModifier,
 				PowerLife:     powerLifeModify,
-				ExpiresAtTurn: g.endOfNextTurn(player),
-				Modifier: continuousModifier{
-					PowerDelta: 1,
-				},
+				ExpiresAtTurn: expiresAtTurn,
+				Modifier:      abilityDefinition.deathModifier.modifier,
 			},
 		})
 	}
@@ -363,6 +371,7 @@ func (g *Game) enqueueVeritaDeath(player *model.Player, card cardInstanceID) {
 		"",
 		operations,
 	)
+	ability.Slot = abilityDefinition.slot
 	g.flushTriggers([]effectStackItem{
 		{
 			Kind:       effectStackAbility,
@@ -372,6 +381,17 @@ func (g *Game) enqueueVeritaDeath(player *model.Player, card cardInstanceID) {
 			Ability:    &ability,
 		},
 	})
+}
+
+// expiresAtTurnForModifierDuration 將已編譯的持續時間轉成 scheduler 使用的到期回合。
+// 輸入為效果控制者與受支援的持續時間；輸出為到期回合或驗證錯誤，副作用為零。
+func (g *Game) expiresAtTurnForModifierDuration(player *model.Player, duration modifierDuration) (uint64, error) {
+	switch duration {
+	case modifierDurationEndOfNextTurn:
+		return g.endOfNextTurn(player), nil
+	default:
+		return 0, fmt.Errorf("unsupported modifier duration %q", duration)
+	}
 }
 
 // endOfNextTurn 回傳指定玩家下個回合結束後的過期回合編號。

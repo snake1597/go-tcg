@@ -16,21 +16,6 @@ type alternativeCostPayment string
 
 const alternativeCostBanishGraveyard alternativeCostPayment = "banish_graveyard"
 
-// alternativeCostSpecs 保存卡牌宣告的替代費用條件；選牌與付款流程不依卡名分支。
-var alternativeCostSpecs = map[CardID]alternativeCostSpec{
-	veritaCardID: {
-		Selection: cardSelectionSpec{
-			Zone:                     cardZoneGraveyard,
-			RequiredType:             "ALLY",
-			RequiredSubtype:          "SUITED",
-			MinimumCards:             3,
-			MatchPrintedReserveTotal: true,
-			PrintedReserveTotal:      10,
-		},
-		Payment: alternativeCostBanishGraveyard,
-	},
-}
-
 // alternativeCostDeclaration 保存尚未提交的替代費用選牌；取消不移動任何卡牌。
 type alternativeCostDeclaration struct {
 	Controller *model.Player    `json:"controller"`
@@ -40,12 +25,14 @@ type alternativeCostDeclaration struct {
 
 // alternativeCostFor 回傳來源卡宣告的替代費用；未宣告時回傳 false，無副作用。
 func (g *Game) alternativeCostFor(source cardInstanceID) (alternativeCostSpec, bool) {
-	card, exists := g.state.Cards[source]
-	if !exists {
+	if _, exists := g.state.Cards[source]; !exists {
 		return alternativeCostSpec{}, false
 	}
-	spec, exists := alternativeCostSpecs[card.Definition]
-	return spec, exists
+	ability, exists := g.compiledAlly(source)
+	if !exists || ability.alternative == nil {
+		return alternativeCostSpec{}, false
+	}
+	return *ability.alternative, true
 }
 
 // alternativeCostCards 搜尋第一組完整合法付款；沒有組合時回傳 nil，無副作用。
@@ -139,7 +126,9 @@ func (g *Game) commitAlternativeCost(declaration *alternativeCostDeclaration) er
 	index := cardIndex(zones.Hand, declaration.Source)
 	zones.Hand = append([]cardInstanceID(nil), zones.Hand...)
 	zones.Hand = removeCardAt(zones.Hand, index)
-	g.state.Zones[declaration.Controller.UID] = zones
-	g.queueAllyActivation(declaration.Controller, declaration.Source)
-	return nil
+	return g.commitAllyActivationTransaction(
+		declaration.Controller,
+		declaration.Source,
+		zones,
+	)
 }

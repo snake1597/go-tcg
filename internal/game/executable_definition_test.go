@@ -50,6 +50,37 @@ func TestCompileImpactHammerTriggeredDefinition(t *testing.T) {
 	}
 }
 
+// TestCompileVeritaDefinitions 驗證 Verita 由同一份可執行定義提供替代付款、靜態效果及死亡後持續效果。
+// 輸入為 Verita 的卡牌定義與 Go 編寫資料；輸出為包含三種能力行為的已編譯定義，副作用為零。
+func TestCompileVeritaDefinitions(t *testing.T) {
+	definition := CardDefinition{
+		id: veritaCardID,
+		face: CardFace{
+			id: CardFaceID("face:4qc47amgpp:front"),
+		},
+	}
+	authored := veritaAbilities()
+	abilities, err := compileAbilityDefinitions(
+		definition,
+		authored,
+	)
+	if err != nil {
+		t.Fatalf("compileAbilityDefinitions() error = %v", err)
+	}
+	if len(abilities) != 3 {
+		t.Fatalf("compiled Verita abilities = %#v, want three definitions", abilities)
+	}
+	if abilities[0].alternative == nil || abilities[0].alternative.Selection.Zone != cardZoneGraveyard || abilities[0].alternative.Selection.MinimumCards != 3 || abilities[0].alternative.Selection.PrintedReserveTotal != 10 || abilities[0].alternative.Payment != alternativeCostBanishGraveyard {
+		t.Fatalf("compiled Verita alternative cost = %#v, want three Suited Allies totaling ten from graveyard", abilities[0].alternative)
+	}
+	if abilities[1].static == nil || abilities[1].static.predicate != staticPredicateOtherControlledSuitedAlly || !abilities[1].static.modifier.GrantImmortality {
+		t.Fatalf("compiled Verita static ability = %#v, want other controlled Suited Ally immortality", abilities[1].static)
+	}
+	if abilities[2].deathModifier == nil || abilities[2].deathModifier.selector != selectorControlledSuited || abilities[2].deathModifier.duration != modifierDurationEndOfNextTurn || abilities[2].deathModifier.modifier.PowerDelta != 1 {
+		t.Fatalf("compiled Verita death ability = %#v, want +1 power through owner's next turn", abilities[2].deathModifier)
+	}
+}
+
 // TestCompileRedHareStaticDefinitions 驗證 Red Hare 將 Pride 的攻擊限制與條件解除定義為靜態能力。
 // 輸入為 Red Hare 的卡牌與牌面；輸出為具 predicate、layer、sublayer、modifier、duration 及來源存在條件的編譯定義，副作用為零。
 func TestCompileRedHareStaticDefinitions(t *testing.T) {

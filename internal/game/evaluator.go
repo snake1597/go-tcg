@@ -313,21 +313,6 @@ func (g *Game) staticEffectsFor(target objectID) []continuousEffect {
 				)
 			}
 		}
-		if card.Definition == veritaCardID && sourceID != target && targetExists && samePlayer(source.Owner, targetObject.Owner) && containsString(targetObject.Types, "ALLY") && g.cardHasSubtype(targetObject.Card, "SUITED") {
-			effects = append(
-				effects,
-				continuousEffect{
-					Source:     sourceID,
-					Controller: source.Owner,
-					Scope:      effectScopeOtherControlledAllies,
-					Layer:      effectLayerAbility,
-					Timestamp:  uint64(len(effects)),
-					Modifier: continuousModifier{
-						GrantImmortality: true,
-					},
-				},
-			)
-		}
 	}
 	return effects
 }
@@ -335,17 +320,26 @@ func (g *Game) staticEffectsFor(target objectID) []continuousEffect {
 // staticAbilityApplies 判定來源仍在場且該 static predicate 是否套用到目前查詢目標。
 // 輸入為已編譯定義、來源與目標；輸出為是否應建立 continuous effect，副作用為零。
 func (g *Game) staticAbilityApplies(ability *staticEffectDefinition, sourceID objectID, source fieldObject, target objectID) bool {
-	if ability.sourcePresence != sourcePresenceRequired || sourceID != target {
+	if ability.sourcePresence != sourcePresenceRequired {
 		return false
 	}
 	switch ability.predicate {
 	case staticPredicateSelf:
-		return true
+		return sourceID == target
 	case staticPredicateControlsQualifiedHumanAlly:
-		return g.controlsQualifiedHumanAlly(source.Owner, sourceID)
+		return sourceID == target && g.controlsQualifiedHumanAlly(source.Owner, sourceID)
+	case staticPredicateOtherControlledSuitedAlly:
+		return g.isOtherControlledSuitedAlly(source.Owner, sourceID, target)
 	default:
 		return false
 	}
+}
+
+// isOtherControlledSuitedAlly 判定目標是否為來源控制者的另一個 Suited Ally。
+// 輸入為來源控制者、來源物件與目標物件；輸出為目標是否符合該靜態能力範圍，副作用為零。
+func (g *Game) isOtherControlledSuitedAlly(controller *model.Player, source, target objectID) bool {
+	targetObject, exists := g.state.Objects[target]
+	return source != target && exists && samePlayer(controller, targetObject.Owner) && containsString(targetObject.Types, "ALLY") && g.cardHasSubtype(targetObject.Card, "SUITED")
 }
 
 func (g *Game) controlsQualifiedHumanAlly(player *model.Player, exclude objectID) bool {

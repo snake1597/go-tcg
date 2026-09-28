@@ -259,6 +259,9 @@ func TestVeritaAlternativeCostSelectsCardsBeforeAtomicallyCommitting(t *testing.
 	if game.state.Knowledge.AlternativeCost != nil || cardIndex(game.state.Zones[player.UID].Hand, verita) >= 0 {
 		t.Fatal("completed Verita selection was not committed")
 	}
+	if len(game.state.EffectsStack) != 1 || game.state.EffectsStack[0].Ability == nil || game.state.EffectsStack[0].Ability.Slot != "ability:4qc47amgpp:front:ally-activation" || game.state.EffectsStack[0].Ability.Source != verita || game.state.EffectsStack[0].Ability.SourceLKI != verita {
+		t.Fatalf("alternative Verita Ability Instance = %#v, want one source-preserving ally activation", game.state.EffectsStack)
+	}
 	for _, card := range cards {
 		if cardIndex(game.state.Zones[player.UID].Banishment, card) < 0 {
 			t.Fatalf("Verita payment %q was not banished", card)
@@ -678,7 +681,7 @@ func TestRedHareAndVeritaContinuousEffects(t *testing.T) {
 		t.Fatal("Verita did not grant another Suited ally immortality")
 	}
 	delete(game.state.Objects, verita)
-	game.enqueueVeritaDeath(player, veritaCard)
+	game.enqueueAllyDeath(player, veritaCard)
 	if len(game.state.EffectsStack) != 1 || game.state.EffectsStack[0].Ability == nil {
 		t.Fatalf("Verita On Death stack = %#v, want one Ability Instance", game.state.EffectsStack)
 	}

@@ -14,6 +14,7 @@ const (
 	abilityKindTriggered   abilityDefinitionKind = "triggered"
 	abilityKindStatic      abilityDefinitionKind = "static"
 	abilityKindReplacement abilityDefinitionKind = "replacement"
+	abilityKindAlly        abilityDefinitionKind = "ally"
 )
 
 type abilityTiming string
@@ -50,7 +51,10 @@ const (
 
 type eventKind string
 
-const eventKindWield eventKind = "wield"
+const (
+	eventKindWield   eventKind = "wield"
+	eventKindDestroy eventKind = "destroy"
+)
 
 type selectorKind string
 
@@ -109,6 +113,7 @@ type staticPredicateKind string
 const (
 	staticPredicateSelf                       staticPredicateKind = "self"
 	staticPredicateControlsQualifiedHumanAlly staticPredicateKind = "controls-qualified-human-ally"
+	staticPredicateOtherControlledSuitedAlly  staticPredicateKind = "other-controlled-suited-ally"
 )
 
 type effectSubLayer string
@@ -146,6 +151,16 @@ type replacementDefinition struct {
 	amount         int
 }
 
+type modifierDuration string
+
+const modifierDurationEndOfNextTurn modifierDuration = "end-of-next-turn"
+
+type deathModifierDefinition struct {
+	selector selectorKind
+	duration modifierDuration
+	modifier continuousModifier
+}
+
 type authoredEffectDefinition struct {
 	kind       authoredEffectKind
 	draw       *drawEffectDefinition
@@ -155,17 +170,19 @@ type authoredEffectDefinition struct {
 }
 
 type authoredAbilityDefinition struct {
-	slot        AbilitySlotID
-	kind        abilityDefinitionKind
-	timing      abilityTiming
-	usage       abilityUsage
-	reduction   abilityCostReduction
-	baseCost    int
-	target      *targetSelector
-	trigger     *triggerDefinition
-	static      *staticEffectDefinition
-	replacement *replacementDefinition
-	effects     []authoredEffectDefinition
+	slot          AbilitySlotID
+	kind          abilityDefinitionKind
+	timing        abilityTiming
+	usage         abilityUsage
+	reduction     abilityCostReduction
+	baseCost      int
+	target        *targetSelector
+	trigger       *triggerDefinition
+	static        *staticEffectDefinition
+	replacement   *replacementDefinition
+	alternative   *alternativeCostSpec
+	deathModifier *deathModifierDefinition
+	effects       []authoredEffectDefinition
 }
 
 // compiledEffect 保存已驗證的具體效果 payload，不讓 authoring tag 進入對局狀態。
@@ -179,17 +196,19 @@ type compiledEffect struct {
 
 // compiledAbilityDefinition 是建局前完成驗證的能力中介表示。
 type compiledAbilityDefinition struct {
-	slot        AbilitySlotID
-	kind        abilityDefinitionKind
-	timing      abilityTiming
-	usage       abilityUsage
-	reduction   abilityCostReduction
-	baseCost    int
-	target      *targetSelector
-	trigger     *triggerDefinition
-	static      *staticEffectDefinition
-	replacement *replacementDefinition
-	effects     []compiledEffect
+	slot          AbilitySlotID
+	kind          abilityDefinitionKind
+	timing        abilityTiming
+	usage         abilityUsage
+	reduction     abilityCostReduction
+	baseCost      int
+	target        *targetSelector
+	trigger       *triggerDefinition
+	static        *staticEffectDefinition
+	replacement   *replacementDefinition
+	alternative   *alternativeCostSpec
+	deathModifier *deathModifierDefinition
+	effects       []compiledEffect
 }
 
 var abilitySlotKeyPattern = regexp.MustCompile(`^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$`)
@@ -368,6 +387,56 @@ func infernalVesselAbilities() []authoredAbilityDefinition {
 	}
 }
 
+// veritaAbilities 宣告 Verita 的一般 Ally 結算、墓地替代付款、靜態 Immortality 與死亡後暫時修正。
+// 輸入為零；輸出為不共享可變狀態的 Go 編寫資料，副作用為零。
+func veritaAbilities() []authoredAbilityDefinition {
+	return []authoredAbilityDefinition{
+		{
+			slot: "ability:4qc47amgpp:front:ally-activation",
+			kind: abilityKindAlly,
+			alternative: &alternativeCostSpec{
+				Selection: cardSelectionSpec{
+					Zone:                     cardZoneGraveyard,
+					RequiredType:             "ALLY",
+					RequiredSubtype:          "SUITED",
+					MinimumCards:             3,
+					MatchPrintedReserveTotal: true,
+					PrintedReserveTotal:      10,
+				},
+				Payment: alternativeCostBanishGraveyard,
+			},
+		},
+		{
+			slot: "ability:4qc47amgpp:front:other-suited-immortality",
+			kind: abilityKindStatic,
+			static: &staticEffectDefinition{
+				predicate: staticPredicateOtherControlledSuitedAlly,
+				layer:     effectLayerAbility,
+				sublayer:  effectSubLayerNone,
+				modifier: continuousModifier{
+					GrantImmortality: true,
+				},
+				duration:       staticDurationWhilePredicate,
+				sourcePresence: sourcePresenceRequired,
+			},
+		},
+		{
+			slot: "ability:4qc47amgpp:front:on-death-suited-power",
+			kind: abilityKindTriggered,
+			trigger: &triggerDefinition{
+				event: eventKindDestroy,
+			},
+			deathModifier: &deathModifierDefinition{
+				selector: selectorControlledSuited,
+				duration: modifierDurationEndOfNextTurn,
+				modifier: continuousModifier{
+					PowerDelta: 1,
+				},
+			},
+		},
+	}
+}
+
 // authoredAbilitiesForCard 將固定卡牌的 Go 能力編寫資料交給同一個 compiler。
 // 輸入為 Card ID；輸出為該卡目前已遷移的能力資料，副作用為零。
 func authoredAbilitiesForCard(id CardID) []authoredAbilityDefinition {
@@ -384,6 +453,8 @@ func authoredAbilitiesForCard(id CardID) []authoredAbilityDefinition {
 		return redHareAbilities()
 	case infernalVesselCardID:
 		return infernalVesselAbilities()
+	case veritaCardID:
+		return veritaAbilities()
 	}
 	return nil
 }
@@ -444,12 +515,26 @@ func compileAbilityDefinitions(definition CardDefinition, authored []authoredAbi
 			if ability.trigger != nil {
 				return nil, fmt.Errorf("%s: trigger unsupported for Action", context)
 			}
+		case abilityKindAlly:
+			if ability.timing != "" || ability.usage != "" || ability.reduction != "" || ability.baseCost != 0 || ability.target != nil || ability.trigger != nil || ability.static != nil || ability.replacement != nil || ability.deathModifier != nil || len(ability.effects) != 0 {
+				return nil, fmt.Errorf("%s: Ally declaration payload unsupported", context)
+			}
+			if err := validateAlternativeCostSpec(ability.alternative); err != nil {
+				return nil, fmt.Errorf("%s: alternative cost: %w", context, err)
+			}
 		case abilityKindTriggered:
 			if ability.timing != "" || ability.usage != "" || ability.reduction != "" || ability.baseCost != 0 || ability.target != nil {
 				return nil, fmt.Errorf("%s: triggered declaration payload unsupported", context)
 			}
-			if ability.trigger == nil || ability.trigger.event != eventKindWield {
-				return nil, fmt.Errorf("%s: trigger.event must be wield", context)
+			if ability.trigger == nil || (ability.trigger.event != eventKindWield && ability.trigger.event != eventKindDestroy) {
+				return nil, fmt.Errorf("%s: trigger.event unsupported", context)
+			}
+			if ability.trigger.event == eventKindDestroy {
+				if err := validateDeathModifierDefinition(ability.deathModifier); err != nil || len(ability.effects) != 0 {
+					return nil, fmt.Errorf("%s: destroy trigger payload unsupported", context)
+				}
+			} else if ability.deathModifier != nil {
+				return nil, fmt.Errorf("%s: wield trigger death modifier unsupported", context)
 			}
 		case abilityKindStatic:
 			if ability.timing != "" || ability.usage != "" || ability.reduction != "" || ability.baseCost != 0 || ability.target != nil || ability.trigger != nil || len(ability.effects) != 0 {
@@ -468,7 +553,7 @@ func compileAbilityDefinitions(definition CardDefinition, authored []authoredAbi
 		default:
 			return nil, fmt.Errorf("%s: unknown kind %q", context, ability.kind)
 		}
-		if ability.kind != abilityKindStatic && ability.kind != abilityKindReplacement && len(ability.effects) == 0 {
+		if ability.kind != abilityKindStatic && ability.kind != abilityKindReplacement && ability.kind != abilityKindAlly && !(ability.kind == abilityKindTriggered && ability.trigger != nil && ability.trigger.event == eventKindDestroy) && len(ability.effects) == 0 {
 			return nil, fmt.Errorf("%s: effects must not be empty", context)
 		}
 		result := compiledAbilityDefinition{
@@ -495,6 +580,14 @@ func compileAbilityDefinitions(definition CardDefinition, authored []authoredAbi
 		if ability.replacement != nil {
 			replacement := *ability.replacement
 			result.replacement = &replacement
+		}
+		if ability.alternative != nil {
+			alternative := *ability.alternative
+			result.alternative = &alternative
+		}
+		if ability.deathModifier != nil {
+			deathModifier := *ability.deathModifier
+			result.deathModifier = &deathModifier
 		}
 		bindings := make(map[resolutionBinding]struct{})
 		for index, effect := range ability.effects {
@@ -614,8 +707,30 @@ func validateStaticEffectDefinition(effect *staticEffectDefinition) error {
 		if !isQualifiedHumanStaticModifier(effect.modifier) {
 			return fmt.Errorf("qualified Human predicate requires Pride removal and granted On Attack")
 		}
+	case staticPredicateOtherControlledSuitedAlly:
+		if !isOtherControlledSuitedAllyModifier(effect.modifier) {
+			return fmt.Errorf("other controlled Suited Ally predicate requires Immortality")
+		}
 	default:
 		return fmt.Errorf("predicate unsupported %q", effect.predicate)
+	}
+	return nil
+}
+
+// validateAlternativeCostSpec 限制目前 Support Set 可用的墓地放逐替代費用。
+// 輸入為編寫的替代費用；輸出為驗證錯誤或 nil，副作用為零。
+func validateAlternativeCostSpec(spec *alternativeCostSpec) error {
+	if spec == nil || spec.Selection.Zone != cardZoneGraveyard || spec.Selection.RequiredType != "ALLY" || spec.Selection.RequiredSubtype != "SUITED" || spec.Selection.MinimumCards != 3 || !spec.Selection.MatchPrintedReserveTotal || spec.Selection.PrintedReserveTotal != 10 || spec.Payment != alternativeCostBanishGraveyard {
+		return fmt.Errorf("unsupported selection or payment")
+	}
+	return nil
+}
+
+// validateDeathModifierDefinition 限制死亡觸發以受控 Suited Ally 為目標並持續至擁有者下回合結束。
+// 輸入為編寫的死亡後修正；輸出為驗證錯誤或 nil，副作用為零。
+func validateDeathModifierDefinition(definition *deathModifierDefinition) error {
+	if definition == nil || definition.selector != selectorControlledSuited || definition.duration != modifierDurationEndOfNextTurn || definition.modifier.PowerDelta != 1 {
+		return fmt.Errorf("unsupported selector, duration, or modifier")
 	}
 	return nil
 }
@@ -655,6 +770,12 @@ func isQualifiedHumanStaticModifier(modifier continuousModifier) bool {
 		!modifier.GrantTrueSight &&
 		modifier.RemovePride &&
 		modifier.GrantRedHareOnAttack
+}
+
+// isOtherControlledSuitedAllyModifier 驗證 Verita 靜態能力只授予 Immortality。
+// 輸入為連續效果修正；輸出為是否符合已支援的修正形狀，副作用為零。
+func isOtherControlledSuitedAllyModifier(modifier continuousModifier) bool {
+	return modifier.SetPride == nil && modifier.SetPower == nil && modifier.SetLife == nil && modifier.PowerDelta == 0 && modifier.LifeDelta == 0 && modifier.ReserveCostDelta == 0 && modifier.GrantImmortality && !modifier.ProhibitRecover && !modifier.SwitchPowerLife && !modifier.GrantStealth && !modifier.GrantTrueSight && !modifier.RemovePride && !modifier.GrantRedHareOnAttack
 }
 
 // cloneStaticEffectDefinition 複製 static 定義及其指標欄位，隔離編寫資料和編譯結果。
@@ -783,11 +904,17 @@ func (g *Game) compiledCardistry(card cardInstanceID) (compiledAbilityDefinition
 	return g.compiledAbility(card, abilityKindCardistry)
 }
 
+// compiledAlly 取得來源卡已編譯的 Ally 宣告定義。
+// 輸入為卡牌實例；輸出為 Ally 能力及存在旗標，副作用為零。
+func (g *Game) compiledAlly(card cardInstanceID) (compiledAbilityDefinition, bool) {
+	return g.compiledAbility(card, abilityKindAlly)
+}
+
 // compileReplayDefinitions 重建重播所需的固定可執行定義，不將編寫資料寫入 Game State。
 // 輸入為零；輸出為目前引擎版本釘選的定義或驗證錯誤，副作用為零。
 func compileReplayDefinitions() (map[CardID]CardDefinition, error) {
 	definitions := make(map[CardID]CardDefinition)
-	for _, id := range []CardID{wonderlandsReignCardID, straightFlareCardID, threeOfHeartsCardID, impactHammerCardID, redHareCardID, infernalVesselCardID} {
+	for _, id := range []CardID{wonderlandsReignCardID, straightFlareCardID, threeOfHeartsCardID, impactHammerCardID, redHareCardID, infernalVesselCardID, veritaCardID} {
 		definition := CardDefinition{
 			id: id,
 			face: CardFace{
