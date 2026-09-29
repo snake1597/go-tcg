@@ -2,7 +2,9 @@
 
 **What to build:** 代表性 Cardistry 能力以同一定義宣告 timing、target、費用、使用限制及效果，成功提交後建立獨立 Ability Instance。
 
-**Blocked by:** 02 — 首張 Go 可執行定義與編譯驗證；共通規則操作 09 — Reserve Cost 與 Memory Cost 原子提交；共通規則操作 10 — 替代費用與 Wield 付款。
+**Blocked by:** 02 — 首張 Go 可執行定義與編譯驗證。
+
+**Related foundation:** 共通規則操作 09 — Reserve Cost 與 Memory Cost 原子提交。替代費用與 Wield 不屬於本票 blocker。
 
 **Status:** completed
 

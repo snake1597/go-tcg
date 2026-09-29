@@ -1,6 +1,6 @@
 # 共通規則操作與 DSL-ready 效果基礎
 
-Status: ready-for-agent
+Status: in-progress
 
 ## Problem Statement
 
@@ -13,6 +13,23 @@ Status: ready-for-agent
 讓卡牌能力、回合流程與 Cost Payment 透過共通的 typed rule operations 提交狀態變化。操作描述規則行為與原因；Game Module 在一處處理重新驗證、原子提交、Replacement Pipeline、Game Event、Knowledge State、觸發、Player View 與 replay。卡片專屬內容改成選擇條件、具名參照、數值表達式及操作序列的組合。
 
 先以現有 Go runtime 與 Support Set 完成可遊玩的逐步遷移。未來 DSL 編譯成同一種已驗證的操作資料；本規格不實作 DSL parser，也不替代更廣的可執行卡牌定義規格。
+
+### 與可執行卡牌定義規格的責任邊界
+
+- 本規格負責可重用 rule operation、Declaration Transaction、型別化參照、Resolution Frame 及權威狀態提交語意。
+- 卡牌可作為 operation 的端到端驗證案例，但 Card Definition、Ability Slot 遷移、production support metadata、DSL compiler 與舊 Card ID 行為路徑的最終清理由「可執行卡牌定義與 DSL-ready 能力 Runtime」規格負責。
+- 共通 operation issue 不得以完成某張卡牌的 Definition 遷移作為自身唯一完成條件；兩份規格也不得重複擁有同一卡牌遷移。
+- 另一份規格只使用本規格已存在的窄能力時，記錄為 `Related foundation`，不把尚未完成的 umbrella issue 列為 blocker。
+
+### 執行方式與 DSL 遷移串接
+
+- 目前第一優先是 08 與 DSL-ready Card Definitions 10 的共同收尾；以同一組正式介面 scenario 補齊 Action copy 的目標失效、中斷 cleanup、Game Event、state hash 與卡牌守恆，之後分別關閉 operation 與 Card Definition 驗收。
+- DSL-ready Card Definitions 13 是 Object／Weapon／Regalia 遷移主線。遷移某個 Ability Slot 時若發現缺少共通 primitive，先在本規格對應 issue 完成最小可重用 operation slice，再回到該 Slot；不得先加入卡牌專用 direct mutation 或之後才替換的暫時 API。
+- 一個 DSL vertical slice 只需要其實際使用的窄 operation 能力，不必等待對應 Common umbrella issue 的所有入口都完成。完成 slice 後，必須在 Common issue 記錄 `Delivered slice` 與剩餘入口，避免後續重做。
+- DSL 10 至 16 完成後，依下列順序收斂剩餘 Common backlog：01；接著可並行完成 05、07、09、10；01 完成後處理 02、03、04；04 完成後處理 06；最後以 11 作為整合與清理 gate。
+- 每個 operation slice 完成後立即移除被取代的 direct mutation 或卡名專用 runtime 分支，執行完整相關 scenario；不累積等待最後一次性清理。
+
+**目前第一優先 Common 工作：** 08 — Action 複製 operation，與 DSL-ready Card Definitions 10 共用下一個 scenario。01 與 04 雖可獨立開始，但單線執行時先關閉 08／DSL 10；之後由 DSL 13 的下一個 Ability Slot 決定是否先做 04、06、09 或 10 的 operation slice。
 
 ## User Stories
 
@@ -71,7 +88,7 @@ Status: ready-for-agent
 - 移動情境須覆蓋 Hand、Memory、Graveyard、Banishment、Effects Stack Source Card 及 Field Object，並檢查 owner、LKI、入場／離場觸發與事件原因。
 - 付款情境須覆蓋 Reserve Cost、Memory Cost、替代費用與 Wield，驗證無效或取消的 Declaration Transaction 不消耗卡牌、PRNG 或事件。
 - 選擇、傷害及複製情境須覆蓋目標失效、Pass、Replacement Pending Choice 後續行、隱藏資訊與暫時複製品清理。
-- 每個完成的遷移 slice 均須保持 Standard Game 可遊玩，並通過既有 replay 與 Support Set 驗證。
+- 每個完成的 operation slice 均須保持 Standard Game 可遊玩，並通過既有 replay 與 Support Set 驗證。
 
 ## Out of Scope
 

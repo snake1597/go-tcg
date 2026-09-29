@@ -2,7 +2,9 @@
 
 **What to build:** Straight Flare 由通用 selector、reference 與 value expression 決定合法目標和傷害數值。
 
-**Blocked by:** 02 — 首張 Go 可執行定義與編譯驗證；共通規則操作 07 — 數值表達式與傷害。
+**Blocked by:** 02 — 首張 Go 可執行定義與編譯驗證。
+
+**Related foundation:** 共通規則操作 07 — 數值表達式與傷害；該票負責完整共通化，Straight Flare vertical slice 不等待其全部卡牌範圍完成。
 
 **Status:** completed
 

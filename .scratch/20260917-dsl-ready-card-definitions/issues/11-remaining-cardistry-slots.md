@@ -1,8 +1,8 @@
 # 11 — 遷移其餘 Cardistry Ability Slots
 
-**What to build:** 固定 Support Set 中剩餘 Cardistry 能力由各自 Card Definition 描述，玩家仍能抽牌、抽至 Memory、加 counter、取得暫時修正與作選擇。
+**What to build:** 固定 Support Set 中除 Duchess 專屬複製 slice 外的剩餘 Cardistry 能力由各自 Card Definition 描述，玩家仍能抽牌、抽至 Memory、加 counter、取得暫時修正與作選擇。
 
-**Blocked by:** 03 — 目標與數值表達式能力；04 — 具名選擇與可序列化續行；05 — Activated ability 的費用與使用限制；10 — 複製能力與 runtime 身分。
+**Blocked by:** 03 — 目標與數值表達式能力；04 — 具名選擇與可序列化續行；05 — Activated ability 的費用與使用限制。
 
 **Status:** completed
 

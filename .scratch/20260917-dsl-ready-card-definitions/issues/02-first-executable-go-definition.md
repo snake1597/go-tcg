@@ -2,7 +2,9 @@
 
 **What to build:** Wonderlands Reign 的抽牌能力由 Card Definition 中不可變的 Ability Definition 執行，卡牌作者能在單一來源看見 Slot、條件與效果。
 
-**Blocked by:** 共通規則操作 02 — 抽牌與抽空規則。
+**Blocked by:** None — can start from the existing ability-draw semantics.
+
+**Related foundation:** 共通規則操作 02 — 抽牌與抽空規則；該票負責統一所有抽牌入口，不阻擋本票的單一卡牌 vertical slice。
 
 **Status:** completed
 

@@ -800,6 +800,160 @@ func TestDuchessCopyActivatesForFreeAndResolvesItsCopiedFace(t *testing.T) {
 	}
 }
 
+// TestDuchessCopiedActionFizzlesAfterTargetLeaves 驗證 Duchess 複製的 Action 在已選目標離場後依正式介面 fizzle。
+// 輸入為墓地 Blazing Throw、可被 Fast Action 移除的 Ally 與 Cardistry 付款；輸出驗證原牌放逐、費用保留、事件、清理、hash、replay 與卡牌守恆，副作用為完成一段測試對局。
+func TestDuchessCopiedActionFizzlesAfterTargetLeaves(t *testing.T) {
+	game := newCardistryGame(t, duchessCardID)
+	player := model.PlayerOne
+	opponent := model.PlayerTwo
+	source := findCard(t, game, player, blazingThrowCardID)
+	moveCardToGraveyard(t, game, player, source)
+	game.grantCardTracking(player, entityID(source))
+
+	zones := game.state.Zones[player.UID]
+	targetCard := cardInstanceID("")
+	for index, card := range zones.MainDeck {
+		if game.state.Cards[card].Definition != redHareCardID {
+			continue
+		}
+		targetCard = card
+		zones.MainDeck = removeCardAt(zones.MainDeck, index)
+		break
+	}
+	if targetCard == "" {
+		t.Fatal("fixture has no Red Hare")
+	}
+	game.state.Zones[player.UID] = zones
+	target := objectID("ally:duchess-copy-target")
+	game.state.Objects[target] = fieldObject{
+		ID:    target,
+		Card:  targetCard,
+		Owner: player,
+		Types: []string{
+			"ALLY",
+		},
+	}
+	targetObject := game.state.Objects[target]
+	targetObject.Damage = game.characteristicsFor(target).Life - 2
+	game.state.Objects[target] = targetObject
+
+	zones = game.state.Zones[opponent.UID]
+	responseCard := cardInstanceID("")
+	for index, card := range zones.MainDeck {
+		if game.state.Cards[card].Definition != fieryInterferenceCardID {
+			continue
+		}
+		responseCard = card
+		zones.MainDeck = removeCardAt(zones.MainDeck, index)
+		zones.Hand = append(zones.Hand, card)
+		break
+	}
+	if responseCard == "" {
+		t.Fatal("fixture has no Fiery Interference")
+	}
+	for len(zones.Memory) < game.state.Cards[responseCard].ReserveCost {
+		payment := zones.Hand[0]
+		if payment == responseCard {
+			payment = zones.Hand[1]
+		}
+		zones.Hand = removeCardAt(
+			zones.Hand,
+			cardIndex(zones.Hand, payment),
+		)
+		zones.Memory = append(zones.Memory, payment)
+	}
+	game.state.Zones[opponent.UID] = zones
+	fillMemory(t, game, player, 6, source)
+	game.advanceKnowledgeRevision()
+	game.captureReplayInitialState()
+
+	view, err := game.PlayerView(player)
+	if err != nil {
+		t.Fatalf("PlayerView() error = %v", err)
+	}
+	if err := game.Submit(
+		player,
+		Input{
+			Revision: view.Revision,
+			Action:   cardistryAction(t, game, player),
+		},
+	); err != nil {
+		t.Fatalf("Submit() Cardistry error = %v", err)
+	}
+	passOpportunityRound(t, game, player)
+	selectVisibleTargetByName(t, game, player, "Blazing Throw")
+	passOpportunityRound(t, game, player)
+	passOpportunityRound(t, game, player)
+	selectVisibleTargetByName(t, game, player, "Red Hare, Unrivaled Stallion")
+
+	submitActionKind(t, game, player, constants.ActionPass)
+	responseView, err := game.PlayerView(opponent)
+	if err != nil {
+		t.Fatalf("PlayerView() for response error = %v", err)
+	}
+	response := actionByCardName(t, responseView, "Fiery Interference")
+	if err := game.Submit(
+		opponent,
+		Input{
+			Revision: responseView.Revision,
+			Action:   response.Handle,
+			Reserve:  reserveHandles(response),
+		},
+	); err != nil {
+		t.Fatalf("Submit() Fiery Interference error = %v", err)
+	}
+	selectVisibleTargetByName(t, game, opponent, "Red Hare, Unrivaled Stallion")
+	for {
+		stackView, viewErr := game.PlayerView(player)
+		if viewErr != nil {
+			t.Fatalf("PlayerView() during resolution error = %v", viewErr)
+		}
+		if len(stackView.EffectsStack) == 0 {
+			break
+		}
+		if stackView.OpportunityHolder == nil {
+			t.Fatal("EffectsStack is nonempty without an opportunity holder")
+		}
+		submitActionKind(t, game, stackView.OpportunityHolder, constants.ActionPass)
+	}
+
+	finalView, err := game.PlayerView(player)
+	if err != nil {
+		t.Fatalf("PlayerView() after fizzle error = %v", err)
+	}
+	if finalView.PendingChoice != nil || len(finalView.EffectsStack) != 0 {
+		t.Fatalf("copy state = choice %#v, stack %#v; want cleaned runtime copy", finalView.PendingChoice, finalView.EffectsStack)
+	}
+	for _, object := range finalView.Field {
+		if object.CardName == "Red Hare, Unrivaled Stallion" {
+			t.Fatalf("target remains after Fiery Interference: %#v", object)
+		}
+	}
+	if got := championByOwner(t, finalView, opponent).Damage; got != 0 {
+		t.Fatalf("opponent damage = %d, want copied Action to fizzle", got)
+	}
+	banishedMemory := 0
+	for _, event := range finalView.VisibleEvents {
+		if event.Kind == "banish-memory" {
+			banishedMemory++
+		}
+	}
+	if banishedMemory != 5 || !hasVisibleEvent(finalView.VisibleEvents, "banish", "Blazing Throw") || !hasVisibleEvent(finalView.VisibleEvents, "ability-activated", "Duchess, Six of Hearts") {
+		t.Fatalf("events = %#v, want five retained payments, copied source banishment, and activation", finalView.VisibleEvents)
+	}
+	replay := game.Replay()
+	if len(replay.Steps) == 0 || replay.Steps[len(replay.Steps)-1].StateHash != game.StateHash() {
+		t.Fatalf("final replay hash = %#v, want %q", replay.Steps, game.StateHash())
+	}
+	const wantStateHash = "7d74349c3f56138605f61b0d051cabaaaf92bb5587bee6ad4b67986e951a8ca9"
+	if got := game.StateHash(); got != wantStateHash {
+		t.Fatalf("StateHash() = %q, want conserved Duchess fizzle state %q", got, wantStateHash)
+	}
+	if err := replay.Verify(); err != nil {
+		t.Fatalf("Replay().Verify() error = %v", err)
+	}
+}
+
 func TestFourOfHeartsDeploymentAndTriggerAreEventedAndReplayed(t *testing.T) {
 	game := newCardistryGame(t, fourOfHeartsCardID)
 	player := model.PlayerOne

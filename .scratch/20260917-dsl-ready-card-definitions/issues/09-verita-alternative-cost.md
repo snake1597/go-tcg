@@ -2,7 +2,9 @@
 
 **What to build:** Verita 由同一能力定義提供一般與替代付款，之後的持續效果依相同規則結算。
 
-**Blocked by:** 05 — Activated ability 的費用與使用限制；共通規則操作 10 — 替代費用與 Wield 付款。
+**Blocked by:** 05 — Activated ability 的費用與使用限制。
+
+**Related foundation:** 共通規則操作 10 — 替代費用與 Wield 付款；該票負責跨入口交易共通化，本票只驗收 Verita Definition 遷移。
 
 **Status:** completed
 

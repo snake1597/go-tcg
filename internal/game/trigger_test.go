@@ -130,12 +130,18 @@ func impactHammerFixture(t *testing.T, game *Game, suffix string) cardInstanceID
 	return clone.ID
 }
 
+// findCard 以穩定 CardInstance 順序尋找指定玩家與定義的測試卡牌。
+// 輸入為測試單局、擁有者與 Card ID；輸出為字典序最小的符合實例，找不到時終止測試，無其他副作用。
 func findCard(t *testing.T, game *Game, player *model.Player, definition CardID) cardInstanceID {
 	t.Helper()
+	found := cardInstanceID("")
 	for card, instance := range game.state.Cards {
-		if samePlayer(instance.Owner, player) && instance.Definition == definition {
-			return card
+		if samePlayer(instance.Owner, player) && instance.Definition == definition && (found == "" || card < found) {
+			found = card
 		}
+	}
+	if found != "" {
+		return found
 	}
 	t.Fatalf("no %q card for %q", definition, player)
 	return ""

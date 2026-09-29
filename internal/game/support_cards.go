@@ -210,6 +210,7 @@ func (g *Game) copyAction(player *model.Player, source cardInstanceID, selection
 	zones.Graveyard = removeCardAt(zones.Graveyard, cardIndex(zones.Graveyard, source))
 	zones.Banishment = append(zones.Banishment, source)
 	g.state.Zones[player.UID] = zones
+	g.recordPublicEvent(player, "ability", "banish", source)
 	copyID := cardInstanceID(fmt.Sprintf("copy:%s:%d", source, g.state.NextAbility+1))
 	copyCard := g.state.Cards[source]
 	copyCard.ID = copyID

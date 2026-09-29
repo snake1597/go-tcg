@@ -1,6 +1,6 @@
 # 可執行卡牌定義與 DSL-ready 能力 Runtime
 
-Status: ready-for-agent
+Status: in-progress
 
 ## 問題陳述
 
@@ -25,6 +25,28 @@ Ability Definition 只描述目前 Support Set 已證明需要的能力：能力
 Runtime 行為使用既有 Game Module Interface，透過 Player View、View Handle submission、replay 與 state hash 測試。唯一新增的測試 seam 是純資料 definition loader/compiler，因為錯誤定義必須在建立 Game 前遭拒絕。內部 interpreter 分支、私有 card handler 與呼叫順序都不成為測試 seam。
 
 Canonical state hash 必須完整涵蓋所有會影響目前或未來可觀察行為的欄位。回歸測試同時證明相同 replay 的確定性，以及任一行為相關 canonical 欄位改變時 hash 必須不同。
+
+### 與共通規則操作規格的責任邊界
+
+- 「共通規則操作與 DSL-ready 效果基礎」負責可重用 operation、Declaration Transaction、參照、選擇續行及狀態提交語意；其 issue 可以使用既有卡牌作為驗證案例，但不負責宣告該卡牌的 Definition 遷移完成。
+- 本規格負責 executable Card Definition、中介表示與 compiler、Ability Slot 遷移、舊 Card ID 行為路徑清理、production support metadata 及版本化 DSL。
+- 本規格的 issue 只有在確實需要整張共通操作 issue 完成後才能將其列為 `Blocked by`。若只共用已存在的窄能力，應列為 `Related foundation`，不得形成與實際完成狀態矛盾的 blocker。
+- 同一卡牌的端到端遷移只由本規格的一張 issue 驗收；共通操作 issue 不重複宣告同一卡牌遷移完成。
+
+### 實作順序
+
+依下列順序推進，任一階段未達完成條件前不開啟下一個主要遷移階段：
+
+1. 收尾 10 — Duchess runtime copy。同一次實作必須同時補齊共通規則操作 08 的目標失效、中斷 cleanup、Game Event、state hash 與卡牌守恆 scenario；兩張 issue 共用 production path 與測試證據，各自依責任邊界驗收。
+2. 執行 13 — 剩餘 Object、Weapon 與 Regalia Slots。一次只遷移一個 Ability Slot；若該 Slot 缺少共通 primitive，先在對應共通規則操作 issue 完成可重用的最小 operation slice，再以它完成該 Slot，不得加入預計稍後刪除的卡牌專用暫時路徑。
+3. 完成 14 — 由 executable definitions 衍生 production support metadata。只有 10 至 13 的所有 Ability Slot 都完成後才能開始。
+4. 完成 15 — 版本化 DSL。只把已由 Go definitions 證明的中介表示序列化，不在此階段新增規則能力。
+5. 完成 16 — Bot legal-action metadata。排在 15 之後作為 DSL 主線的最後收尾，避免 migration、schema 與 bot contract 同時變動。
+6. 回到「共通規則操作與 DSL-ready 效果基礎」，依其剩餘工作順序完成未被上述 vertical slices 涵蓋的入口共通化。
+
+執行 13 時，每個 Ability Slot 都採相同小循環：鎖定規則與現有 scenario → 確認所需 selector／reference／cost／operation → 必要時先深化共通 operation → 編寫及編譯 Definition → 刪除舊 Card ID 行為路徑 → 以正式 Game Module Interface 驗證 → 更新 DSL issue 與相關 Common issue 的進度。任何 slice 結束時產品都必須保持可遊玩。
+
+**目前唯一進行中的 DSL 工作：** 10 — 複製能力與 runtime 身分。完成其 `Next implementation step` 後，依序解鎖 13、14、15、16。
 
 ## 使用者故事
 

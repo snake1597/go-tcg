@@ -2,7 +2,9 @@
 
 **What to build:** Three of Hearts 的選牌與棄牌透過具名 binding 串接；玩家回答後從可序列化 Resolution Frame 確定地續行。
 
-**Blocked by:** 02 — 首張 Go 可執行定義與編譯驗證；共通規則操作 05 — 具名選擇與卡牌篩選。
+**Blocked by:** 02 — 首張 Go 可執行定義與編譯驗證。
+
+**Related foundation:** 共通規則操作 05 — 具名選擇與卡牌篩選；該票負責所有現有選牌入口的共通化，本票只證明 Three of Hearts slice。
 
 **Status:** completed
 
