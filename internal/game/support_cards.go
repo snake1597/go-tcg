@@ -264,9 +264,9 @@ func (g *Game) smokeBombsTargets() []objectID {
 	return targets
 }
 
-// trumpSetTargets 將目前 attack 的可重導目標限制為控制者的 Suited ally，且不得維持原目標。
+// retargetableAttackTargets 將目前 attack 的可重導目標限制為控制者的 Suited ally，且不得維持原目標。
 // 此查詢同時使用攻擊目標的共用合法性規則，避免在 stealth、taunt 或 true sight 改變後提供過期選項。
-func (g *Game) trumpSetTargets(player *model.Player) []objectID {
+func (g *Game) retargetableAttackTargets(player *model.Player) []objectID {
 	for _, item := range g.state.EffectsStack {
 		if item.Kind != effectStackCombat {
 			continue
@@ -290,19 +290,19 @@ func (g *Game) trumpSetTargets(player *model.Player) []objectID {
 	return nil
 }
 
-// retargetAttackWithTrumpSet 將 active attack 的目標改為 player 控制的合格 Suited Ally。
-// 成功時為新目標加入到回合結束的 +3 power／+3 life；目標、攻擊或攻擊來源失效時回傳錯誤且不改變狀態。
-func (g *Game) retargetAttackWithTrumpSet(player *model.Player, target objectID) error {
+// retargetAttack 將 active attack 的目標改為 player 控制的合格 Suited Ally。
+// 輸入為控制者與新目標；輸出為錯誤或 nil，成功時僅改變 combat stack target，修正由後續 typed effect 套用。
+func (g *Game) retargetAttack(player *model.Player, target objectID) error {
 	for index := len(g.state.EffectsStack) - 1; index >= 0; index-- {
 		item := &g.state.EffectsStack[index]
 		if item.Kind != effectStackCombat {
 			continue
 		}
-		if !containsObject(g.trumpSetTargets(player), target) {
-			return fmt.Errorf("invalid Trump Set target")
+		targets := g.retargetableAttackTargets(player)
+		if !containsObject(targets, target) {
+			return fmt.Errorf("invalid retarget attack target")
 		}
 		item.Target = target
-		g.addContinuousEffect(continuousEffect{Controller: player, Target: target, Scope: effectScopeObject, Layer: effectLayerModifier, PowerLife: powerLifeModify, ExpiresAtTurn: g.state.Scheduler.TurnNumber + 1, Modifier: continuousModifier{PowerDelta: 3, LifeDelta: 3}})
 		return nil
 	}
 	return fmt.Errorf("no active attack to retarget")

@@ -47,22 +47,23 @@ const (
 // effectOperation 只保存可序列化的操作資料，讓能力與待選狀態可以重播。
 // 操作可使用宣告時的目標，也可透過 choose 在結算期間取得目標；不保存執行閉包。
 type effectOperation struct {
-	Kind                  effectOperationKind `json:"kind"`
-	Target                objectID            `json:"target,omitempty"`
-	TargetReference       abilityReference    `json:"target_reference,omitempty"`
-	Source                objectID            `json:"source,omitempty"`
-	Amount                int                 `json:"amount,omitempty"`
-	Counter               string              `json:"counter,omitempty"`
-	MoveSourceToGraveyard bool                `json:"move_source_to_graveyard,omitempty"`
-	Value                 *valueExpression    `json:"value,omitempty"`
-	CanPass               bool                `json:"can_pass,omitempty"`
-	CardZone              cardZone            `json:"card_zone,omitempty"`
-	CardSelection         cardSelectionSpec   `json:"card_selection,omitempty"`
-	Binding               resolutionBinding   `json:"binding,omitempty"`
-	Selector              selectorKind        `json:"selector,omitempty"`
-	Duration              modifierDuration    `json:"duration,omitempty"`
-	ContinuousEffect      continuousEffect    `json:"continuous_effect,omitempty"`
-	Options               []objectID          `json:"options,omitempty"`
+	Kind                    effectOperationKind `json:"kind"`
+	Target                  objectID            `json:"target,omitempty"`
+	TargetReference         abilityReference    `json:"target_reference,omitempty"`
+	Source                  objectID            `json:"source,omitempty"`
+	Amount                  int                 `json:"amount,omitempty"`
+	Counter                 string              `json:"counter,omitempty"`
+	MoveSourceToGraveyard   bool                `json:"move_source_to_graveyard,omitempty"`
+	Value                   *valueExpression    `json:"value,omitempty"`
+	CanPass                 bool                `json:"can_pass,omitempty"`
+	CardZone                cardZone            `json:"card_zone,omitempty"`
+	CardSelection           cardSelectionSpec   `json:"card_selection,omitempty"`
+	Binding                 resolutionBinding   `json:"binding,omitempty"`
+	Selector                selectorKind        `json:"selector,omitempty"`
+	Duration                modifierDuration    `json:"duration,omitempty"`
+	RequiresRetargetSuccess bool                `json:"requires_retarget_success,omitempty"`
+	ContinuousEffect        continuousEffect    `json:"continuous_effect,omitempty"`
+	Options                 []objectID          `json:"options,omitempty"`
 }
 
 // resolutionFrame 保存能力在等待玩家選擇時的完整可序列化續行資料。
@@ -106,6 +107,7 @@ func (g *Game) pushAbility(instance abilityInstance) {
 // 其他返回路徑會由 defer 銷毀 runtime copy；未知 operation 會 panic。
 func (g *Game) resolveAbility(instance abilityInstance) {
 	completed := true
+	retargetSucceeded := true
 	defer func() {
 		if completed && instance.RuntimeCopy {
 			g.destroyRuntimeCopy(instance.Source)
@@ -139,6 +141,9 @@ func (g *Game) resolveAbility(instance abilityInstance) {
 				}
 			}
 		case effectOperationContinuousModifier:
+			if operation.RequiresRetargetSuccess && !retargetSucceeded {
+				continue
+			}
 			if !g.isLegalTarget(target) {
 				continue
 			}
@@ -221,7 +226,7 @@ func (g *Game) resolveAbility(instance abilityInstance) {
 			}
 		case effectOperationRetargetAttack:
 			// 重導失敗時此牌照常結算後續移動；已支付的費用不會退回。
-			_ = g.retargetAttackWithTrumpSet(instance.Controller, target)
+			retargetSucceeded = g.retargetAttack(instance.Controller, target) == nil
 		case effectOperationDiscard:
 			card := cardInstanceID(target)
 			if operation.Binding != "" {

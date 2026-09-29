@@ -27,6 +27,7 @@ type actionDeclaration struct {
 	// Reserved 保存宣告時由玩家明確選定、提交時才會移至 Memory 的手牌付款。
 	Reserved []cardInstanceID `json:"reserved"`
 	Target   objectID         `json:"target,omitempty"`
+	Weapon   objectID         `json:"weapon,omitempty"`
 	Stage    declarationStage `json:"stage"`
 }
 
@@ -65,30 +66,27 @@ func (g *Game) canActivateAction(player *model.Player, card cardInstanceID) bool
 	if containsString(candidate.Types, "ALLY") {
 		return true
 	}
-	if candidate.Definition == blazingThrowCardID && len(g.legalWeapons(player)) == 0 {
+	ability, exists := g.compiledAction(card)
+	actionTargets := g.actionTargets(player, ability)
+	if !exists || len(actionTargets) == 0 {
 		return false
 	}
-	if candidate.Definition == trumpSetCardID {
-		targets := g.trumpSetTargets(player)
-		return len(targets) > 0
-	}
-	if _, exists := g.compiledAction(card); exists {
+	if ability.cost == nil {
 		return true
 	}
-	return candidate.Definition == blazingThrowCardID || candidate.Definition == fieryInterferenceCardID
+	costTargets := g.actionCostTargets(player, *ability.cost)
+	return len(costTargets) > 0
 }
 
 // beginActionDeclaration 為行動建立選目標的宣告，尚不移走來源牌或支付費用。
 // Blazing Throw 選完目標後還須選擇犧牲武器；Trump Set 僅能選受控的 Suited ally。
 // Action 依其目標規則建立宣告；替代費用在啟動入口單獨選擇。
 func (g *Game) beginActionDeclaration(player *model.Player, card cardInstanceID, reserve []ViewHandle) error {
-	targets := g.legalTargets()
-	if ability, exists := g.compiledAction(card); exists {
-		targets = g.selectTargets(*ability.target)
+	ability, exists := g.compiledAction(card)
+	if !exists {
+		return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, card)
 	}
-	if g.state.Cards[card].Definition == trumpSetCardID {
-		targets = g.trumpSetTargets(player)
-	}
+	targets := g.actionTargets(player, ability)
 	if !g.canActivateAction(player, card) || len(targets) == 0 {
 		return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, card)
 	}
@@ -210,26 +208,31 @@ func (g *Game) submitActionDeclarationChoice(player *model.Player, subject entit
 	switch declaration.Stage {
 	case declarationTarget:
 		target := objectID(subject)
-		if !g.isLegalTarget(target) || (g.state.Cards[declaration.Source].Definition == trumpSetCardID && !containsObject(g.trumpSetTargets(player), target)) {
-			return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, subject)
-		}
-		if ability, exists := g.compiledAction(declaration.Source); exists && !g.targetMatchesSelector(*ability.target, target) {
+		ability, exists := g.compiledAction(declaration.Source)
+		actionTargets := g.actionTargets(player, ability)
+		if !exists || !containsObject(actionTargets, target) {
 			return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, subject)
 		}
 		declaration.Target = target
-		if g.state.Cards[declaration.Source].Definition == blazingThrowCardID {
+		if ability.cost != nil {
 			declaration.Stage = declarationWeapon
-			weapons := g.legalWeapons(player)
-			g.setDeclarationChoice(player, weapons)
+			costTargets := g.actionCostTargets(player, *ability.cost)
+			g.setDeclarationChoice(player, costTargets)
 			return nil
 		}
 		return g.commitActionDeclaration()
 	case declarationWeapon:
 		weapon := objectID(subject)
-		if !g.isLegalWeapon(player, weapon) {
+		ability, exists := g.compiledAction(declaration.Source)
+		if !exists || ability.cost == nil {
 			return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, subject)
 		}
-		return g.commitActionDeclarationWithWeapon(weapon)
+		costTargets := g.actionCostTargets(player, *ability.cost)
+		if !containsObject(costTargets, weapon) {
+			return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, subject)
+		}
+		declaration.Weapon = weapon
+		return g.commitActionDeclaration()
 	default:
 		return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, subject)
 	}
@@ -245,21 +248,6 @@ func (g *Game) setDeclarationChoice(player *model.Player, subjects []objectID) {
 		Actor:   player,
 		Options: options,
 	}
-}
-
-// commitActionDeclarationWithWeapon 在重新驗證武器與宣告後，先犧牲武器，再提交行動。
-// 武器進入擁有者墓地；此函式沒有在後續提交失敗時還原武器的機制。
-func (g *Game) commitActionDeclarationWithWeapon(weapon objectID) error {
-	declaration := g.state.Knowledge.Declaration
-	if declaration == nil || !g.isLegalWeapon(declaration.Controller, weapon) || !g.canCommitActionDeclaration(declaration) {
-		return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, weapon)
-	}
-	object := g.state.Objects[weapon]
-	delete(g.state.Objects, weapon)
-	zones := g.state.Zones[object.Owner.UID]
-	zones.Graveyard = append(zones.Graveyard, object.Card)
-	g.state.Zones[object.Owner.UID] = zones
-	return g.commitActionDeclaration()
 }
 
 // commitActionDeclaration 在目標、來源手牌與 reserve 選擇仍有效時，將來源與保留牌移出手牌。
@@ -284,6 +272,11 @@ func (g *Game) commitActionDeclaration() error {
 		zones.Memory = append(zones.Memory, reserved)
 	}
 	g.state.Zones[declaration.Controller.UID] = zones
+	if ability, exists := g.compiledAction(declaration.Source); exists && ability.cost != nil {
+		if err := g.payActionCost(declaration.Controller, declaration.Weapon, *ability.cost); err != nil {
+			return fmt.Errorf("pay action cost: %w", err)
+		}
+	}
 	g.state.EffectSources = append(g.state.EffectSources, declaration.Source)
 	g.pushAbility(g.actionAbilityInstance(declaration))
 	g.state.Knowledge.Choice = nil
@@ -293,11 +286,16 @@ func (g *Game) commitActionDeclaration() error {
 }
 
 func (g *Game) canCommitActionDeclaration(declaration *actionDeclaration) bool {
-	if !g.isLegalTarget(declaration.Target) {
+	ability, exists := g.compiledAction(declaration.Source)
+	actionTargets := g.actionTargets(declaration.Controller, ability)
+	if !exists || !containsObject(actionTargets, declaration.Target) {
 		return false
 	}
-	if ability, exists := g.compiledAction(declaration.Source); exists && !g.targetMatchesSelector(*ability.target, declaration.Target) {
-		return false
+	if ability.cost != nil {
+		costTargets := g.actionCostTargets(declaration.Controller, *ability.cost)
+		if !containsObject(costTargets, declaration.Weapon) {
+			return false
+		}
 	}
 	candidate, exists := g.state.Cards[declaration.Source]
 	if !exists || !samePlayer(candidate.Owner, declaration.Controller) || !containsString(candidate.Types, "ACTION") {
@@ -315,10 +313,50 @@ func (g *Game) canCommitActionDeclaration(declaration *actionDeclaration) bool {
 	return true
 }
 
+// actionTargets 依已編譯 Action selector 列舉目前可公開選擇的宣告目標。
+// 輸入為控制者與已驗證 Action 定義；輸出為穩定排序的合法物件，副作用為零。
+func (g *Game) actionTargets(player *model.Player, ability compiledAbilityDefinition) []objectID {
+	if ability.target == nil {
+		return nil
+	}
+	switch ability.target.kind {
+	case selectorUnits:
+		return g.selectTargets(*ability.target)
+	case selectorRetargetableControlledSuitedAlly:
+		return g.retargetableAttackTargets(player)
+	default:
+		return nil
+	}
+}
+
+// actionCostTargets 列舉可支付已編譯 Action 額外費用的物件。
+// 輸入為控制者與費用定義；輸出為穩定排序的合法支付對象，副作用為零。
+func (g *Game) actionCostTargets(player *model.Player, cost actionCostDefinition) []objectID {
+	if cost.kind != actionCostSacrificeControlledWeapon {
+		return nil
+	}
+	return g.legalWeapons(player)
+}
+
+// payActionCost 提交已在宣告交易內重新驗證的 Action 額外費用。
+// 輸入為控制者、支付物件與費用定義；輸出為錯誤或 nil，成功時將支付物件移至擁有者墓地。
+func (g *Game) payActionCost(player *model.Player, payment objectID, cost actionCostDefinition) error {
+	costTargets := g.actionCostTargets(player, cost)
+	if !containsObject(costTargets, payment) {
+		return fmt.Errorf("invalid action cost payment %q", payment)
+	}
+	object := g.state.Objects[payment]
+	delete(g.state.Objects, payment)
+	zones := g.state.Zones[object.Owner.UID]
+	zones.Graveyard = append(zones.Graveyard, object.Card)
+	g.state.Zones[object.Owner.UID] = zones
+	return nil
+}
+
 func (g *Game) actionReserveCost(player *model.Player, card cardInstanceID) int {
 	cost := g.characteristicsForCard(card).ReserveCost
-	if g.state.Cards[card].Definition == trumpSetCardID && g.championHasClass(player, g.state.Cards[card].Classes) && cost > 0 {
-		cost--
+	if ability, exists := g.compiledAction(card); exists && ability.classCostReduction > 0 && g.championHasClass(player, g.state.Cards[card].Classes) && cost > 0 {
+		cost -= ability.classCostReduction
 	}
 	if g.viridianProtectiveTrinketTaxApplies(player, card) {
 		return cost + 2
@@ -396,52 +434,18 @@ func (g *Game) isLegalWeapon(player *model.Player, id objectID) bool {
 }
 
 func (g *Game) actionAbilityInstance(declaration *actionDeclaration) abilityInstance {
-	operations := []effectOperation{}
-	source := g.state.Cards[declaration.Source]
-	var slot AbilitySlotID
-	if ability, exists := g.compiledAction(declaration.Source); exists {
-		operations = ability.operations()
-		slot = ability.slot
-	} else {
-		switch source.Definition {
-		case blazingThrowCardID:
-			operations = append(operations, effectOperation{
-				Kind:   effectOperationDamage,
-				Amount: 4,
-			})
-		case fieryInterferenceCardID:
-			operations = append(operations, effectOperation{
-				Kind:   effectOperationDamage,
-				Amount: 2,
-			})
-			operations = append(operations, effectOperation{
-				Kind: effectOperationContinuousModifier,
-				ContinuousEffect: continuousEffect{
-					Scope:         effectScopeObject,
-					Layer:         effectLayerAbility,
-					ExpiresAtTurn: g.state.Scheduler.TurnNumber + 1,
-					Modifier: continuousModifier{
-						ProhibitRecover: true,
-					},
-				},
-			})
-		case trumpSetCardID:
-			operations = append(operations, effectOperation{
-				Kind: effectOperationRetargetAttack,
-			})
-		}
+	ability, exists := g.compiledAction(declaration.Source)
+	if !exists {
+		return abilityInstance{}
 	}
-	operations = append(operations, effectOperation{
-		Kind:                  effectOperationMove,
-		MoveSourceToGraveyard: true,
-	})
+	operations := ability.operations()
 	instance := g.newAbilityInstance(
 		declaration.Controller,
 		declaration.Source,
 		declaration.Target,
 		operations,
 	)
-	instance.Slot = slot
+	instance.Slot = ability.slot
 	return instance
 }
 

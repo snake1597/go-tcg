@@ -25,7 +25,7 @@ func TestCompileStraightFlareDefinition(t *testing.T) {
 	if len(compiled) != 1 || compiled[0].slot != "ability:28bjn8g50v:front:action-damage" || compiled[0].target.kind != selectorUnits {
 		t.Fatalf("compiled Action = %#v", compiled)
 	}
-	if operations := compiled[0].operations(); len(operations) != 1 || operations[0].TargetReference != referenceDeclaredTarget {
+	if operations := compiled[0].operations(); len(operations) != 2 || operations[0].TargetReference != referenceDeclaredTarget || operations[1].Kind != effectOperationMove || !operations[1].MoveSourceToGraveyard {
 		t.Fatalf("compiled target reference = %#v", operations)
 	}
 	for _, test := range []struct {

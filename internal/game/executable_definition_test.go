@@ -149,6 +149,22 @@ func TestCompileCardistryDefinitionRejectsMixedModifier(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "modifier") {
 		t.Fatalf("compileAbilityDefinitions() error = %v, want modifier validation failure", err)
 	}
+	authored = twoOfHeartsAbilities()
+	authored[0].cost = &actionCostDefinition{
+		kind: actionCostSacrificeControlledWeapon,
+	}
+	_, err = compileAbilityDefinitions(
+		CardDefinition{
+			id: twoOfHeartsCardID,
+			face: CardFace{
+				id: "face:rufki4o41y:front",
+			},
+		},
+		authored,
+	)
+	if err == nil || !strings.Contains(err.Error(), "Cardistry") {
+		t.Fatalf("compileAbilityDefinitions() error = %v, want unused Action cost validation failure", err)
+	}
 }
 
 // TestCompileDuchessDefinition 驗證 Duchess 的選牌與免費 Action 複製完全由可執行定義描述。

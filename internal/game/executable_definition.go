@@ -35,16 +35,18 @@ const reductionDistinctSuitedCosts abilityCostReduction = "distinct-suited-reser
 type authoredEffectKind string
 
 const (
-	effectKindDraw         authoredEffectKind = "draw"
-	effectKindDrawToMemory authoredEffectKind = "draw-to-memory"
-	effectKindDamage       authoredEffectKind = "damage"
-	effectKindChooseCard   authoredEffectKind = "choose-card"
-	effectKindChooseObject authoredEffectKind = "choose-object"
-	effectKindDiscard      authoredEffectKind = "discard"
-	effectKindDeploy       authoredEffectKind = "deploy"
-	effectKindCounter      authoredEffectKind = "counter"
-	effectKindModifier     authoredEffectKind = "modifier"
-	effectKindCopyAction   authoredEffectKind = "copy-action"
+	effectKindDraw                  authoredEffectKind = "draw"
+	effectKindDrawToMemory          authoredEffectKind = "draw-to-memory"
+	effectKindDamage                authoredEffectKind = "damage"
+	effectKindChooseCard            authoredEffectKind = "choose-card"
+	effectKindChooseObject          authoredEffectKind = "choose-object"
+	effectKindDiscard               authoredEffectKind = "discard"
+	effectKindDeploy                authoredEffectKind = "deploy"
+	effectKindCounter               authoredEffectKind = "counter"
+	effectKindModifier              authoredEffectKind = "modifier"
+	effectKindCopyAction            authoredEffectKind = "copy-action"
+	effectKindRetargetAttack        authoredEffectKind = "retarget-attack"
+	effectKindMoveSourceToGraveyard authoredEffectKind = "move-source-to-graveyard"
 )
 
 type abilityReference string
@@ -65,9 +67,10 @@ const (
 type selectorKind string
 
 const (
-	selectorUnits                selectorKind = "units"
-	selectorControlledSuited     selectorKind = "controlled-suited"
-	selectorControlledSuitedAlly selectorKind = "controlled-suited-ally"
+	selectorUnits                            selectorKind = "units"
+	selectorControlledSuited                 selectorKind = "controlled-suited"
+	selectorControlledSuitedAlly             selectorKind = "controlled-suited-ally"
+	selectorRetargetableControlledSuitedAlly selectorKind = "retargetable-controlled-suited-ally"
 )
 
 type targetSelector struct {
@@ -111,13 +114,24 @@ type counterEffectDefinition struct {
 }
 
 type modifierEffectDefinition struct {
-	duration modifierDuration
-	modifier continuousModifier
+	duration                modifierDuration
+	modifier                continuousModifier
+	requiresRetargetSuccess bool
 }
 
 type damageEffectDefinition struct {
 	target abilityReference
 	amount valueExpression
+}
+
+type actionCostKind string
+
+const actionCostSacrificeControlledWeapon actionCostKind = "sacrifice-controlled-weapon"
+
+// actionCostDefinition 宣告 Action 在建立 Ability Instance 前必須原子支付的額外費用。
+// 輸入為受支援的費用種類；輸出由 compiler 複製的不可變費用資料，副作用為零。
+type actionCostDefinition struct {
+	kind actionCostKind
 }
 
 type chooseCardEffectDefinition struct {
@@ -207,19 +221,21 @@ type authoredEffectDefinition struct {
 }
 
 type authoredAbilityDefinition struct {
-	slot          AbilitySlotID
-	kind          abilityDefinitionKind
-	timing        abilityTiming
-	usage         abilityUsage
-	reduction     abilityCostReduction
-	baseCost      int
-	target        *targetSelector
-	trigger       *triggerDefinition
-	static        *staticEffectDefinition
-	replacement   *replacementDefinition
-	alternative   *alternativeCostSpec
-	deathModifier *deathModifierDefinition
-	effects       []authoredEffectDefinition
+	slot               AbilitySlotID
+	kind               abilityDefinitionKind
+	timing             abilityTiming
+	usage              abilityUsage
+	reduction          abilityCostReduction
+	baseCost           int
+	classCostReduction int
+	target             *targetSelector
+	trigger            *triggerDefinition
+	static             *staticEffectDefinition
+	replacement        *replacementDefinition
+	alternative        *alternativeCostSpec
+	deathModifier      *deathModifierDefinition
+	cost               *actionCostDefinition
+	effects            []authoredEffectDefinition
 }
 
 // compiledEffect 保存已驗證的具體效果 payload，不讓 authoring tag 進入對局狀態。
@@ -238,19 +254,21 @@ type compiledEffect struct {
 
 // compiledAbilityDefinition 是建局前完成驗證的能力中介表示。
 type compiledAbilityDefinition struct {
-	slot          AbilitySlotID
-	kind          abilityDefinitionKind
-	timing        abilityTiming
-	usage         abilityUsage
-	reduction     abilityCostReduction
-	baseCost      int
-	target        *targetSelector
-	trigger       *triggerDefinition
-	static        *staticEffectDefinition
-	replacement   *replacementDefinition
-	alternative   *alternativeCostSpec
-	deathModifier *deathModifierDefinition
-	effects       []compiledEffect
+	slot               AbilitySlotID
+	kind               abilityDefinitionKind
+	timing             abilityTiming
+	usage              abilityUsage
+	reduction          abilityCostReduction
+	baseCost           int
+	classCostReduction int
+	target             *targetSelector
+	trigger            *triggerDefinition
+	static             *staticEffectDefinition
+	replacement        *replacementDefinition
+	alternative        *alternativeCostSpec
+	deathModifier      *deathModifierDefinition
+	cost               *actionCostDefinition
+	effects            []compiledEffect
 }
 
 var abilitySlotKeyPattern = regexp.MustCompile(`^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$`)
@@ -557,6 +575,113 @@ func straightFlareAbilities() []authoredAbilityDefinition {
 						},
 					},
 				},
+				{
+					kind: effectKindMoveSourceToGraveyard,
+				},
+			},
+		},
+	}
+}
+
+// blazingThrowAbilities 宣告 Blazing Throw 的武器犧牲費用、單位目標、傷害與來源移動。
+// 輸入為零；輸出為不可共用的 Go 編寫資料，副作用為零。
+func blazingThrowAbilities() []authoredAbilityDefinition {
+	return []authoredAbilityDefinition{
+		{
+			slot: "ability:iohZMWh5v5:front:action-sacrifice-weapon-damage",
+			kind: abilityKindAction,
+			cost: &actionCostDefinition{
+				kind: actionCostSacrificeControlledWeapon,
+			},
+			target: &targetSelector{
+				kind: selectorUnits,
+			},
+			effects: []authoredEffectDefinition{
+				{
+					kind: effectKindDamage,
+					damage: &damageEffectDefinition{
+						target: referenceDeclaredTarget,
+						amount: valueExpression{
+							Kind:     valueConstant,
+							Constant: 4,
+						},
+					},
+				},
+				{
+					kind: effectKindMoveSourceToGraveyard,
+				},
+			},
+		},
+	}
+}
+
+// fieryInterferenceAbilities 宣告 Fiery Interference 的傷害、禁止 recover 暫時修正與來源移動。
+// 輸入為零；輸出為不可共用的 Go 編寫資料，副作用為零。
+func fieryInterferenceAbilities() []authoredAbilityDefinition {
+	return []authoredAbilityDefinition{
+		{
+			slot: "ability:gt2zqtgs42:front:action-damage-prohibit-recover",
+			kind: abilityKindAction,
+			target: &targetSelector{
+				kind: selectorUnits,
+			},
+			effects: []authoredEffectDefinition{
+				{
+					kind: effectKindDamage,
+					damage: &damageEffectDefinition{
+						target: referenceDeclaredTarget,
+						amount: valueExpression{
+							Kind:     valueConstant,
+							Constant: 2,
+						},
+					},
+				},
+				{
+					kind: effectKindModifier,
+					modifier: &modifierEffectDefinition{
+						duration: modifierDurationEndOfTurn,
+						modifier: continuousModifier{
+							ProhibitRecover: true,
+						},
+					},
+				},
+				{
+					kind: effectKindMoveSourceToGraveyard,
+				},
+			},
+		},
+	}
+}
+
+// trumpSetAbilities 宣告重導攻擊所需目標、暫時修正與來源移動。
+// 輸入為零；輸出為不可共用的 Go 編寫資料，副作用為零。
+func trumpSetAbilities() []authoredAbilityDefinition {
+	return []authoredAbilityDefinition{
+		{
+			slot:               "ability:w7g91ru45w:front:action-retarget-attack",
+			kind:               abilityKindAction,
+			classCostReduction: 1,
+			target: &targetSelector{
+				kind: selectorRetargetableControlledSuitedAlly,
+			},
+			effects: []authoredEffectDefinition{
+				{
+					kind: effectKindRetargetAttack,
+				},
+				{
+					kind: effectKindModifier,
+					modifier: &modifierEffectDefinition{
+						duration:                modifierDurationEndOfTurn,
+						requiresRetargetSuccess: true,
+						modifier: continuousModifier{
+							PowerDelta: 3,
+							LifeDelta:  3,
+						},
+					},
+				},
+				{
+					kind: effectKindMoveSourceToGraveyard,
+				},
 			},
 		},
 	}
@@ -699,6 +824,12 @@ func authoredAbilitiesForCard(id CardID) []authoredAbilityDefinition {
 		return wonderlandsReignAbilities()
 	case straightFlareCardID:
 		return straightFlareAbilities()
+	case blazingThrowCardID:
+		return blazingThrowAbilities()
+	case fieryInterferenceCardID:
+		return fieryInterferenceAbilities()
+	case trumpSetCardID:
+		return trumpSetAbilities()
 	case threeOfHeartsCardID:
 		return threeOfHeartsAbilities()
 	case duchessCardID:
@@ -770,28 +901,34 @@ func compileAbilityDefinitions(definition CardDefinition, authored []authoredAbi
 			if ability.baseCost < 0 {
 				return nil, fmt.Errorf("%s: base_cost must be nonnegative", context)
 			}
-			if ability.target != nil {
+			if ability.classCostReduction != 0 || ability.cost != nil || ability.target != nil {
 				return nil, fmt.Errorf("%s: target unsupported for Cardistry", context)
 			}
 		case abilityKindAction:
 			if ability.timing != "" || ability.usage != "" || ability.reduction != "" || ability.baseCost != 0 {
 				return nil, fmt.Errorf("%s: action cost or timing payload unsupported", context)
 			}
-			if ability.target == nil || ability.target.kind != selectorUnits {
-				return nil, fmt.Errorf("%s: target selector must be units", context)
+			if ability.target == nil || (ability.target.kind != selectorUnits && ability.target.kind != selectorRetargetableControlledSuitedAlly) {
+				return nil, fmt.Errorf("%s: target selector unsupported", context)
 			}
 			if ability.trigger != nil {
 				return nil, fmt.Errorf("%s: trigger unsupported for Action", context)
 			}
+			if ability.cost != nil && ability.cost.kind != actionCostSacrificeControlledWeapon {
+				return nil, fmt.Errorf("%s: action cost unsupported", context)
+			}
+			if ability.classCostReduction < 0 || ability.classCostReduction > 1 {
+				return nil, fmt.Errorf("%s: class cost reduction unsupported", context)
+			}
 		case abilityKindAlly:
-			if ability.timing != "" || ability.usage != "" || ability.reduction != "" || ability.baseCost != 0 || ability.target != nil || ability.trigger != nil || ability.static != nil || ability.replacement != nil || ability.deathModifier != nil || len(ability.effects) != 0 {
+			if ability.timing != "" || ability.usage != "" || ability.reduction != "" || ability.baseCost != 0 || ability.classCostReduction != 0 || ability.target != nil || ability.trigger != nil || ability.static != nil || ability.replacement != nil || ability.deathModifier != nil || ability.cost != nil || len(ability.effects) != 0 {
 				return nil, fmt.Errorf("%s: Ally declaration payload unsupported", context)
 			}
 			if err := validateAlternativeCostSpec(ability.alternative); err != nil {
 				return nil, fmt.Errorf("%s: alternative cost: %w", context, err)
 			}
 		case abilityKindTriggered:
-			if ability.timing != "" || ability.usage != "" || ability.reduction != "" || ability.baseCost != 0 || ability.target != nil {
+			if ability.timing != "" || ability.usage != "" || ability.reduction != "" || ability.baseCost != 0 || ability.classCostReduction != 0 || ability.target != nil || ability.cost != nil {
 				return nil, fmt.Errorf("%s: triggered declaration payload unsupported", context)
 			}
 			if ability.trigger == nil || (ability.trigger.event != eventKindWield && ability.trigger.event != eventKindDestroy) {
@@ -805,14 +942,14 @@ func compileAbilityDefinitions(definition CardDefinition, authored []authoredAbi
 				return nil, fmt.Errorf("%s: wield trigger death modifier unsupported", context)
 			}
 		case abilityKindStatic:
-			if ability.timing != "" || ability.usage != "" || ability.reduction != "" || ability.baseCost != 0 || ability.target != nil || ability.trigger != nil || len(ability.effects) != 0 {
+			if ability.timing != "" || ability.usage != "" || ability.reduction != "" || ability.baseCost != 0 || ability.classCostReduction != 0 || ability.target != nil || ability.trigger != nil || ability.cost != nil || len(ability.effects) != 0 {
 				return nil, fmt.Errorf("%s: static declaration payload unsupported", context)
 			}
 			if err := validateStaticEffectDefinition(ability.static); err != nil {
 				return nil, fmt.Errorf("%s: static: %w", context, err)
 			}
 		case abilityKindReplacement:
-			if ability.timing != "" || ability.usage != "" || ability.reduction != "" || ability.baseCost != 0 || ability.target != nil || ability.trigger != nil || ability.static != nil || len(ability.effects) != 0 {
+			if ability.timing != "" || ability.usage != "" || ability.reduction != "" || ability.baseCost != 0 || ability.classCostReduction != 0 || ability.target != nil || ability.trigger != nil || ability.static != nil || ability.cost != nil || len(ability.effects) != 0 {
 				return nil, fmt.Errorf("%s: replacement declaration payload unsupported", context)
 			}
 			if err := validateReplacementDefinition(ability.replacement); err != nil {
@@ -825,13 +962,14 @@ func compileAbilityDefinitions(definition CardDefinition, authored []authoredAbi
 			return nil, fmt.Errorf("%s: effects must not be empty", context)
 		}
 		result := compiledAbilityDefinition{
-			slot:      ability.slot,
-			kind:      ability.kind,
-			timing:    ability.timing,
-			usage:     ability.usage,
-			reduction: ability.reduction,
-			baseCost:  ability.baseCost,
-			effects:   make([]compiledEffect, 0, len(ability.effects)),
+			slot:               ability.slot,
+			kind:               ability.kind,
+			timing:             ability.timing,
+			usage:              ability.usage,
+			reduction:          ability.reduction,
+			baseCost:           ability.baseCost,
+			classCostReduction: ability.classCostReduction,
+			effects:            make([]compiledEffect, 0, len(ability.effects)),
 		}
 		if ability.target != nil {
 			selector := *ability.target
@@ -856,6 +994,10 @@ func compileAbilityDefinitions(definition CardDefinition, authored []authoredAbi
 		if ability.deathModifier != nil {
 			deathModifier := *ability.deathModifier
 			result.deathModifier = &deathModifier
+		}
+		if ability.cost != nil {
+			cost := *ability.cost
+			result.cost = &cost
 		}
 		bindings := make(map[resolutionBinding]cardSelectionSpec)
 		for index, effect := range ability.effects {
@@ -965,8 +1107,8 @@ func compileAbilityDefinitions(definition CardDefinition, authored []authoredAbi
 					counter: *effect.counter,
 				})
 			case effectKindModifier:
-				if ability.kind != abilityKindCardistry || effect.modifier == nil || effect.modifier.duration != modifierDurationEndOfTurn || !isCardistryModifier(effect.modifier.modifier) {
-					return nil, fmt.Errorf("%s: %s.modifier requires an end-of-next-turn Power or Life delta", context, field)
+				if effect.modifier == nil || effect.modifier.duration != modifierDurationEndOfTurn || (ability.kind == abilityKindCardistry && (!isCardistryModifier(effect.modifier.modifier) || effect.modifier.requiresRetargetSuccess)) || (ability.kind == abilityKindAction && (!isActionModifier(effect.modifier.modifier) || (effect.modifier.requiresRetargetSuccess && (ability.target == nil || ability.target.kind != selectorRetargetableControlledSuitedAlly)))) || (ability.kind != abilityKindCardistry && ability.kind != abilityKindAction) {
+					return nil, fmt.Errorf("%s: %s.modifier payload unsupported", context, field)
 				}
 				result.effects = append(result.effects, compiledEffect{
 					kind:     effectKindModifier,
@@ -987,9 +1129,26 @@ func compileAbilityDefinitions(definition CardDefinition, authored []authoredAbi
 						selection: selection,
 					},
 				})
+			case effectKindRetargetAttack:
+				if ability.kind != abilityKindAction || ability.target == nil || ability.target.kind != selectorRetargetableControlledSuitedAlly {
+					return nil, fmt.Errorf("%s: %s.retarget_attack requires a retargetable controlled Suited Ally target", context, field)
+				}
+				result.effects = append(result.effects, compiledEffect{
+					kind: effectKindRetargetAttack,
+				})
+			case effectKindMoveSourceToGraveyard:
+				if ability.kind != abilityKindAction || index != len(ability.effects)-1 {
+					return nil, fmt.Errorf("%s: %s.move_source_to_graveyard must be the final Action effect", context, field)
+				}
+				result.effects = append(result.effects, compiledEffect{
+					kind: effectKindMoveSourceToGraveyard,
+				})
 			default:
 				return nil, fmt.Errorf("%s: %s.kind unknown %q", context, field, effect.kind)
 			}
+		}
+		if ability.kind == abilityKindAction && (len(result.effects) == 0 || result.effects[len(result.effects)-1].kind != effectKindMoveSourceToGraveyard) {
+			return nil, fmt.Errorf("%s: Action must end by moving its source to graveyard", context)
 		}
 		compiled = append(compiled, result)
 	}
@@ -1080,6 +1239,24 @@ func isCardistryModifier(modifier continuousModifier) bool {
 		modifier.SetPride == nil &&
 		!modifier.RemovePride &&
 		!modifier.GrantRedHareOnAttack
+}
+
+// isActionModifier 驗證 Action 的暫時修正僅為 Power/Life 或 recovery prohibition，且不混入其他機制。
+// 輸入為編寫的 continuous modifier；輸出為是否符合已支援 Action payload，副作用為零。
+func isActionModifier(modifier continuousModifier) bool {
+	return isCardistryModifier(modifier) || (modifier.SetPower == nil &&
+		modifier.SetLife == nil &&
+		modifier.PowerDelta == 0 &&
+		modifier.LifeDelta == 0 &&
+		modifier.ReserveCostDelta == 0 &&
+		!modifier.GrantImmortality &&
+		modifier.ProhibitRecover &&
+		!modifier.SwitchPowerLife &&
+		!modifier.GrantStealth &&
+		!modifier.GrantTrueSight &&
+		modifier.SetPride == nil &&
+		!modifier.RemovePride &&
+		!modifier.GrantRedHareOnAttack)
 }
 
 // isPrideStaticModifier 驗證 Pride static 只設定非負 Pride，不混入未支援的特徵修正。
@@ -1242,8 +1419,9 @@ func (ability compiledAbilityDefinition) operations() []effectOperation {
 			})
 		case effectKindModifier:
 			operations = append(operations, effectOperation{
-				Kind:     effectOperationContinuousModifier,
-				Duration: effect.modifier.duration,
+				Kind:                    effectOperationContinuousModifier,
+				Duration:                effect.modifier.duration,
+				RequiresRetargetSuccess: effect.modifier.requiresRetargetSuccess,
 				ContinuousEffect: continuousEffect{
 					Scope:     effectScopeObject,
 					Layer:     effectLayerModifier,
@@ -1256,6 +1434,15 @@ func (ability compiledAbilityDefinition) operations() []effectOperation {
 				Kind:          effectOperationCopyAction,
 				Binding:       effect.copyAction.binding,
 				CardSelection: effect.chooseCard.selection,
+			})
+		case effectKindRetargetAttack:
+			operations = append(operations, effectOperation{
+				Kind: effectOperationRetargetAttack,
+			})
+		case effectKindMoveSourceToGraveyard:
+			operations = append(operations, effectOperation{
+				Kind:                  effectOperationMove,
+				MoveSourceToGraveyard: true,
 			})
 		}
 	}
@@ -1302,6 +1489,9 @@ func compileReplayDefinitions() (map[CardID]CardDefinition, error) {
 	for _, id := range []CardID{
 		wonderlandsReignCardID,
 		straightFlareCardID,
+		blazingThrowCardID,
+		fieryInterferenceCardID,
+		trumpSetCardID,
 		threeOfHeartsCardID,
 		duchessCardID,
 		fiveOfSpadesCardID,

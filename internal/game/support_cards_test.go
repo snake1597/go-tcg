@@ -470,9 +470,19 @@ func TestSmokeBombsTrumpSetAndPepperedChefApplyTemporaryEffects(t *testing.T) {
 		Controller: model.PlayerTwo,
 		Target:     objectID("champion:" + model.PlayerTwo.UID),
 	})
-	if err := game.retargetAttackWithTrumpSet(player, chef); err != nil {
-		t.Fatalf("retargetAttackWithTrumpSet() error = %v", err)
+	trumpCard := findCard(t, game, player, trumpSetCardID)
+	trumpDefinition, exists := game.compiledAction(trumpCard)
+	if !exists {
+		t.Fatal("compiledAction() = false, want Trump Set definition")
 	}
+	operations := trumpDefinition.operations()
+	ability := game.newAbilityInstance(
+		player,
+		trumpCard,
+		chef,
+		operations[:len(operations)-1],
+	)
+	game.resolveAbility(ability)
 	if got := game.state.EffectsStack[len(game.state.EffectsStack)-1].Target; got != chef {
 		t.Fatalf("retargeted attack target = %q, want %q", got, chef)
 	}
@@ -629,44 +639,107 @@ func TestTrumpSetRequiresDifferentLegalSuitedAllyAndFizzlesDeterministically(t *
 		Target:     first,
 		Attacker:   attackingChampion.ID,
 	})
-	if got := game.trumpSetTargets(defender); len(got) != 1 || got[0] != second {
-		t.Fatalf("trumpSetTargets() = %#v, want only %q", got, second)
+	if got := game.retargetableAttackTargets(defender); len(got) != 1 || got[0] != second {
+		t.Fatalf("retargetableAttackTargets() = %#v, want only %q", got, second)
 	}
-	if !game.canActivateAction(defender, findCard(t, game, defender, trumpSetCardID)) {
+	trumpCard := findCard(t, game, defender, trumpSetCardID)
+	champion := game.state.Champions[defender.UID]
+	championCard := game.state.Cards[champion.Card]
+	championCard.Classes = append(championCard.Classes, game.state.Cards[trumpCard].Classes[0])
+	game.state.Cards[champion.Card] = championCard
+	if !game.canActivateAction(defender, trumpCard) {
 		t.Fatal("Trump Set was not legal with a distinct suited ally")
 	}
-	if err := game.retargetAttackWithTrumpSet(defender, second); err != nil {
-		t.Fatalf("retargetAttackWithTrumpSet() error = %v", err)
+	game.advanceKnowledgeRevision()
+	game.captureReplayInitialState()
+	view, err := game.PlayerView(defender)
+	if err != nil {
+		t.Fatalf("PlayerView() error = %v", err)
 	}
+	action := actionByCardName(t, view, "Trump Set")
+	source := game.getPlayerKnowledge(defender).Activations[action.Handle].Card
+	if want := game.state.Cards[source].ReserveCost - 1; action.ReserveCost != want {
+		t.Fatalf("Trump Set reserve cost = %d, want class bonus cost %d", action.ReserveCost, want)
+	}
+	if err := game.Submit(
+		defender,
+		Input{
+			Revision: view.Revision,
+			Action:   action.Handle,
+			Reserve:  reserveHandles(action),
+		},
+	); err != nil {
+		t.Fatalf("Submit() Trump Set error = %v", err)
+	}
+	selectPendingChoiceSubject(t, game, defender, entityID(second))
+	passOpportunityRound(t, game, defender)
 	if got := game.state.EffectsStack[0].Target; got != second {
 		t.Fatalf("retargeted attack target = %q, want %q", got, second)
 	}
 	if got := game.characteristicsFor(second).Power; got != game.state.Cards[secondCard].Power+3 {
 		t.Fatalf("Trump Set power = %d, want +3", got)
 	}
+	if err := game.Replay().Verify(); err != nil {
+		t.Fatalf("Replay().Verify() error = %v", err)
+	}
 	game.state.Scheduler.TurnNumber++
 	if got := game.characteristicsFor(second).Power; got != game.state.Cards[secondCard].Power {
 		t.Fatalf("expired Trump Set power = %d, want %d", got, game.state.Cards[secondCard].Power)
 	}
-	delete(game.state.Champions, attacker.UID)
-	trumpCard := findCard(t, game, defender, trumpSetCardID)
-	ability := game.newAbilityInstance(
-		defender,
-		trumpCard,
-		second,
-		[]effectOperation{
-			{
-				Kind: effectOperationRetargetAttack,
-			},
-			{
-				Kind:                  effectOperationMove,
-				MoveSourceToGraveyard: true,
-			},
+	fizzleGame := newActionGameWithSource(t, trumpSetCardID)
+	fizzleFirstCard := findCard(t, fizzleGame, defender, twoOfHeartsCardID)
+	fizzleFirst := objectID("ally:fizzle-first-suited")
+	fizzleGame.state.Objects[fizzleFirst] = fieldObject{
+		ID:    fizzleFirst,
+		Card:  fizzleFirstCard,
+		Owner: defender,
+		Types: []string{
+			"ALLY",
 		},
-	)
-	game.resolveAbility(ability)
-	if cardIndex(game.state.Zones[defender.UID].Graveyard, trumpCard) < 0 {
+	}
+	fizzleSecondCard := findCard(t, fizzleGame, defender, threeOfSpadesCardID)
+	fizzleSecond := objectID("ally:fizzle-second-suited")
+	fizzleGame.state.Objects[fizzleSecond] = fieldObject{
+		ID:    fizzleSecond,
+		Card:  fizzleSecondCard,
+		Owner: defender,
+		Types: []string{
+			"ALLY",
+		},
+	}
+	fizzleAttackingChampion := fizzleGame.state.Champions[attacker.UID]
+	fizzleGame.state.EffectsStack = append(fizzleGame.state.EffectsStack, effectStackItem{
+		Kind:       effectStackCombat,
+		Controller: attacker,
+		Target:     fizzleFirst,
+		Attacker:   fizzleAttackingChampion.ID,
+	})
+	fizzleGame.advanceKnowledgeRevision()
+	fizzleGame.captureReplayInitialState()
+	view, err = fizzleGame.PlayerView(defender)
+	if err != nil {
+		t.Fatalf("PlayerView() for fizzle error = %v", err)
+	}
+	action = actionByCardName(t, view, "Trump Set")
+	fizzleTrumpCard := fizzleGame.getPlayerKnowledge(defender).Activations[action.Handle].Card
+	if err := fizzleGame.Submit(
+		defender,
+		Input{
+			Revision: view.Revision,
+			Action:   action.Handle,
+			Reserve:  reserveHandles(action),
+		},
+	); err != nil {
+		t.Fatalf("Submit() Trump Set fizzle declaration error = %v", err)
+	}
+	selectPendingChoiceSubject(t, fizzleGame, defender, entityID(fizzleSecond))
+	delete(fizzleGame.state.Champions, attacker.UID)
+	passOpportunityRound(t, fizzleGame, defender)
+	if cardIndex(fizzleGame.state.Zones[defender.UID].Graveyard, fizzleTrumpCard) < 0 {
 		t.Fatal("Trump Set did not move to the graveyard after its attack source became invalid")
+	}
+	if got := fizzleGame.characteristicsFor(fizzleSecond).Power; got != fizzleGame.state.Cards[fizzleSecondCard].Power {
+		t.Fatalf("fizzled Trump Set power = %d, want %d", got, fizzleGame.state.Cards[fizzleSecondCard].Power)
 	}
 }
 
