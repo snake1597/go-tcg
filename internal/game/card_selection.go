@@ -2,12 +2,24 @@ package game
 
 import "go-tcg/internal/model"
 
+// containsAnyString 判斷 values 是否至少包含 wants 中任一元素。
+// 輸入為候選字串與可接受字串；輸出為是否命中，副作用為零。
+func containsAnyString(values []string, wants []string) bool {
+	for _, want := range wants {
+		if containsString(values, want) {
+			return true
+		}
+	}
+	return false
+}
+
 // cardSelectionSpec 只描述從哪個區域選牌及合格條件，不決定選後如何處理卡牌。
 type cardSelectionSpec struct {
 	Zone                     cardZone
 	RequiredType             string
 	RequiredSubtype          string
 	RequiredElement          string
+	RequiredElements         []string
 	MaximumReserveCost       int
 	MinimumCards             int
 	MatchPrintedReserveTotal bool
@@ -29,6 +41,9 @@ func (g *Game) cardSelectionCandidates(player *model.Player, spec cardSelectionS
 			continue
 		}
 		if spec.RequiredElement != "" && !containsString(candidate.Elements, spec.RequiredElement) {
+			continue
+		}
+		if len(spec.RequiredElements) > 0 && !containsAnyString(candidate.Elements, spec.RequiredElements) {
 			continue
 		}
 		if spec.MaximumReserveCost > 0 && candidate.ReserveCost > spec.MaximumReserveCost {

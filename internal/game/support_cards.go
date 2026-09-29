@@ -375,6 +375,8 @@ func (g *Game) enqueueAllyDeath(player *model.Player, card cardInstanceID) {
 // 輸入為效果控制者與受支援的持續時間；輸出為到期回合或驗證錯誤，副作用為零。
 func (g *Game) expiresAtTurnForModifierDuration(player *model.Player, duration modifierDuration) (uint64, error) {
 	switch duration {
+	case modifierDurationEndOfTurn:
+		return g.state.Scheduler.TurnNumber + 1, nil
 	case modifierDurationEndOfNextTurn:
 		return g.endOfNextTurn(player), nil
 	default:

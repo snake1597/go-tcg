@@ -34,7 +34,6 @@ const (
 	effectOperationDamage             effectOperationKind = "damage"
 	effectOperationContinuousModifier effectOperationKind = "continuous_modifier"
 	effectOperationChooseZoneCard     effectOperationKind = "choose_zone_card"
-	effectOperationChooseMemoryAlly   effectOperationKind = "choose_memory_ally"
 	effectOperationDiscard            effectOperationKind = "discard"
 	effectOperationDeploy             effectOperationKind = "deploy"
 	// effectOperationPutAllyOnField 以通用 ability runtime 結算被 play 的 Ally source。
@@ -60,6 +59,8 @@ type effectOperation struct {
 	CardZone              cardZone            `json:"card_zone,omitempty"`
 	CardSelection         cardSelectionSpec   `json:"card_selection,omitempty"`
 	Binding               resolutionBinding   `json:"binding,omitempty"`
+	Selector              selectorKind        `json:"selector,omitempty"`
+	Duration              modifierDuration    `json:"duration,omitempty"`
 	ContinuousEffect      continuousEffect    `json:"continuous_effect,omitempty"`
 	Options               []objectID          `json:"options,omitempty"`
 }
@@ -145,6 +146,16 @@ func (g *Game) resolveAbility(instance abilityInstance) {
 			effect.Controller = instance.Controller
 			effect.Source = objectID(instance.SourceLKI)
 			effect.Target = target
+			if operation.Duration != "" {
+				expiresAtTurn, err := g.expiresAtTurnForModifierDuration(
+					instance.Controller,
+					operation.Duration,
+				)
+				if err != nil {
+					return
+				}
+				effect.ExpiresAtTurn = expiresAtTurn
+			}
 			g.addContinuousEffect(effect)
 			g.recordPublicEvent(instance.Controller, "ability", "continuous-effect", instance.SourceLKI)
 		case effectOperationDraw:
@@ -173,20 +184,6 @@ func (g *Game) resolveAbility(instance abilityInstance) {
 				operation.CanPass,
 				operation.Binding,
 				selection.Zone,
-			)
-			if g.state.ResolutionFrame != nil {
-				g.advanceKnowledgeRevision()
-			}
-			return
-		case effectOperationChooseMemoryAlly:
-			g.beginAbilityCardChoice(
-				instance,
-				operationIndex,
-				instance.Controller,
-				g.qualifiedMemoryAllies(instance.Controller),
-				operation.CanPass,
-				"",
-				cardZoneMemory,
 			)
 			if g.state.ResolutionFrame != nil {
 				g.advanceKnowledgeRevision()
@@ -232,7 +229,11 @@ func (g *Game) resolveAbility(instance abilityInstance) {
 			}
 			g.discardCard(instance.Controller, operation.CardZone, card)
 		case effectOperationDeploy:
-			g.deployAlly(instance.Controller, cardInstanceID(target))
+			card := cardInstanceID(target)
+			if operation.Binding != "" {
+				card = cardInstanceID(instance.Bindings[operation.Binding])
+			}
+			g.deployAlly(instance.Controller, card)
 		case effectOperationPutAllyOnField:
 			sourceIndex := cardIndex(g.state.EffectSources, instance.Source)
 			if sourceIndex < 0 {
@@ -266,7 +267,11 @@ func (g *Game) resolveAbility(instance abilityInstance) {
 				g.putInGraveyard(instance.Source)
 			}
 		case effectOperationChoose:
-			if len(operation.Options) == 0 {
+			options := operation.Options
+			if operation.Selector == selectorControlledSuitedAlly {
+				options = g.controlledSuitedAllies(instance.Controller)
+			}
+			if len(options) == 0 {
 				return
 			}
 			completed = false
@@ -276,7 +281,7 @@ func (g *Game) resolveAbility(instance abilityInstance) {
 				Operations: append([]effectOperation(nil), instance.Operations[operationIndex+1:]...),
 				CanPass:    canPass,
 			}
-			g.setDeclarationChoice(instance.Controller, operation.Options)
+			g.setDeclarationChoice(instance.Controller, options)
 			g.state.Knowledge.Choice.CanPass = canPass
 			g.advanceKnowledgeRevision()
 			return

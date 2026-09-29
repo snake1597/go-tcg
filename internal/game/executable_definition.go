@@ -35,11 +35,16 @@ const reductionDistinctSuitedCosts abilityCostReduction = "distinct-suited-reser
 type authoredEffectKind string
 
 const (
-	effectKindDraw       authoredEffectKind = "draw"
-	effectKindDamage     authoredEffectKind = "damage"
-	effectKindChooseCard authoredEffectKind = "choose-card"
-	effectKindDiscard    authoredEffectKind = "discard"
-	effectKindCopyAction authoredEffectKind = "copy-action"
+	effectKindDraw         authoredEffectKind = "draw"
+	effectKindDrawToMemory authoredEffectKind = "draw-to-memory"
+	effectKindDamage       authoredEffectKind = "damage"
+	effectKindChooseCard   authoredEffectKind = "choose-card"
+	effectKindChooseObject authoredEffectKind = "choose-object"
+	effectKindDiscard      authoredEffectKind = "discard"
+	effectKindDeploy       authoredEffectKind = "deploy"
+	effectKindCounter      authoredEffectKind = "counter"
+	effectKindModifier     authoredEffectKind = "modifier"
+	effectKindCopyAction   authoredEffectKind = "copy-action"
 )
 
 type abilityReference string
@@ -60,8 +65,9 @@ const (
 type selectorKind string
 
 const (
-	selectorUnits            selectorKind = "units"
-	selectorControlledSuited selectorKind = "controlled-suited"
+	selectorUnits                selectorKind = "units"
+	selectorControlledSuited     selectorKind = "controlled-suited"
+	selectorControlledSuitedAlly selectorKind = "controlled-suited-ally"
 )
 
 type targetSelector struct {
@@ -89,6 +95,24 @@ type valueExpression struct {
 type drawEffectDefinition struct {
 	amount    int
 	recipient abilityReference
+}
+
+type chooseObjectEffectDefinition struct {
+	selector selectorKind
+}
+
+type deployEffectDefinition struct {
+	binding resolutionBinding
+}
+
+type counterEffectDefinition struct {
+	counter string
+	amount  int
+}
+
+type modifierEffectDefinition struct {
+	duration modifierDuration
+	modifier continuousModifier
 }
 
 type damageEffectDefinition struct {
@@ -158,7 +182,10 @@ type replacementDefinition struct {
 
 type modifierDuration string
 
-const modifierDurationEndOfNextTurn modifierDuration = "end-of-next-turn"
+const (
+	modifierDurationEndOfTurn     modifierDuration = "end-of-turn"
+	modifierDurationEndOfNextTurn modifierDuration = "end-of-next-turn"
+)
 
 type deathModifierDefinition struct {
 	selector selectorKind
@@ -167,12 +194,16 @@ type deathModifierDefinition struct {
 }
 
 type authoredEffectDefinition struct {
-	kind       authoredEffectKind
-	draw       *drawEffectDefinition
-	damage     *damageEffectDefinition
-	chooseCard *chooseCardEffectDefinition
-	discard    *discardEffectDefinition
-	copyAction *copyActionEffectDefinition
+	kind         authoredEffectKind
+	draw         *drawEffectDefinition
+	damage       *damageEffectDefinition
+	chooseCard   *chooseCardEffectDefinition
+	chooseObject *chooseObjectEffectDefinition
+	discard      *discardEffectDefinition
+	deploy       *deployEffectDefinition
+	counter      *counterEffectDefinition
+	modifier     *modifierEffectDefinition
+	copyAction   *copyActionEffectDefinition
 }
 
 type authoredAbilityDefinition struct {
@@ -193,12 +224,16 @@ type authoredAbilityDefinition struct {
 
 // compiledEffect 保存已驗證的具體效果 payload，不讓 authoring tag 進入對局狀態。
 type compiledEffect struct {
-	kind       authoredEffectKind
-	draw       drawEffectDefinition
-	damage     damageEffectDefinition
-	chooseCard chooseCardEffectDefinition
-	discard    discardEffectDefinition
-	copyAction copyActionEffectDefinition
+	kind         authoredEffectKind
+	draw         drawEffectDefinition
+	damage       damageEffectDefinition
+	chooseCard   chooseCardEffectDefinition
+	chooseObject chooseObjectEffectDefinition
+	discard      discardEffectDefinition
+	deploy       deployEffectDefinition
+	counter      counterEffectDefinition
+	modifier     modifierEffectDefinition
+	copyAction   copyActionEffectDefinition
 }
 
 // compiledAbilityDefinition 是建局前完成驗證的能力中介表示。
@@ -311,6 +346,181 @@ func duchessAbilities() []authoredAbilityDefinition {
 					kind: effectKindCopyAction,
 					copyAction: &copyActionEffectDefinition{
 						binding: "copy-source",
+					},
+				},
+			},
+		},
+	}
+}
+
+// fiveOfSpadesAbilities 宣告 Five of Spades 的 Cardistry Slot 與來源自身的暫時 Power 修正。
+// 輸入為零；輸出為不共享可變狀態的 Go 編寫資料，副作用為零。
+func fiveOfSpadesAbilities() []authoredAbilityDefinition {
+	return []authoredAbilityDefinition{
+		{
+			slot:      "ability:i9hf5lhl5f:front:cardistry-power",
+			kind:      abilityKindCardistry,
+			timing:    timingMainPhase,
+			usage:     usageOncePerObject,
+			reduction: reductionDistinctSuitedCosts,
+			baseCost:  5,
+			effects: []authoredEffectDefinition{
+				{
+					kind: effectKindModifier,
+					modifier: &modifierEffectDefinition{
+						duration: modifierDurationEndOfTurn,
+						modifier: continuousModifier{
+							PowerDelta: 5,
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+// fourOfSpadesAbilities 宣告 Four of Spades 的 Cardistry Slot 與抽至 Memory 效果。
+// 輸入為零；輸出為不共享可變狀態的 Go 編寫資料，副作用為零。
+func fourOfSpadesAbilities() []authoredAbilityDefinition {
+	return []authoredAbilityDefinition{
+		{
+			slot:      "ability:8bolq2y5qp:front:cardistry-draw-to-memory",
+			kind:      abilityKindCardistry,
+			timing:    timingMainPhase,
+			usage:     usageOncePerObject,
+			reduction: reductionDistinctSuitedCosts,
+			baseCost:  4,
+			effects: []authoredEffectDefinition{
+				{
+					kind: effectKindDrawToMemory,
+					draw: &drawEffectDefinition{
+						amount:    1,
+						recipient: referenceController,
+					},
+				},
+			},
+		},
+	}
+}
+
+// fourOfHeartsAbilities 宣告 Four of Hearts 的抽至 Memory、選擇合格 Ally 與部署 Cardistry Slot。
+// 輸入為零；輸出為不共享可變狀態的 Go 編寫資料，副作用為零。
+func fourOfHeartsAbilities() []authoredAbilityDefinition {
+	return []authoredAbilityDefinition{
+		{
+			slot:      "ability:xgax8bbjqj:front:cardistry-deploy",
+			kind:      abilityKindCardistry,
+			timing:    timingMainPhase,
+			usage:     usageOncePerObject,
+			reduction: reductionDistinctSuitedCosts,
+			baseCost:  4,
+			effects: []authoredEffectDefinition{
+				{
+					kind: effectKindDrawToMemory,
+					draw: &drawEffectDefinition{
+						amount:    1,
+						recipient: referenceController,
+					},
+				},
+				{
+					kind: effectKindChooseCard,
+					chooseCard: &chooseCardEffectDefinition{
+						selection: cardSelectionSpec{
+							Zone:               cardZoneMemory,
+							RequiredType:       "ALLY",
+							RequiredSubtype:    "SUITED",
+							RequiredElements:   []string{"FIRE", "NORM"},
+							MaximumReserveCost: 3,
+						},
+						binding: "deploy-card",
+					},
+				},
+				{
+					kind: effectKindDeploy,
+					deploy: &deployEffectDefinition{
+						binding: "deploy-card",
+					},
+				},
+			},
+		},
+	}
+}
+
+// threeOfSpadesAbilities 宣告 Three of Spades 的選擇受控 Suited Ally 與暫時 Life 修正 Cardistry Slot。
+// 輸入為零；輸出為不共享可變狀態的 Go 編寫資料，副作用為零。
+func threeOfSpadesAbilities() []authoredAbilityDefinition {
+	return []authoredAbilityDefinition{
+		{
+			slot:      "ability:o09csnorqv:front:cardistry-life",
+			kind:      abilityKindCardistry,
+			timing:    timingMainPhase,
+			usage:     usageOncePerObject,
+			reduction: reductionDistinctSuitedCosts,
+			baseCost:  3,
+			effects: []authoredEffectDefinition{
+				{
+					kind: effectKindChooseObject,
+					chooseObject: &chooseObjectEffectDefinition{
+						selector: selectorControlledSuitedAlly,
+					},
+				},
+				{
+					kind: effectKindModifier,
+					modifier: &modifierEffectDefinition{
+						duration: modifierDurationEndOfTurn,
+						modifier: continuousModifier{
+							LifeDelta: 2,
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+// twoOfHeartsAbilities 宣告 Two of Hearts 的 Cardistry Slot 與來源自身的暫時 Power 修正。
+// 輸入為零；輸出為不共享可變狀態的 Go 編寫資料，副作用為零。
+func twoOfHeartsAbilities() []authoredAbilityDefinition {
+	return []authoredAbilityDefinition{
+		{
+			slot:      "ability:rufki4o41y:front:cardistry-power",
+			kind:      abilityKindCardistry,
+			timing:    timingMainPhase,
+			usage:     usageOncePerObject,
+			reduction: reductionDistinctSuitedCosts,
+			baseCost:  2,
+			effects: []authoredEffectDefinition{
+				{
+					kind: effectKindModifier,
+					modifier: &modifierEffectDefinition{
+						duration: modifierDurationEndOfTurn,
+						modifier: continuousModifier{
+							PowerDelta: 2,
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+// twoOfSpadesAbilities 宣告 Two of Spades 的 Fast Cardistry Slot 與自身 BUFF counter 效果。
+// 輸入為零；輸出為不共享可變狀態的 Go 編寫資料，副作用為零。
+func twoOfSpadesAbilities() []authoredAbilityDefinition {
+	return []authoredAbilityDefinition{
+		{
+			slot:      "ability:e8ygl32jef:front:cardistry-buff-counter",
+			kind:      abilityKindCardistry,
+			timing:    timingFast,
+			usage:     usageOncePerObject,
+			reduction: reductionDistinctSuitedCosts,
+			baseCost:  2,
+			effects: []authoredEffectDefinition{
+				{
+					kind: effectKindCounter,
+					counter: &counterEffectDefinition{
+						counter: "BUFF",
+						amount:  1,
 					},
 				},
 			},
@@ -493,6 +703,18 @@ func authoredAbilitiesForCard(id CardID) []authoredAbilityDefinition {
 		return threeOfHeartsAbilities()
 	case duchessCardID:
 		return duchessAbilities()
+	case fiveOfSpadesCardID:
+		return fiveOfSpadesAbilities()
+	case fourOfSpadesCardID:
+		return fourOfSpadesAbilities()
+	case fourOfHeartsCardID:
+		return fourOfHeartsAbilities()
+	case threeOfSpadesCardID:
+		return threeOfSpadesAbilities()
+	case twoOfHeartsCardID:
+		return twoOfHeartsAbilities()
+	case twoOfSpadesCardID:
+		return twoOfSpadesAbilities()
 	case impactHammerCardID:
 		return impactHammerAbilities()
 	case redHareCardID:
@@ -653,6 +875,17 @@ func compileAbilityDefinitions(definition CardDefinition, authored []authoredAbi
 					kind: effectKindDraw,
 					draw: *effect.draw,
 				})
+			case effectKindDrawToMemory:
+				if ability.kind != abilityKindCardistry || effect.draw == nil || effect.damage != nil {
+					return nil, fmt.Errorf("%s: %s.draw_to_memory payload is required only for Cardistry", context, field)
+				}
+				if effect.draw.amount <= 0 || effect.draw.recipient != referenceController {
+					return nil, fmt.Errorf("%s: %s.draw_to_memory requires a positive controller draw", context, field)
+				}
+				result.effects = append(result.effects, compiledEffect{
+					kind: effectKindDrawToMemory,
+					draw: *effect.draw,
+				})
 			case effectKindDamage:
 				if (ability.kind != abilityKindAction && ability.kind != abilityKindTriggered) || effect.damage == nil || effect.draw != nil {
 					return nil, fmt.Errorf("%s: %s.damage payload is required only for Action or triggered", context, field)
@@ -678,7 +911,7 @@ func compileAbilityDefinitions(definition CardDefinition, authored []authoredAbi
 				if ability.kind != abilityKindCardistry || effect.chooseCard == nil || effect.draw != nil || effect.damage != nil || effect.discard != nil || effect.copyAction != nil {
 					return nil, fmt.Errorf("%s: %s.choose_card payload is required only for Cardistry", context, field)
 				}
-				if effect.chooseCard.selection.Zone != cardZoneHand && effect.chooseCard.selection.Zone != cardZoneGraveyard || effect.chooseCard.binding == "" {
+				if (effect.chooseCard.selection.Zone != cardZoneHand && effect.chooseCard.selection.Zone != cardZoneGraveyard && effect.chooseCard.selection.Zone != cardZoneMemory) || effect.chooseCard.binding == "" {
 					return nil, fmt.Errorf("%s: %s.choose_card requires supported zone and binding", context, field)
 				}
 				if _, exists := bindings[effect.chooseCard.binding]; exists {
@@ -688,6 +921,14 @@ func compileAbilityDefinitions(definition CardDefinition, authored []authoredAbi
 				result.effects = append(result.effects, compiledEffect{
 					kind:       effectKindChooseCard,
 					chooseCard: *effect.chooseCard,
+				})
+			case effectKindChooseObject:
+				if ability.kind != abilityKindCardistry || effect.chooseObject == nil || effect.chooseObject.selector != selectorControlledSuitedAlly {
+					return nil, fmt.Errorf("%s: %s.choose_object requires a controlled Suited Ally selector", context, field)
+				}
+				result.effects = append(result.effects, compiledEffect{
+					kind:         effectKindChooseObject,
+					chooseObject: *effect.chooseObject,
 				})
 			case effectKindDiscard:
 				if ability.kind != abilityKindCardistry || effect.discard == nil || effect.draw != nil || effect.damage != nil || effect.chooseCard != nil || effect.copyAction != nil {
@@ -702,6 +943,34 @@ func compileAbilityDefinitions(definition CardDefinition, authored []authoredAbi
 				result.effects = append(result.effects, compiledEffect{
 					kind:    effectKindDiscard,
 					discard: *effect.discard,
+				})
+			case effectKindDeploy:
+				if ability.kind != abilityKindCardistry || effect.deploy == nil || effect.deploy.binding == "" {
+					return nil, fmt.Errorf("%s: %s.deploy.binding must reference a Memory Ally choice", context, field)
+				}
+				selection, exists := bindings[effect.deploy.binding]
+				if !exists || selection.Zone != cardZoneMemory || selection.RequiredType != "ALLY" {
+					return nil, fmt.Errorf("%s: %s.deploy.binding must reference a Memory Ally choice", context, field)
+				}
+				result.effects = append(result.effects, compiledEffect{
+					kind:   effectKindDeploy,
+					deploy: *effect.deploy,
+				})
+			case effectKindCounter:
+				if ability.kind != abilityKindCardistry || effect.counter == nil || effect.counter.counter != "BUFF" || effect.counter.amount != 1 {
+					return nil, fmt.Errorf("%s: %s.counter requires exactly one BUFF counter", context, field)
+				}
+				result.effects = append(result.effects, compiledEffect{
+					kind:    effectKindCounter,
+					counter: *effect.counter,
+				})
+			case effectKindModifier:
+				if ability.kind != abilityKindCardistry || effect.modifier == nil || effect.modifier.duration != modifierDurationEndOfTurn || !isCardistryModifier(effect.modifier.modifier) {
+					return nil, fmt.Errorf("%s: %s.modifier requires an end-of-next-turn Power or Life delta", context, field)
+				}
+				result.effects = append(result.effects, compiledEffect{
+					kind:     effectKindModifier,
+					modifier: *effect.modifier,
 				})
 			case effectKindCopyAction:
 				if ability.kind != abilityKindCardistry || effect.copyAction == nil || effect.draw != nil || effect.damage != nil || effect.chooseCard != nil || effect.discard != nil {
@@ -794,6 +1063,23 @@ func validateDeathModifierDefinition(definition *deathModifierDefinition) error 
 		return fmt.Errorf("unsupported selector, duration, or modifier")
 	}
 	return nil
+}
+
+// isCardistryModifier 驗證 Cardistry 暫時修正只改變 Power 或 Life，且不混入其他 continuous modifier。
+// 輸入為編寫的修正；輸出為是否屬於受支援的 Cardistry 修正，副作用為零。
+func isCardistryModifier(modifier continuousModifier) bool {
+	return modifier.SetPower == nil &&
+		modifier.SetLife == nil &&
+		(modifier.PowerDelta != 0 || modifier.LifeDelta != 0) &&
+		modifier.ReserveCostDelta == 0 &&
+		!modifier.GrantImmortality &&
+		!modifier.ProhibitRecover &&
+		!modifier.SwitchPowerLife &&
+		!modifier.GrantStealth &&
+		!modifier.GrantTrueSight &&
+		modifier.SetPride == nil &&
+		!modifier.RemovePride &&
+		!modifier.GrantRedHareOnAttack
 }
 
 // isPrideStaticModifier 驗證 Pride static 只設定非負 Pride，不混入未支援的特徵修正。
@@ -915,6 +1201,11 @@ func (ability compiledAbilityDefinition) operations() []effectOperation {
 				Kind:   effectOperationDraw,
 				Amount: effect.draw.amount,
 			})
+		case effectKindDrawToMemory:
+			operations = append(operations, effectOperation{
+				Kind:   effectOperationDrawToMemory,
+				Amount: effect.draw.amount,
+			})
 		case effectKindDamage:
 			amount := cloneValueExpression(effect.damage.amount)
 			operations = append(operations, effectOperation{
@@ -928,10 +1219,37 @@ func (ability compiledAbilityDefinition) operations() []effectOperation {
 				CardSelection: effect.chooseCard.selection,
 				Binding:       effect.chooseCard.binding,
 			})
+		case effectKindChooseObject:
+			operations = append(operations, effectOperation{
+				Kind:     effectOperationChoose,
+				Selector: effect.chooseObject.selector,
+			})
 		case effectKindDiscard:
 			operations = append(operations, effectOperation{
 				Kind:    effectOperationDiscard,
 				Binding: effect.discard.binding,
+			})
+		case effectKindDeploy:
+			operations = append(operations, effectOperation{
+				Kind:    effectOperationDeploy,
+				Binding: effect.deploy.binding,
+			})
+		case effectKindCounter:
+			operations = append(operations, effectOperation{
+				Kind:    effectOperationCounter,
+				Counter: effect.counter.counter,
+				Amount:  effect.counter.amount,
+			})
+		case effectKindModifier:
+			operations = append(operations, effectOperation{
+				Kind:     effectOperationContinuousModifier,
+				Duration: effect.modifier.duration,
+				ContinuousEffect: continuousEffect{
+					Scope:     effectScopeObject,
+					Layer:     effectLayerModifier,
+					PowerLife: powerLifeModify,
+					Modifier:  effect.modifier.modifier,
+				},
 			})
 		case effectKindCopyAction:
 			operations = append(operations, effectOperation{
@@ -986,6 +1304,12 @@ func compileReplayDefinitions() (map[CardID]CardDefinition, error) {
 		straightFlareCardID,
 		threeOfHeartsCardID,
 		duchessCardID,
+		fiveOfSpadesCardID,
+		fourOfSpadesCardID,
+		fourOfHeartsCardID,
+		threeOfSpadesCardID,
+		twoOfHeartsCardID,
+		twoOfSpadesCardID,
 		impactHammerCardID,
 		redHareCardID,
 		infernalVesselCardID,

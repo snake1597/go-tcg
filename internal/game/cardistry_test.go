@@ -602,6 +602,42 @@ func TestCardistryOperationsRecordCountersAndModifiers(t *testing.T) {
 	}
 }
 
+// TestFourOfSpadesDrawsToMemoryAndReplays 驗證 Four of Spades 由定義抽牌至 Memory，並維持卡牌守恆與 replay。
+// 輸入為具足額 Memory 付款的 Four of Spades；輸出為一張新 Memory 卡與可驗證 replay，副作用為放逐付款卡並記錄抽至 Memory 事件。
+func TestFourOfSpadesDrawsToMemoryAndReplays(t *testing.T) {
+	game := newCardistryGame(t, fourOfSpadesCardID)
+	player := model.PlayerOne
+	fillMemory(t, game, player, 4, "")
+	game.advanceKnowledgeRevision()
+	game.captureReplayInitialState()
+	before := game.state.Zones[player.UID]
+	cost := game.cardistryCost(
+		player,
+		4,
+		reductionDistinctSuitedCosts,
+	)
+	if err := game.Submit(
+		player,
+		Input{
+			Revision: game.state.Revision,
+			Action:   cardistryAction(t, game, player),
+		},
+	); err != nil {
+		t.Fatalf("Submit() Cardistry error = %v", err)
+	}
+	passOpportunityRound(t, game, player)
+	after := game.state.Zones[player.UID]
+	if len(after.Memory) != len(before.Memory)-cost+1 || len(after.Banishment) != len(before.Banishment)+cost {
+		t.Fatalf("zones after Four of Spades = %#v, want %d payments and one Memory draw", after, cost)
+	}
+	if !hasGameEvent(game, "draw-to-memory") {
+		t.Fatalf("events = %#v, want draw-to-memory", game.state.Events)
+	}
+	if err := game.Replay().Verify(); err != nil {
+		t.Fatalf("Replay().Verify() error = %v", err)
+	}
+}
+
 // TestDuchessCopySelectionIncludesOnlyQualifiedFireActions 驗證 Duchess 的定義選牌只提供合格墓地 Action。
 // 輸入為墓地中的合格與不合格卡牌；輸出為只含 Fire、Action 且 Reserve Cost 不超過二的候選，副作用為零。
 func TestDuchessCopySelectionIncludesOnlyQualifiedFireActions(t *testing.T) {
@@ -813,6 +849,7 @@ func TestThreeOfSpadesTemporaryModifierIsEventedAndExpires(t *testing.T) {
 	if !game.cardHasSubtype(game.state.Objects[target].Card, "SUITED") {
 		t.Fatalf("target card = %#v, want SUITED subtype", game.state.Cards[game.state.Objects[target].Card])
 	}
+	baseLife := game.characteristicsFor(target).Life
 	game.advanceKnowledgeRevision()
 	game.captureReplayInitialState()
 	view, err := game.PlayerView(player)
@@ -837,8 +874,15 @@ func TestThreeOfSpadesTemporaryModifierIsEventedAndExpires(t *testing.T) {
 	if !hasGameEvent(game, "continuous-effect") {
 		t.Fatalf("events = %#v, want continuous-effect", game.state.Events)
 	}
+	if len(game.state.ContinuousEffects) != 1 || game.state.ContinuousEffects[0].ExpiresAtTurn != game.state.Scheduler.TurnNumber+1 {
+		t.Fatalf("continuous effects = %#v, want modifier through the current turn", game.state.ContinuousEffects)
+	}
 	if err := game.Replay().Verify(); err != nil {
 		t.Fatalf("Replay().Verify() error = %v", err)
+	}
+	game.state.Scheduler.TurnNumber = game.state.ContinuousEffects[0].ExpiresAtTurn
+	if got := game.characteristicsFor(target).Life; got != baseLife {
+		t.Fatalf("target life = %d, want expired base life %d", got, baseLife)
 	}
 }
 

@@ -38,11 +38,8 @@ func (g *Game) canActivateCardistry(player *model.Player, source objectID) bool 
 	if !exists || !samePlayer(object.Owner, player) {
 		return false
 	}
-	if ability, compiled := g.compiledCardistry(object.Card); compiled {
-		if ability.usage == usageOncePerObject && g.state.CardistryUsed[source] {
-			return false
-		}
-	} else if g.state.CardistryUsed[source] {
+	ability, compiled := g.compiledCardistry(object.Card)
+	if !compiled || ability.usage == usageOncePerObject && g.state.CardistryUsed[source] {
 		return false
 	}
 	baseCost, fast := g.cardistryBaseCost(object.Card)
@@ -60,37 +57,22 @@ func (g *Game) canActivateCardistry(player *model.Player, source objectID) bool 
 	)
 }
 
-// cardistryBaseCost 回傳已實作卡牌的 Cardistry 基礎費用與 Fast 屬性。
-// 未實作或找不到定義時以費用 -1 表示不可啟動。
+// cardistryBaseCost 回傳已編譯 Cardistry 定義的基礎費用與 Fast 屬性。
+// 輸入為卡牌實例；輸出為費用與 Fast 旗標，未編譯 Cardistry 時回傳 -1 和 false，副作用為零。
 func (g *Game) cardistryBaseCost(card cardInstanceID) (int, bool) {
 	if ability, exists := g.compiledCardistry(card); exists {
 		return ability.baseCost, ability.timing == timingFast
 	}
-	switch g.state.Cards[card].Definition {
-	case fiveOfSpadesCardID:
-		return 5, false
-	case fourOfSpadesCardID:
-		return 4, false
-	case fourOfHeartsCardID:
-		return 4, false
-	case threeOfSpadesCardID:
-		return 3, false
-	case twoOfHeartsCardID:
-		return 2, false
-	case twoOfSpadesCardID:
-		return 2, true
-	default:
-		return -1, false
-	}
+	return -1, false
 }
 
-// cardistryReduction 回傳已編譯卡牌的費用減免規則；未遷移 Cardistry 使用既有共通規則。
-// 輸入為卡牌實例；輸出為費用減免種類，副作用為零。
+// cardistryReduction 回傳已編譯 Cardistry 定義的費用減免規則。
+// 輸入為卡牌實例；輸出為費用減免種類，未編譯 Cardistry 時回傳空值，副作用為零。
 func (g *Game) cardistryReduction(card cardInstanceID) abilityCostReduction {
 	if ability, exists := g.compiledCardistry(card); exists {
 		return ability.reduction
 	}
-	return reductionDistinctSuitedCosts
+	return ""
 }
 
 // cardistryCost 按定義中的減免規則及玩家折扣計算費用，最低為 0。
@@ -132,11 +114,11 @@ func (g *Game) activateCardistry(player *model.Player, source objectID, memoryPa
 	); err != nil {
 		return err
 	}
-	if ability, compiled := g.compiledCardistry(object.Card); compiled {
-		if ability.usage == usageOncePerObject {
-			g.state.CardistryUsed[source] = true
-		}
-	} else {
+	ability, compiled := g.compiledCardistry(object.Card)
+	if !compiled {
+		return fmt.Errorf("compiled Cardistry definition is missing for %q", object.Card)
+	}
+	if ability.usage == usageOncePerObject {
 		g.state.CardistryUsed[source] = true
 	}
 	delete(g.state.CardistryDiscounts, player.UID)
@@ -220,31 +202,23 @@ func (g *Game) memoryPaymentCardForHandle(player *model.Player, handle ViewHandl
 }
 
 func (g *Game) cardistryAbility(player *model.Player, source objectID, card cardInstanceID) abilityInstance {
-	if ability, exists := g.compiledCardistry(card); exists {
-		operations := ability.operations()
-		instance := g.newAbilityInstance(player, card, source, operations)
-		instance.Slot = ability.slot
-		return instance
+	ability, exists := g.compiledCardistry(card)
+	if !exists {
+		message := fmt.Sprintf(
+			"compiled Cardistry definition is missing for %q",
+			card,
+		)
+		panic(message)
 	}
-	operations := []effectOperation{}
-	switch g.state.Cards[card].Definition {
-	case fiveOfSpadesCardID:
-		operations = append(operations, g.temporaryModifierOperation(5, 0))
-	case fourOfSpadesCardID:
-		operations = append(operations, effectOperation{Kind: effectOperationDrawToMemory, Amount: 1})
-	case fourOfHeartsCardID:
-		operations = append(operations, effectOperation{Kind: effectOperationDrawToMemory, Amount: 1})
-		operations = append(operations, effectOperation{Kind: effectOperationChooseMemoryAlly})
-		operations = append(operations, effectOperation{Kind: effectOperationDeploy})
-	case threeOfSpadesCardID:
-		operations = append(operations, effectOperation{Kind: effectOperationChoose, Options: g.controlledSuitedAllies(player)})
-		operations = append(operations, g.temporaryModifierOperation(0, 2))
-	case twoOfHeartsCardID:
-		operations = append(operations, g.temporaryModifierOperation(2, 0))
-	case twoOfSpadesCardID:
-		operations = append(operations, effectOperation{Kind: effectOperationCounter, Counter: "BUFF", Amount: 1})
-	}
-	return g.newAbilityInstance(player, card, source, operations)
+	operations := ability.operations()
+	instance := g.newAbilityInstance(
+		player,
+		card,
+		source,
+		operations,
+	)
+	instance.Slot = ability.slot
+	return instance
 }
 
 func (g *Game) controlledSuitedAllies(player *model.Player) []objectID {
@@ -256,19 +230,6 @@ func (g *Game) controlledSuitedAllies(player *model.Player) []objectID {
 	}
 	sort.Slice(objects, func(first, second int) bool { return objects[first] < objects[second] })
 	return objects
-}
-
-func (g *Game) qualifiedMemoryAllies(player *model.Player) []cardInstanceID {
-	zones := g.state.Zones[player.UID]
-	cards := []cardInstanceID{}
-	for _, card := range zones.Memory {
-		candidate := g.state.Cards[card]
-		if containsString(candidate.Types, "ALLY") && containsString(candidate.Subtypes, "SUITED") && candidate.ReserveCost <= 3 && (containsString(candidate.Elements, "FIRE") || containsString(candidate.Elements, "NORM")) {
-			cards = append(cards, card)
-		}
-	}
-	sort.Slice(cards, func(first, second int) bool { return cards[first] < cards[second] })
-	return cards
 }
 
 func (g *Game) deployAlly(player *model.Player, card cardInstanceID) {

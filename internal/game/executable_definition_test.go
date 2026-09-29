@@ -24,6 +24,133 @@ func TestCompileWonderlandsReignDefinition(t *testing.T) {
 	}
 }
 
+// TestCompileRemainingCardistryDefinitions 驗證其餘 Support Set Cardistry 全部以穩定 Slot 與編譯定義提供。
+// 輸入為六張固定卡牌及其 Go 編寫資料；輸出為各一個可執行 Cardistry 定義，副作用為零。
+func TestCompileRemainingCardistryDefinitions(t *testing.T) {
+	for _, testCase := range []struct {
+		name       string
+		id         CardID
+		slot       AbilitySlotID
+		cost       int
+		timing     abilityTiming
+		operations []effectOperationKind
+	}{
+		{
+			name:   "Five of Spades",
+			id:     fiveOfSpadesCardID,
+			slot:   "ability:i9hf5lhl5f:front:cardistry-power",
+			cost:   5,
+			timing: timingMainPhase,
+			operations: []effectOperationKind{
+				effectOperationContinuousModifier,
+			},
+		},
+		{
+			name:   "Four of Spades",
+			id:     fourOfSpadesCardID,
+			slot:   "ability:8bolq2y5qp:front:cardistry-draw-to-memory",
+			cost:   4,
+			timing: timingMainPhase,
+			operations: []effectOperationKind{
+				effectOperationDrawToMemory,
+			},
+		},
+		{
+			name:   "Four of Hearts",
+			id:     fourOfHeartsCardID,
+			slot:   "ability:xgax8bbjqj:front:cardistry-deploy",
+			cost:   4,
+			timing: timingMainPhase,
+			operations: []effectOperationKind{
+				effectOperationDrawToMemory,
+				effectOperationChooseZoneCard,
+				effectOperationDeploy,
+			},
+		},
+		{
+			name:   "Three of Spades",
+			id:     threeOfSpadesCardID,
+			slot:   "ability:o09csnorqv:front:cardistry-life",
+			cost:   3,
+			timing: timingMainPhase,
+			operations: []effectOperationKind{
+				effectOperationChoose,
+				effectOperationContinuousModifier,
+			},
+		},
+		{
+			name:   "Two of Hearts",
+			id:     twoOfHeartsCardID,
+			slot:   "ability:rufki4o41y:front:cardistry-power",
+			cost:   2,
+			timing: timingMainPhase,
+			operations: []effectOperationKind{
+				effectOperationContinuousModifier,
+			},
+		},
+		{
+			name:   "Two of Spades",
+			id:     twoOfSpadesCardID,
+			slot:   "ability:e8ygl32jef:front:cardistry-buff-counter",
+			cost:   2,
+			timing: timingFast,
+			operations: []effectOperationKind{
+				effectOperationCounter,
+			},
+		},
+	} {
+		t.Run(
+			testCase.name,
+			func(t *testing.T) {
+				definition := CardDefinition{
+					id: testCase.id,
+					face: CardFace{
+						id: CardFaceID("face:" + string(testCase.id) + ":front"),
+					},
+				}
+				abilities, err := compileAbilityDefinitions(
+					definition,
+					authoredAbilitiesForCard(testCase.id),
+				)
+				if err != nil {
+					t.Fatalf("compileAbilityDefinitions() error = %v", err)
+				}
+				if len(abilities) != 1 || abilities[0].kind != abilityKindCardistry || abilities[0].slot != testCase.slot || abilities[0].baseCost != testCase.cost || abilities[0].timing != testCase.timing {
+					t.Fatalf("compiled abilities = %#v, want stable executable Cardistry slot %q", abilities, testCase.slot)
+				}
+				operations := abilities[0].operations()
+				if len(operations) != len(testCase.operations) {
+					t.Fatalf("operations = %#v, want %d operations", operations, len(testCase.operations))
+				}
+				for index, operation := range operations {
+					if operation.Kind != testCase.operations[index] {
+						t.Fatalf("operations[%d] = %q, want %q", index, operation.Kind, testCase.operations[index])
+					}
+				}
+			},
+		)
+	}
+}
+
+// TestCompileCardistryDefinitionRejectsMixedModifier 驗證 Cardistry modifier 不可混入未登錄的 continuous effect 欄位。
+// 輸入為夾帶 Immortality 的 Two of Hearts 編寫資料；輸出為編譯錯誤，副作用為零。
+func TestCompileCardistryDefinitionRejectsMixedModifier(t *testing.T) {
+	authored := twoOfHeartsAbilities()
+	authored[0].effects[0].modifier.modifier.GrantImmortality = true
+	_, err := compileAbilityDefinitions(
+		CardDefinition{
+			id: twoOfHeartsCardID,
+			face: CardFace{
+				id: "face:rufki4o41y:front",
+			},
+		},
+		authored,
+	)
+	if err == nil || !strings.Contains(err.Error(), "modifier") {
+		t.Fatalf("compileAbilityDefinitions() error = %v, want modifier validation failure", err)
+	}
+}
+
 // TestCompileDuchessDefinition 驗證 Duchess 的選牌與免費 Action 複製完全由可執行定義描述。
 // 輸入為 Duchess 的卡牌定義與 Go 編寫資料；輸出為具選牌條件、具名結果與複製效果的 Cardistry 操作，副作用為零。
 func TestCompileDuchessDefinition(t *testing.T) {

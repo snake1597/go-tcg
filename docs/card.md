@@ -2,7 +2,7 @@
 
 首版只會建立一種固定的鏡像 Standard 對局。卡牌行為由 Game Module 的 Go 程式碼執行；此文件只說明載入資料與建局的最小關係，不維護另一份 runtime 支援清單。
 
-Wonderland's Reign 的 `ability:0mf1ug6yfi:front:cardistry-draw` 是首個 Go 可執行能力定義。其 Slot、啟動時機、每物件一次的限制、費用折扣、基礎費用與抽牌效果集中在 `internal/game/executable_definition.go`，載入卡面時編譯驗證，再交給既有 Ability Runtime 執行。卡面資料與編寫資料只保存在不可變定義，不寫入 Game State；replay 依固定引擎版本重建同一份定義。
+Support Set 的 Cardistry 均由 `internal/game/executable_definition.go` 提供可執行定義：Wonderland's Reign 的 `ability:0mf1ug6yfi:front:cardistry-draw`、Five of Spades 的 `ability:i9hf5lhl5f:front:cardistry-power`、Four of Spades 的 `ability:8bolq2y5qp:front:cardistry-draw-to-memory`、Four of Hearts 的 `ability:xgax8bbjqj:front:cardistry-deploy`、Three of Spades 的 `ability:o09csnorqv:front:cardistry-life`、Two of Hearts 的 `ability:rufki4o41y:front:cardistry-power`、Two of Spades 的 `ability:e8ygl32jef:front:cardistry-buff-counter`、Three of Hearts 的 `ability:1db8hz4prm:front:cardistry-draw-discard` 與 Duchess 的 `ability:qzv380ujf5:front:cardistry-copy-action`。它們的規則來源是對應 `card/*.json` 卡面資料的 `effect_raw`，載入卡面時編譯驗證，再交給既有 Ability Runtime 執行。卡面資料與編寫資料只保存在不可變定義，不寫入 Game State；replay 依固定引擎版本重建同一份定義。
 
 ## 資料來源
 
