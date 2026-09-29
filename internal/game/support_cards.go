@@ -199,24 +199,12 @@ func (g *Game) cardistryObserverTriggers(player *model.Player, source objectID) 
 	return triggers
 }
 
-func (g *Game) eligibleDuchessCopies(player *model.Player) []cardInstanceID {
-	cards := []cardInstanceID{}
-	for _, card := range g.state.Zones[player.UID].Graveyard {
-		candidate := g.state.Cards[card]
-		if samePlayer(candidate.Owner, player) && containsString(candidate.Types, "ACTION") && containsString(candidate.Elements, "FIRE") && candidate.ReserveCost <= 2 {
-			cards = append(cards, card)
-		}
-	}
-	sort.Slice(cards, func(first, second int) bool { return cards[first] < cards[second] })
-	return cards
-}
-
-// copyDuchessAction 驗證墓地中的合格 Fire action，放逐原牌並建立獨立的 runtime copy 與能力。
+// copyAction 驗證指定區域中的合格 Action，放逐原牌並建立獨立的 runtime copy 與能力。
 // 複製能力不支付原 action 費用，並移除最後的來源進墓地操作；原牌保留在放逐區。
 // runtime copy 完成結算或被略過時由能力流程銷毀，不作為一般牌移入墓地。
-func (g *Game) copyDuchessAction(player *model.Player, source cardInstanceID, target objectID) (abilityInstance, error) {
-	if cardIndex(g.state.Zones[player.UID].Graveyard, source) < 0 || !containsCard(g.eligibleDuchessCopies(player), source) {
-		return abilityInstance{}, fmt.Errorf("invalid Duchess copy source %q", source)
+func (g *Game) copyAction(player *model.Player, source cardInstanceID, selection cardSelectionSpec, target objectID) (abilityInstance, error) {
+	if selection.Zone != cardZoneGraveyard || selection.RequiredType != "ACTION" || !containsCard(g.cardSelectionCandidates(player, selection, ""), source) {
+		return abilityInstance{}, fmt.Errorf("invalid Action copy source %q", source)
 	}
 	zones := g.state.Zones[player.UID]
 	zones.Graveyard = removeCardAt(zones.Graveyard, cardIndex(zones.Graveyard, source))

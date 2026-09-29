@@ -7,6 +7,8 @@ type cardSelectionSpec struct {
 	Zone                     cardZone
 	RequiredType             string
 	RequiredSubtype          string
+	RequiredElement          string
+	MaximumReserveCost       int
 	MinimumCards             int
 	MatchPrintedReserveTotal bool
 	PrintedReserveTotal      int
@@ -24,6 +26,12 @@ func (g *Game) cardSelectionCandidates(player *model.Player, spec cardSelectionS
 			continue
 		}
 		if spec.RequiredSubtype != "" && !g.cardHasSubtype(card, spec.RequiredSubtype) {
+			continue
+		}
+		if spec.RequiredElement != "" && !containsString(candidate.Elements, spec.RequiredElement) {
+			continue
+		}
+		if spec.MaximumReserveCost > 0 && candidate.ReserveCost > spec.MaximumReserveCost {
 			continue
 		}
 		candidates = append(candidates, card)

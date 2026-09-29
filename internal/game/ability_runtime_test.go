@@ -44,8 +44,10 @@ func TestAbilityChoiceUsesSpecifiedZone(t *testing.T) {
 		"",
 		[]effectOperation{
 			{
-				Kind:     effectOperationChooseZoneCard,
-				CardZone: cardZoneMemory,
+				Kind: effectOperationChooseZoneCard,
+				CardSelection: cardSelectionSpec{
+					Zone: cardZoneMemory,
+				},
 			},
 			{
 				Kind:     effectOperationDiscard,

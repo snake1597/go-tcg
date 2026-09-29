@@ -112,9 +112,20 @@ func TestDuchessCopyAndVeritaAlternativeCostUseZonesAtomically(t *testing.T) {
 	zones := game.state.Zones[player.UID]
 	zones.Graveyard = append(zones.Graveyard, action)
 	game.state.Zones[player.UID] = zones
-	copy, err := game.copyDuchessAction(player, action, objectID("champion:"+model.PlayerTwo.UID))
+	selection := cardSelectionSpec{
+		Zone:               cardZoneGraveyard,
+		RequiredType:       "ACTION",
+		RequiredElement:    "FIRE",
+		MaximumReserveCost: 2,
+	}
+	copy, err := game.copyAction(
+		player,
+		action,
+		selection,
+		objectID("champion:"+model.PlayerTwo.UID),
+	)
 	if err != nil {
-		t.Fatalf("copyDuchessAction() error = %v", err)
+		t.Fatalf("copyAction() error = %v", err)
 	}
 	if copy.Source == action || cardIndex(game.state.Zones[player.UID].Banishment, action) < 0 {
 		t.Fatalf("copy = %#v, banishment = %#v; want independent copied source", copy, game.state.Zones[player.UID].Banishment)

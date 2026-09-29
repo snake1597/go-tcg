@@ -602,7 +602,9 @@ func TestCardistryOperationsRecordCountersAndModifiers(t *testing.T) {
 	}
 }
 
-func TestDuchessCopiesEveryQualifiedFireActionAndRejectsOtherCards(t *testing.T) {
+// TestDuchessCopySelectionIncludesOnlyQualifiedFireActions 驗證 Duchess 的定義選牌只提供合格墓地 Action。
+// 輸入為墓地中的合格與不合格卡牌；輸出為只含 Fire、Action 且 Reserve Cost 不超過二的候選，副作用為零。
+func TestDuchessCopySelectionIncludesOnlyQualifiedFireActions(t *testing.T) {
 	game := newCardistryGame(t, duchessCardID)
 	player := model.PlayerOne
 	qualified := []CardID{
@@ -619,7 +621,21 @@ func TestDuchessCopiesEveryQualifiedFireActionAndRejectsOtherCards(t *testing.T)
 	notQualified := findCard(t, game, player, duchessCardID)
 	moveCardToGraveyard(t, game, player, notQualified)
 
-	got := game.eligibleDuchessCopies(player)
+	duchess := findCard(
+		t,
+		game,
+		player,
+		duchessCardID,
+	)
+	ability, exists := game.compiledCardistry(duchess)
+	if !exists {
+		t.Fatal("compiledCardistry() = false, want Duchess definition")
+	}
+	got := game.cardSelectionCandidates(
+		player,
+		ability.operations()[0].CardSelection,
+		"",
+	)
 	for _, card := range qualifiedCards {
 		if !containsCard(got, card) {
 			t.Fatalf("eligible copies = %#v, missing %q", got, card)
@@ -652,6 +668,13 @@ func TestDuchessCopyCanBeDeclinedAndRuntimeCopyIsDestroyed(t *testing.T) {
 	passOpportunityRound(t, game, player)
 	selectPendingChoiceSubject(t, game, player, entityID(source))
 	passOpportunityRound(t, game, player)
+	if len(game.state.EffectsStack) != 1 || game.state.EffectsStack[0].Ability == nil {
+		t.Fatalf("EffectsStack = %#v, want copied Action ability", game.state.EffectsStack)
+	}
+	copied := game.state.EffectsStack[0].Ability
+	if !copied.RuntimeCopy || copied.Source == source || copied.SourceLKI != copied.Source {
+		t.Fatalf("copied ability = %#v, want independent runtime copy source and LKI", copied)
+	}
 	passOpportunityRound(t, game, player)
 
 	view, err := game.PlayerView(player)

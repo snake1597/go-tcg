@@ -40,8 +40,7 @@ const (
 	// effectOperationPutAllyOnField 以通用 ability runtime 結算被 play 的 Ally source。
 	effectOperationPutAllyOnField        effectOperationKind = "put_ally_on_field"
 	effectOperationSuitedThresholdDamage effectOperationKind = "suited_threshold_damage"
-	effectOperationChooseDuchessCopy     effectOperationKind = "choose_duchess_copy"
-	effectOperationCopyDuchessAction     effectOperationKind = "copy_duchess_action"
+	effectOperationCopyAction            effectOperationKind = "copy_action"
 	effectOperationSacrificeForChef      effectOperationKind = "sacrifice_for_chef"
 	effectOperationRetargetAttack        effectOperationKind = "retarget_attack"
 )
@@ -59,6 +58,7 @@ type effectOperation struct {
 	Value                 *valueExpression    `json:"value,omitempty"`
 	CanPass               bool                `json:"can_pass,omitempty"`
 	CardZone              cardZone            `json:"card_zone,omitempty"`
+	CardSelection         cardSelectionSpec   `json:"card_selection,omitempty"`
 	Binding               resolutionBinding   `json:"binding,omitempty"`
 	ContinuousEffect      continuousEffect    `json:"continuous_effect,omitempty"`
 	Options               []objectID          `json:"options,omitempty"`
@@ -156,18 +156,23 @@ func (g *Game) resolveAbility(instance abilityInstance) {
 				g.recordPublicEvent(instance.Controller, "ability", "counter", instance.SourceLKI)
 			}
 		case effectOperationChooseZoneCard:
-			zone := operation.CardZone
-			if zone == "" {
-				zone = cardZoneHand
+			selection := operation.CardSelection
+			if selection.Zone == "" {
+				selection.Zone = cardZoneHand
 			}
+			candidates := g.cardSelectionCandidates(
+				instance.Controller,
+				selection,
+				"",
+			)
 			g.beginAbilityCardChoice(
 				instance,
 				operationIndex,
 				instance.Controller,
-				cardsInZone(g.state.Zones[instance.Controller.UID], zone),
+				candidates,
 				operation.CanPass,
 				operation.Binding,
-				zone,
+				selection.Zone,
 			)
 			if g.state.ResolutionFrame != nil {
 				g.advanceKnowledgeRevision()
@@ -187,24 +192,11 @@ func (g *Game) resolveAbility(instance abilityInstance) {
 				g.advanceKnowledgeRevision()
 			}
 			return
-		case effectOperationChooseDuchessCopy:
-			g.beginAbilityCardChoice(
-				instance,
-				operationIndex,
+		case effectOperationCopyAction:
+			copied, err := g.copyAction(
 				instance.Controller,
-				g.eligibleDuchessCopies(instance.Controller),
-				operation.CanPass,
-				"",
-				cardZoneGraveyard,
-			)
-			if g.state.ResolutionFrame != nil {
-				g.advanceKnowledgeRevision()
-			}
-			return
-		case effectOperationCopyDuchessAction:
-			copied, err := g.copyDuchessAction(
-				instance.Controller,
-				cardInstanceID(target),
+				cardInstanceID(instance.Bindings[operation.Binding]),
+				operation.CardSelection,
 				"",
 			)
 			if err != nil {

@@ -24,6 +24,28 @@ func TestCompileWonderlandsReignDefinition(t *testing.T) {
 	}
 }
 
+// TestCompileDuchessDefinition 驗證 Duchess 的選牌與免費 Action 複製完全由可執行定義描述。
+// 輸入為 Duchess 的卡牌定義與 Go 編寫資料；輸出為具選牌條件、具名結果與複製效果的 Cardistry 操作，副作用為零。
+func TestCompileDuchessDefinition(t *testing.T) {
+	definition := CardDefinition{
+		id: duchessCardID,
+		face: CardFace{
+			id: CardFaceID("face:qzv380ujf5:front"),
+		},
+	}
+	abilities, err := compileAbilityDefinitions(
+		definition,
+		duchessAbilities(),
+	)
+	if err != nil {
+		t.Fatalf("compileAbilityDefinitions() error = %v", err)
+	}
+	operations := abilities[0].operations()
+	if len(operations) != 2 || operations[0].Kind != effectOperationChooseZoneCard || operations[0].Binding != "copy-source" || operations[1].Kind != effectOperationCopyAction || operations[1].Binding != "copy-source" {
+		t.Fatalf("operations = %#v, want graveyard choice followed by bound copy action", operations)
+	}
+}
+
 // TestCompileImpactHammerTriggeredDefinition 驗證 Impact Hammer 的 On Wield 能力由定義宣告事件條件與事件目標傷害。
 // 輸入為 Impact Hammer 的卡牌與牌面；輸出為帶穩定 Slot、wield 事件條件及事件目標參照的 triggered 定義，副作用為零。
 func TestCompileImpactHammerTriggeredDefinition(t *testing.T) {

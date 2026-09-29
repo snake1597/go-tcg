@@ -39,6 +39,7 @@ const (
 	effectKindDamage     authoredEffectKind = "damage"
 	effectKindChooseCard authoredEffectKind = "choose-card"
 	effectKindDiscard    authoredEffectKind = "discard"
+	effectKindCopyAction authoredEffectKind = "copy-action"
 )
 
 type abilityReference string
@@ -96,11 +97,15 @@ type damageEffectDefinition struct {
 }
 
 type chooseCardEffectDefinition struct {
-	zone    cardZone
-	binding resolutionBinding
+	selection cardSelectionSpec
+	binding   resolutionBinding
 }
 
 type discardEffectDefinition struct {
+	binding resolutionBinding
+}
+
+type copyActionEffectDefinition struct {
 	binding resolutionBinding
 }
 
@@ -167,6 +172,7 @@ type authoredEffectDefinition struct {
 	damage     *damageEffectDefinition
 	chooseCard *chooseCardEffectDefinition
 	discard    *discardEffectDefinition
+	copyAction *copyActionEffectDefinition
 }
 
 type authoredAbilityDefinition struct {
@@ -192,6 +198,7 @@ type compiledEffect struct {
 	damage     damageEffectDefinition
 	chooseCard chooseCardEffectDefinition
 	discard    discardEffectDefinition
+	copyAction copyActionEffectDefinition
 }
 
 // compiledAbilityDefinition 是建局前完成驗證的能力中介表示。
@@ -259,7 +266,9 @@ func threeOfHeartsAbilities() []authoredAbilityDefinition {
 				{
 					kind: effectKindChooseCard,
 					chooseCard: &chooseCardEffectDefinition{
-						zone:    cardZoneHand,
+						selection: cardSelectionSpec{
+							Zone: cardZoneHand,
+						},
 						binding: "discard-card",
 					},
 				},
@@ -267,6 +276,41 @@ func threeOfHeartsAbilities() []authoredAbilityDefinition {
 					kind: effectKindDiscard,
 					discard: &discardEffectDefinition{
 						binding: "discard-card",
+					},
+				},
+			},
+		},
+	}
+}
+
+// duchessAbilities 宣告 Duchess 的墓地選牌與免費 Action 複製 Cardistry slot。
+// 輸入為零；輸出為不共享可變狀態的 Go 編寫資料，副作用為零。
+func duchessAbilities() []authoredAbilityDefinition {
+	return []authoredAbilityDefinition{
+		{
+			slot:      "ability:qzv380ujf5:front:cardistry-copy-action",
+			kind:      abilityKindCardistry,
+			timing:    timingMainPhase,
+			usage:     usageOncePerObject,
+			reduction: reductionDistinctSuitedCosts,
+			baseCost:  6,
+			effects: []authoredEffectDefinition{
+				{
+					kind: effectKindChooseCard,
+					chooseCard: &chooseCardEffectDefinition{
+						selection: cardSelectionSpec{
+							Zone:               cardZoneGraveyard,
+							RequiredType:       "ACTION",
+							RequiredElement:    "FIRE",
+							MaximumReserveCost: 2,
+						},
+						binding: "copy-source",
+					},
+				},
+				{
+					kind: effectKindCopyAction,
+					copyAction: &copyActionEffectDefinition{
+						binding: "copy-source",
 					},
 				},
 			},
@@ -447,6 +491,8 @@ func authoredAbilitiesForCard(id CardID) []authoredAbilityDefinition {
 		return straightFlareAbilities()
 	case threeOfHeartsCardID:
 		return threeOfHeartsAbilities()
+	case duchessCardID:
+		return duchessAbilities()
 	case impactHammerCardID:
 		return impactHammerAbilities()
 	case redHareCardID:
@@ -589,7 +635,7 @@ func compileAbilityDefinitions(definition CardDefinition, authored []authoredAbi
 			deathModifier := *ability.deathModifier
 			result.deathModifier = &deathModifier
 		}
-		bindings := make(map[resolutionBinding]struct{})
+		bindings := make(map[resolutionBinding]cardSelectionSpec)
 		for index, effect := range ability.effects {
 			field := fmt.Sprintf("effects[%d]", index)
 			switch effect.kind {
@@ -629,22 +675,22 @@ func compileAbilityDefinitions(definition CardDefinition, authored []authoredAbi
 					},
 				})
 			case effectKindChooseCard:
-				if ability.kind != abilityKindCardistry || effect.chooseCard == nil || effect.draw != nil || effect.damage != nil || effect.discard != nil {
+				if ability.kind != abilityKindCardistry || effect.chooseCard == nil || effect.draw != nil || effect.damage != nil || effect.discard != nil || effect.copyAction != nil {
 					return nil, fmt.Errorf("%s: %s.choose_card payload is required only for Cardistry", context, field)
 				}
-				if effect.chooseCard.zone != cardZoneHand || effect.chooseCard.binding == "" {
-					return nil, fmt.Errorf("%s: %s.choose_card requires hand zone and binding", context, field)
+				if effect.chooseCard.selection.Zone != cardZoneHand && effect.chooseCard.selection.Zone != cardZoneGraveyard || effect.chooseCard.binding == "" {
+					return nil, fmt.Errorf("%s: %s.choose_card requires supported zone and binding", context, field)
 				}
 				if _, exists := bindings[effect.chooseCard.binding]; exists {
 					return nil, fmt.Errorf("%s: %s.choose_card.binding %q is duplicated", context, field, effect.chooseCard.binding)
 				}
-				bindings[effect.chooseCard.binding] = struct{}{}
+				bindings[effect.chooseCard.binding] = effect.chooseCard.selection
 				result.effects = append(result.effects, compiledEffect{
 					kind:       effectKindChooseCard,
 					chooseCard: *effect.chooseCard,
 				})
 			case effectKindDiscard:
-				if ability.kind != abilityKindCardistry || effect.discard == nil || effect.draw != nil || effect.damage != nil || effect.chooseCard != nil {
+				if ability.kind != abilityKindCardistry || effect.discard == nil || effect.draw != nil || effect.damage != nil || effect.chooseCard != nil || effect.copyAction != nil {
 					return nil, fmt.Errorf("%s: %s.discard payload is required only for Cardistry", context, field)
 				}
 				if effect.discard.binding == "" {
@@ -656,6 +702,21 @@ func compileAbilityDefinitions(definition CardDefinition, authored []authoredAbi
 				result.effects = append(result.effects, compiledEffect{
 					kind:    effectKindDiscard,
 					discard: *effect.discard,
+				})
+			case effectKindCopyAction:
+				if ability.kind != abilityKindCardistry || effect.copyAction == nil || effect.draw != nil || effect.damage != nil || effect.chooseCard != nil || effect.discard != nil {
+					return nil, fmt.Errorf("%s: %s.copy_action payload is required only for Cardistry", context, field)
+				}
+				selection, exists := bindings[effect.copyAction.binding]
+				if effect.copyAction.binding == "" || !exists || selection.Zone != cardZoneGraveyard || selection.RequiredType != "ACTION" {
+					return nil, fmt.Errorf("%s: %s.copy_action.binding %q must reference a graveyard Action choice", context, field, effect.copyAction.binding)
+				}
+				result.effects = append(result.effects, compiledEffect{
+					kind:       effectKindCopyAction,
+					copyAction: *effect.copyAction,
+					chooseCard: chooseCardEffectDefinition{
+						selection: selection,
+					},
 				})
 			default:
 				return nil, fmt.Errorf("%s: %s.kind unknown %q", context, field, effect.kind)
@@ -863,14 +924,20 @@ func (ability compiledAbilityDefinition) operations() []effectOperation {
 			})
 		case effectKindChooseCard:
 			operations = append(operations, effectOperation{
-				Kind:     effectOperationChooseZoneCard,
-				CardZone: effect.chooseCard.zone,
-				Binding:  effect.chooseCard.binding,
+				Kind:          effectOperationChooseZoneCard,
+				CardSelection: effect.chooseCard.selection,
+				Binding:       effect.chooseCard.binding,
 			})
 		case effectKindDiscard:
 			operations = append(operations, effectOperation{
 				Kind:    effectOperationDiscard,
 				Binding: effect.discard.binding,
+			})
+		case effectKindCopyAction:
+			operations = append(operations, effectOperation{
+				Kind:          effectOperationCopyAction,
+				Binding:       effect.copyAction.binding,
+				CardSelection: effect.chooseCard.selection,
 			})
 		}
 	}
@@ -914,7 +981,16 @@ func (g *Game) compiledAlly(card cardInstanceID) (compiledAbilityDefinition, boo
 // 輸入為零；輸出為目前引擎版本釘選的定義或驗證錯誤，副作用為零。
 func compileReplayDefinitions() (map[CardID]CardDefinition, error) {
 	definitions := make(map[CardID]CardDefinition)
-	for _, id := range []CardID{wonderlandsReignCardID, straightFlareCardID, threeOfHeartsCardID, impactHammerCardID, redHareCardID, infernalVesselCardID, veritaCardID} {
+	for _, id := range []CardID{
+		wonderlandsReignCardID,
+		straightFlareCardID,
+		threeOfHeartsCardID,
+		duchessCardID,
+		impactHammerCardID,
+		redHareCardID,
+		infernalVesselCardID,
+		veritaCardID,
+	} {
 		definition := CardDefinition{
 			id: id,
 			face: CardFace{

@@ -79,8 +79,6 @@ func (g *Game) cardistryBaseCost(card cardInstanceID) (int, bool) {
 		return 2, false
 	case twoOfSpadesCardID:
 		return 2, true
-	case duchessCardID:
-		return 6, false
 	default:
 		return -1, false
 	}
@@ -245,19 +243,6 @@ func (g *Game) cardistryAbility(player *model.Player, source objectID, card card
 		operations = append(operations, g.temporaryModifierOperation(2, 0))
 	case twoOfSpadesCardID:
 		operations = append(operations, effectOperation{Kind: effectOperationCounter, Counter: "BUFF", Amount: 1})
-	case duchessCardID:
-		operations = append(
-			operations,
-			effectOperation{
-				Kind: effectOperationChooseDuchessCopy,
-			},
-		)
-		operations = append(
-			operations,
-			effectOperation{
-				Kind: effectOperationCopyDuchessAction,
-			},
-		)
 	}
 	return g.newAbilityInstance(player, card, source, operations)
 }
