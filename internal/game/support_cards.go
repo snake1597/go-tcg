@@ -293,17 +293,30 @@ func (g *Game) retargetAttack(player *model.Player, target objectID) error {
 	return fmt.Errorf("no active attack to retarget")
 }
 
-func (g *Game) sacrificeForPepperedChef(player *model.Player, chef, sacrifice objectID) error {
-	chefObject, chefExists := g.state.Objects[chef]
+// sacrificeAllyAndIncreaseSourcePower 犧牲同控制者的另一個 Ally，並讓來源本回合 +2 Power。
+// 輸入為控制者、來源與犧牲目標；輸出為驗證錯誤，成功時移動目標並建立持續效果。
+func (g *Game) sacrificeAllyAndIncreaseSourcePower(player *model.Player, source, sacrifice objectID) error {
+	sourceObject, sourceExists := g.state.Objects[source]
 	sacrificed, sacrificeExists := g.state.Objects[sacrifice]
-	if !chefExists || !sacrificeExists || chef == sacrifice || !samePlayer(chefObject.Owner, player) || !samePlayer(sacrificed.Owner, player) || g.state.Cards[chefObject.Card].Definition != pepperedChefCardID || !containsString(sacrificed.Types, "ALLY") {
-		return fmt.Errorf("invalid Peppered Chef sacrifice")
+	if !sourceExists || !sacrificeExists || source == sacrifice || !samePlayer(sourceObject.Owner, player) || !samePlayer(sacrificed.Owner, player) || !containsString(sourceObject.Types, "ALLY") || !containsString(sacrificed.Types, "ALLY") {
+		return fmt.Errorf("invalid Ally sacrifice")
 	}
 	delete(g.state.Objects, sacrifice)
 	zones := g.state.Zones[player.UID]
 	zones.Graveyard = append(zones.Graveyard, sacrificed.Card)
 	g.state.Zones[player.UID] = zones
-	g.addContinuousEffect(continuousEffect{Source: chef, Controller: player, Target: chef, Scope: effectScopeObject, Layer: effectLayerModifier, PowerLife: powerLifeModify, ExpiresAtTurn: g.state.Scheduler.TurnNumber + 1, Modifier: continuousModifier{PowerDelta: 2}})
+	g.addContinuousEffect(continuousEffect{
+		Source:        source,
+		Controller:    player,
+		Target:        source,
+		Scope:         effectScopeObject,
+		Layer:         effectLayerModifier,
+		PowerLife:     powerLifeModify,
+		ExpiresAtTurn: g.state.Scheduler.TurnNumber + 1,
+		Modifier: continuousModifier{
+			PowerDelta: 2,
+		},
+	})
 	return nil
 }
 

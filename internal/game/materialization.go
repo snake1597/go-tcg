@@ -8,10 +8,9 @@ import (
 )
 
 const (
-	spiritOfFireCardID  CardID = "LMyKyVC2O9"
-	tonorisCardID       CardID = "zb14m4c8lj"
-	tonorisOnEnterCause        = "ability:zb14m4c8lj:front:on-enter-taunt"
-	impactHammerCardID  CardID = "chsbalegbs"
+	spiritOfFireCardID CardID = "LMyKyVC2O9"
+	tonorisCardID      CardID = "zb14m4c8lj"
+	impactHammerCardID CardID = "chsbalegbs"
 )
 
 // legalMaterializations 回傳目前玩家在 Materialize 階段可從 Material Deck 使用的牌。
@@ -51,10 +50,10 @@ func (g *Game) canMaterialize(player *model.Player, card cardInstanceID) bool {
 	return g.canMaterializeChampionLevelUp(player, candidate)
 }
 
-// canMaterializeChampionLevelUp 判斷候選 Champion 是否能覆蓋目前 Spirit of Fire Champion。
-// 輸入為玩家與候選牌；輸出為是否符合既有 Tonoris 升級條件；不會改變對局狀態。
+// canMaterializeChampionLevelUp 以 Champion 類型、compiled setup／enter slots 與等級判斷候選牌能否升級。
+// 輸入為玩家與候選牌；輸出為是否符合通用升級條件；不會改變對局狀態。
 func (g *Game) canMaterializeChampionLevelUp(player *model.Player, candidate cardInstance) bool {
-	if candidate.Definition != tonorisCardID {
+	if !containsString(candidate.Types, "CHAMPION") {
 		return false
 	}
 	champion, exists := g.state.Champions[player.UID]
@@ -62,7 +61,7 @@ func (g *Game) canMaterializeChampionLevelUp(player *model.Player, candidate car
 		return false
 	}
 	current, exists := g.state.Cards[champion.Card]
-	if !exists || current.Definition != spiritOfFireCardID || candidate.Level != current.Level+1 {
+	if !exists || !containsString(current.Types, "CHAMPION") || len(g.compiledTriggeredAbilities(current.ID, eventKindSetup)) == 0 || len(g.compiledTriggeredAbilities(candidate.ID, eventKindEnter)) == 0 {
 		return false
 	}
 	return candidate.Level == current.Level+1
@@ -168,7 +167,7 @@ func (g *Game) resolveMaterialization(item effectStackItem) {
 }
 
 // resolveChampionLevelUp 重新檢查 Champion 升級條件，失效時將來源放逐且不退回已付費用。
-// 輸入為來源已自 EffectSources 移除的 Stack 項目；無輸出；成功時替換 champion 並加入 Tonoris 入場觸發。
+// 輸入為來源已自 EffectSources 移除的 Stack 項目；無輸出；成功時替換 champion 並加入已編譯的進場觸發。
 func (g *Game) resolveChampionLevelUp(item effectStackItem) {
 	if !g.canResolveChampionLevelUp(item) {
 		zones := g.state.Zones[item.Controller.UID]
@@ -191,19 +190,16 @@ func (g *Game) resolveChampionLevelUp(item effectStackItem) {
 		"level-up",
 		item.Source,
 	)
-	g.state.EffectsStack = append(
-		g.state.EffectsStack,
-		effectStackItem{
-			Kind:       effectStackTonorisTaunt,
-			Controller: item.Controller,
-			Source:     item.Source,
-		},
+	g.enqueueEnterAbilities(
+		item.Controller,
+		champion.ID,
+		item.Source,
 	)
 }
 
 func (g *Game) canResolveChampionLevelUp(item effectStackItem) bool {
 	candidate, exists := g.state.Cards[item.Source]
-	if !exists || !samePlayer(candidate.Owner, item.Controller) || candidate.Definition != tonorisCardID {
+	if !exists || !samePlayer(candidate.Owner, item.Controller) {
 		return false
 	}
 	champion, exists := g.state.Champions[item.Controller.UID]
@@ -211,22 +207,21 @@ func (g *Game) canResolveChampionLevelUp(item effectStackItem) bool {
 		return false
 	}
 	current, exists := g.state.Cards[champion.Card]
-	if !exists || current.Definition != spiritOfFireCardID {
-		return false
-	}
-	return candidate.Level == current.Level+1
+	return exists && g.canMaterializeChampionLevelUp(item.Controller, candidate) && candidate.Level == current.Level+1
 }
 
-func (g *Game) resolveTonorisTaunt(item effectStackItem) {
-	champion := g.state.Champions[item.Controller.UID]
+// grantTemporaryTaunt 授予控制者 Champion 到其下回合的 Taunt，並記錄來源 ability slot。
+// 輸入為控制者與能力來源；無輸出；副作用為更新 Champion 與公開事件。
+func (g *Game) grantTemporaryTaunt(player *model.Player, source cardInstanceID) {
+	champion := g.state.Champions[player.UID]
 	playerCount := len(g.players)
 	champion.TauntUntilTurn = g.state.Scheduler.TurnNumber + uint64(playerCount)
-	g.state.Champions[item.Controller.UID] = champion
+	g.state.Champions[player.UID] = champion
 	g.recordPublicEvent(
-		item.Controller,
-		tonorisOnEnterCause,
+		player,
+		"ability:champion:on-enter-taunt",
 		"taunt-granted",
-		item.Source,
+		source,
 	)
 }
 
@@ -240,7 +235,7 @@ func (g *Game) expireTimedChampionEffects() {
 			g.state.Champions[player.UID] = champion
 			g.recordPublicEvent(
 				player,
-				tonorisOnEnterCause,
+				"ability:champion:on-enter-taunt",
 				"taunt-expired",
 				champion.Card,
 			)

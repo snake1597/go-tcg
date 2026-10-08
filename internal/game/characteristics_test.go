@@ -139,7 +139,7 @@ func TestArthurImmortalityRestsArthurForTheCurrentTurn(t *testing.T) {
 	game.state.Cards[card] = arthur
 	id := objectID("arthur")
 	game.state.Objects[id] = fieldObject{ID: id, Card: card, Owner: model.PlayerOne}
-	game.grantArthurImmortality(id)
+	game.restAndGrantTemporaryImmortality(id)
 	object := game.state.Objects[id]
 	if !object.Rested || !game.isImmortal(id) {
 		t.Fatalf("Arthur state = %#v, want rested immortality through the owner's next turn", object)
@@ -209,7 +209,7 @@ func TestArthurImmortalityExpiresAtBeginningOfOwnersNextTurn(t *testing.T) {
 		Card:  card,
 		Owner: model.PlayerOne,
 	}
-	game.grantArthurImmortality(id)
+	game.restAndGrantTemporaryImmortality(id)
 	game.state.Scheduler.TurnNumber++
 	game.expireTimedChampionEffects()
 	if !game.isImmortal(id) {

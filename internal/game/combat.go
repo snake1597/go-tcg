@@ -212,27 +212,34 @@ func (g *Game) onAttackTriggers(player *model.Player, attacker objectID) []effec
 	if !exists {
 		return nil
 	}
-	if card.Definition == heatedVengeanceCardID && g.championHasClass(player, card.Classes) {
+	for _, abilityDefinition := range g.compiledTriggeredAbilities(card.ID, eventKindAttack) {
+		if abilityDefinition.trigger.condition == triggerConditionClassMatch && !g.championHasClass(player, card.Classes) {
+			continue
+		}
 		champion, championExists := g.state.Champions[player.UID]
 		if !championExists {
-			return nil
+			continue
+		}
+		operations := abilityDefinition.operations()
+		if abilityDefinition.trigger.optional {
+			operations = append(
+				[]effectOperation{
+					{
+						Kind:    effectOperationChoose,
+						Options: []objectID{champion.ID},
+						CanPass: true,
+					},
+				},
+				operations...,
+			)
 		}
 		ability := g.newAbilityInstance(
 			player,
 			card.ID,
 			champion.ID,
-			[]effectOperation{
-				{
-					Kind:    effectOperationChoose,
-					Options: []objectID{champion.ID},
-					CanPass: true,
-				},
-				{
-					Kind:   effectOperationDamage,
-					Amount: 3,
-				},
-			},
+			operations,
 		)
+		ability.Slot = abilityDefinition.slot
 		return []effectStackItem{
 			{
 				Kind:       effectStackAbility,

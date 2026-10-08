@@ -2,7 +2,7 @@
 
 首版只會建立一種固定的鏡像 Standard 對局。卡牌行為由 Game Module 的 Go 程式碼執行；此文件只說明載入資料與建局的最小關係，不維護另一份 runtime 支援清單。
 
-Support Set 的 Cardistry 均由 `internal/game/executable_definition.go` 提供可執行定義：Wonderland's Reign 的 `ability:0mf1ug6yfi:front:cardistry-draw`、Five of Spades 的 `ability:i9hf5lhl5f:front:cardistry-power`、Four of Spades 的 `ability:8bolq2y5qp:front:cardistry-draw-to-memory`、Four of Hearts 的 `ability:xgax8bbjqj:front:cardistry-deploy`、Three of Spades 的 `ability:o09csnorqv:front:cardistry-life`、Two of Hearts 的 `ability:rufki4o41y:front:cardistry-power`、Two of Spades 的 `ability:e8ygl32jef:front:cardistry-buff-counter`、Three of Hearts 的 `ability:1db8hz4prm:front:cardistry-draw-discard` 與 Duchess 的 `ability:qzv380ujf5:front:cardistry-copy-action`。它們的規則來源是對應 `card/*.json` 卡面資料的 `effect_raw`，載入卡面時編譯驗證，再交給既有 Ability Runtime 執行。卡面資料與編寫資料只保存在不可變定義，不寫入 Game State；replay 依固定引擎版本重建同一份定義。
+Support Set 的所有 rules-bearing behavior 都由 `internal/game/executable_definition.go` 提供可執行定義。卡面資料與 Go 編寫資料在 content loading 時編譯為同一份 immutable definitions，再交給 Ability Runtime、trigger collector 與 derived-characteristic evaluator 執行；replay 依固定引擎版本重建同一份定義。production 支援 metadata 不另設手寫 registry，而是從編譯結果衍生 CardFace、Ability Slot、mechanism、typed operation、content dependency 與 card-data ruling reference。
 
 ## 資料來源
 
@@ -14,12 +14,15 @@ Support Set 的 Cardistry 均由 `internal/game/executable_definition.go` 提供
 
 ## 固定牌組的責任劃分
 
-runtime 只保護「無法安全建立對局」的條件：
+runtime 在建局前保護「無法安全建立對局」的條件：
 
 - 兩名玩家存在且 UID 不同。
 - 卡面檔案與 manifest 相符。
 - 牌組中的 Card ID 與 CardFace 可解析。
 - Material Deck 有且只有一名 Level 0 Champion。
+- 每張含規則文字的可達卡都有 compiled Ability Slots。
+- 所有 Slot 都是 `supported`，且 operation、content dependency 與 ruling reference 完整有效。
+- content dependency 不缺漏、不形成循環。
 
 固定牌組的格式規則屬於開發時的測試責任，而不是每局重跑的 gate：60 張主牌組、12 張 Material Deck、卡片張數上限、Divine Relic 限制與固定牌組版本都由 `internal/game` 測試覆蓋。
 
@@ -32,6 +35,7 @@ NewStandardGame
 ├── 編譯並驗證已遷移的可執行能力定義
 ├── 取得 fixedStandardDeck
 ├── 驗證卡片引用與起始 Champion
+├── 從 compiled definitions 衍生並驗證 Support Set
 └── newStandardSetup
     ├── 建立卡片實例與 zones
     ├── 洗主牌組

@@ -10,7 +10,6 @@ type effectStackItemKind string
 
 const (
 	effectStackMaterialization effectStackItemKind = "materialization"
-	effectStackTonorisTaunt    effectStackItemKind = "tonoris_on_enter_taunt"
 	effectStackCombat          effectStackItemKind = "combat"
 	effectStackAbility         effectStackItemKind = "ability"
 )
@@ -35,8 +34,6 @@ func (g *Game) resolveTopEffectStack() {
 	switch item.Kind {
 	case effectStackMaterialization:
 		g.resolveMaterialization(item)
-	case effectStackTonorisTaunt:
-		g.resolveTonorisTaunt(item)
 	case effectStackCombat:
 		g.resolveCombat(item)
 	case effectStackAbility:

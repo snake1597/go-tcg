@@ -47,7 +47,7 @@
 | ADR | 決策 |
 | --- | --- |
 | [0001](./adr/0001-authoritative-deterministic-rule-engine.md) | 權威且確定性的 Game Module |
-| [0002](./adr/0002-reject-unsupported-card-mechanics-before-play.md) | 已由固定牌組的最小建局流程取代的 Support Set gate |
+| [0002](./adr/0002-reject-unsupported-card-mechanics-before-play.md) | 建局前由 compiled definitions 衍生並驗證 Support Set |
 | [0003](./adr/0003-pin-rules-snapshot-per-engine-version.md) | 每個引擎版本鎖定規則快照 |
 | [0004](./adr/0004-use-guided-choices-and-atomic-actions.md) | Guided choices 與 DeclarationTransaction |
 | [0005](./adr/0005-implement-card-behavior-in-go.md) | 首版卡牌行為使用 typed Go |

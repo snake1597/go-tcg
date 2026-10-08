@@ -20,6 +20,15 @@ const (
 	abilityKindKeyword     abilityDefinitionKind = "keyword"
 )
 
+// abilitySupportStatus 是 compiler 與建局 gate 共用的 production 支援判定。
+type abilitySupportStatus string
+
+const (
+	supportStatusSupported   abilitySupportStatus = "supported"
+	supportStatusUnsupported abilitySupportStatus = "unsupported"
+	supportStatusNeedsRuling abilitySupportStatus = "needs-ruling"
+)
+
 type abilityTiming string
 
 const (
@@ -54,6 +63,11 @@ const (
 	effectKindBanishSource           authoredEffectKind = "banish-source"
 	effectKindCardistryDiscount      authoredEffectKind = "cardistry-discount"
 	effectKindPreventNonCombatDamage authoredEffectKind = "prevent-non-combat-damage"
+	effectKindRestGrantImmortality   authoredEffectKind = "rest-grant-immortality"
+	effectKindSuitedThresholdCounter authoredEffectKind = "suited-threshold-counter"
+	effectKindSuitedThresholdDamage  authoredEffectKind = "suited-threshold-damage"
+	effectKindSacrificeAllyPower     authoredEffectKind = "sacrifice-ally-power"
+	effectKindGrantTaunt             authoredEffectKind = "grant-taunt"
 )
 
 type abilityReference string
@@ -70,7 +84,15 @@ const (
 	eventKindWield              eventKind = "wield"
 	eventKindDestroy            eventKind = "destroy"
 	eventKindCardistryActivated eventKind = "cardistry-activated"
+	eventKindEnter              eventKind = "enter"
+	eventKindAttack             eventKind = "attack"
+	eventKindSetup              eventKind = "setup"
 )
+
+// triggerCondition 限制 triggered ability 可使用的可編譯條件原語。
+type triggerCondition string
+
+const triggerConditionClassMatch triggerCondition = "class-match"
 
 type keywordDefinition string
 
@@ -84,6 +106,7 @@ const (
 	selectorControlledSuitedAlly             selectorKind = "controlled-suited-ally"
 	selectorAllAllies                        selectorKind = "all-allies"
 	selectorRetargetableControlledSuitedAlly selectorKind = "retargetable-controlled-suited-ally"
+	selectorOtherControlledAllies            selectorKind = "other-controlled-allies"
 )
 
 type targetSelector struct {
@@ -161,7 +184,9 @@ type copyActionEffectDefinition struct {
 }
 
 type triggerDefinition struct {
-	event eventKind
+	event     eventKind
+	condition triggerCondition
+	optional  bool
 }
 
 type staticPredicateKind string
@@ -171,6 +196,9 @@ const (
 	staticPredicateControlsQualifiedHumanAlly staticPredicateKind = "controls-qualified-human-ally"
 	staticPredicateOtherControlledSuitedAlly  staticPredicateKind = "other-controlled-suited-ally"
 	staticPredicateClassMatchedSelf           staticPredicateKind = "class-matched-self"
+	staticPredicateRestedSourceOtherAllies    staticPredicateKind = "rested-source-other-allies"
+	staticPredicateSelfWithOtherSuitedAlly    staticPredicateKind = "self-with-other-suited-ally"
+	staticPredicateSelfChampionDamaged        staticPredicateKind = "self-champion-damaged"
 )
 
 type effectSubLayer string
@@ -267,6 +295,7 @@ type authoredAbilityDefinition struct {
 	cost               *actionCostDefinition
 	objectCondition    *objectActivationCondition
 	effects            []authoredEffectDefinition
+	supportStatus      abilitySupportStatus
 }
 
 // compiledEffect 保存已驗證的具體效果 payload，不讓 authoring tag 進入對局狀態。
@@ -303,6 +332,7 @@ type compiledAbilityDefinition struct {
 	cost               *actionCostDefinition
 	objectCondition    *objectActivationCondition
 	effects            []compiledEffect
+	supportStatus      abilitySupportStatus
 }
 
 var abilitySlotKeyPattern = regexp.MustCompile(`^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$`)
@@ -761,6 +791,207 @@ func impactHammerAbilities() []authoredAbilityDefinition {
 	}
 }
 
+// arthurYoungHeirAbilities 宣告 Arthur 的進場暫時 Immortality 與休息中 Ally 加成 Slots。
+// 輸入為零；輸出為不可共享的 Go 編寫資料，副作用為零。
+func arthurYoungHeirAbilities() []authoredAbilityDefinition {
+	return []authoredAbilityDefinition{
+		{
+			slot: "ability:GjM8b5fxqj:front:on-enter-rest-immortality",
+			kind: abilityKindTriggered,
+			trigger: &triggerDefinition{
+				event: eventKindEnter,
+			},
+			effects: []authoredEffectDefinition{
+				{
+					kind: effectKindRestGrantImmortality,
+				},
+			},
+		},
+		{
+			slot: "ability:GjM8b5fxqj:front:rested-allies-power",
+			kind: abilityKindStatic,
+			static: &staticEffectDefinition{
+				predicate: staticPredicateRestedSourceOtherAllies,
+				layer:     effectLayerModifier,
+				sublayer:  effectSubLayerNone,
+				modifier: continuousModifier{
+					PowerDelta: 1,
+				},
+				duration:       staticDurationWhilePredicate,
+				sourcePresence: sourcePresenceRequired,
+			},
+		},
+	}
+}
+
+// noireAbilities 宣告 Noire 的 Suited 進場 BUFF 與條件式 Stealth Slots。
+// 輸入為零；輸出為不可共享的 Go 編寫資料，副作用為零。
+func noireAbilities() []authoredAbilityDefinition {
+	return []authoredAbilityDefinition{
+		{
+			slot: "ability:wbjc9t8ycp:front:on-enter-suited-counters",
+			kind: abilityKindTriggered,
+			trigger: &triggerDefinition{
+				event: eventKindEnter,
+			},
+			effects: []authoredEffectDefinition{
+				{
+					kind: effectKindSuitedThresholdCounter,
+				},
+			},
+		},
+		{
+			slot: "ability:wbjc9t8ycp:front:suited-stealth",
+			kind: abilityKindStatic,
+			static: &staticEffectDefinition{
+				predicate: staticPredicateSelfWithOtherSuitedAlly,
+				layer:     effectLayerAbility,
+				sublayer:  effectSubLayerNone,
+				modifier: continuousModifier{
+					GrantStealth: true,
+				},
+				duration:       staticDurationWhilePredicate,
+				sourcePresence: sourcePresenceRequired,
+			},
+		},
+	}
+}
+
+// heatedVengeanceAbilities 宣告 Champion 受傷加成與職業加成攻擊觸發 Slots。
+// 輸入為零；輸出為不可共享的 Go 編寫資料，副作用為零。
+func heatedVengeanceAbilities() []authoredAbilityDefinition {
+	return []authoredAbilityDefinition{
+		{
+			slot: "ability:td460e8ig0:front:damaged-champion-power",
+			kind: abilityKindStatic,
+			static: &staticEffectDefinition{
+				predicate: staticPredicateSelfChampionDamaged,
+				layer:     effectLayerModifier,
+				sublayer:  effectSubLayerNone,
+				modifier: continuousModifier{
+					PowerDelta: 3,
+				},
+				duration:       staticDurationWhilePredicate,
+				sourcePresence: sourcePresenceRequired,
+			},
+		},
+		{
+			slot: "ability:td460e8ig0:front:on-attack-self-damage",
+			kind: abilityKindTriggered,
+			trigger: &triggerDefinition{
+				event:     eventKindAttack,
+				condition: triggerConditionClassMatch,
+				optional:  true,
+			},
+			effects: []authoredEffectDefinition{
+				{
+					kind: effectKindDamage,
+					damage: &damageEffectDefinition{
+						target: referenceEventTarget,
+						amount: valueExpression{
+							Kind:     valueConstant,
+							Constant: 3,
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+// pepperedChefAbilities 宣告進場時可犧牲另一 Ally 並讓來源本回合 +2 Power 的 Slot。
+// 輸入為零；輸出為不可共享的 Go 編寫資料，副作用為零。
+func pepperedChefAbilities() []authoredAbilityDefinition {
+	return []authoredAbilityDefinition{
+		{
+			slot: "ability:lcy0lw1veb:front:on-enter-sacrifice-power",
+			kind: abilityKindTriggered,
+			trigger: &triggerDefinition{
+				event:    eventKindEnter,
+				optional: true,
+			},
+			effects: []authoredEffectDefinition{
+				{
+					kind: effectKindChooseObject,
+					chooseObject: &chooseObjectEffectDefinition{
+						selector: selectorOtherControlledAllies,
+					},
+				},
+				{
+					kind: effectKindSacrificeAllyPower,
+				},
+			},
+		},
+	}
+}
+
+// rougeAbilities 宣告進場時依 Suited Reserve 門檻對任一單位造成傷害的 Slot。
+// 輸入為零；輸出為不可共享的 Go 編寫資料，副作用為零。
+func rougeAbilities() []authoredAbilityDefinition {
+	return []authoredAbilityDefinition{
+		{
+			slot: "ability:h68dr63eo5:front:on-enter-suited-threshold-damage",
+			kind: abilityKindTriggered,
+			trigger: &triggerDefinition{
+				event: eventKindEnter,
+			},
+			effects: []authoredEffectDefinition{
+				{
+					kind: effectKindChooseObject,
+					chooseObject: &chooseObjectEffectDefinition{
+						selector: selectorUnits,
+					},
+				},
+				{
+					kind: effectKindSuitedThresholdDamage,
+				},
+			},
+		},
+	}
+}
+
+// spiritOfFireAbilities 宣告初始 Champion 在 setup 進場時抽七張牌的 Slot。
+// 輸入為零；輸出為不可共享的 Go 編寫資料，副作用為零。
+func spiritOfFireAbilities() []authoredAbilityDefinition {
+	return []authoredAbilityDefinition{
+		{
+			slot: "ability:LMyKyVC2O9:front:on-enter-draw-seven",
+			kind: abilityKindTriggered,
+			trigger: &triggerDefinition{
+				event: eventKindSetup,
+			},
+			effects: []authoredEffectDefinition{
+				{
+					kind: effectKindDraw,
+					draw: &drawEffectDefinition{
+						amount:    7,
+						recipient: referenceController,
+					},
+				},
+			},
+		},
+	}
+}
+
+// tonorisAbilities 宣告 Champion 升級進場後直到控制者下回合的 Taunt Slot。
+// 輸入為零；輸出為不可共享的 Go 編寫資料，副作用為零。
+func tonorisAbilities() []authoredAbilityDefinition {
+	return []authoredAbilityDefinition{
+		{
+			slot: "ability:zb14m4c8lj:front:on-enter-taunt",
+			kind: abilityKindTriggered,
+			trigger: &triggerDefinition{
+				event: eventKindEnter,
+			},
+			effects: []authoredEffectDefinition{
+				{
+					kind: effectKindGrantTaunt,
+				},
+			},
+		},
+	}
+}
+
 // bulwarkSwordAbilities 宣告 Bulwark Sword 的職業加成與 wield 額外費用 static slot。
 // 輸入為零；輸出為不可共享的 Go 編寫資料，副作用為零。
 func bulwarkSwordAbilities() []authoredAbilityDefinition {
@@ -1114,6 +1345,20 @@ func authoredAbilitiesForCard(id CardID) []authoredAbilityDefinition {
 		return twoOfSpadesAbilities()
 	case impactHammerCardID:
 		return impactHammerAbilities()
+	case arthurYoungHeirCardID:
+		return arthurYoungHeirAbilities()
+	case noireCardID:
+		return noireAbilities()
+	case pepperedChefCardID:
+		return pepperedChefAbilities()
+	case heatedVengeanceCardID:
+		return heatedVengeanceAbilities()
+	case rougeCardID:
+		return rougeAbilities()
+	case spiritOfFireCardID:
+		return spiritOfFireAbilities()
+	case tonorisCardID:
+		return tonorisAbilities()
 	case bulwarkSwordCardID:
 		return bulwarkSwordAbilities()
 	case redHareCardID:
@@ -1164,6 +1409,13 @@ func compileAbilityDefinitions(definition CardDefinition, authored []authoredAbi
 		seen[ability.slot] = struct{}{}
 		if _, exists := allowed[ability.slot]; !exists {
 			return nil, fmt.Errorf("%s: slot is not registered for definition", context)
+		}
+		status := ability.supportStatus
+		if status == "" {
+			status = supportStatusSupported
+		}
+		if status != supportStatusSupported {
+			return nil, fmt.Errorf("%s: support status %q cannot enter production", context, status)
 		}
 		switch ability.kind {
 		case abilityKindCardistry:
@@ -1220,8 +1472,14 @@ func compileAbilityDefinitions(definition CardDefinition, authored []authoredAbi
 			if ability.timing != "" || ability.usage != "" || ability.reduction != "" || ability.baseCost != 0 || ability.classCostReduction != 0 || ability.target != nil || ability.cost != nil {
 				return nil, fmt.Errorf("%s: triggered declaration payload unsupported", context)
 			}
-			if ability.trigger == nil || (ability.trigger.event != eventKindWield && ability.trigger.event != eventKindDestroy && ability.trigger.event != eventKindCardistryActivated) {
+			if ability.trigger == nil || (ability.trigger.event != eventKindWield && ability.trigger.event != eventKindDestroy && ability.trigger.event != eventKindCardistryActivated && ability.trigger.event != eventKindEnter && ability.trigger.event != eventKindAttack && ability.trigger.event != eventKindSetup) {
 				return nil, fmt.Errorf("%s: trigger.event unsupported", context)
+			}
+			if ability.trigger.condition != "" && ability.trigger.condition != triggerConditionClassMatch {
+				return nil, fmt.Errorf("%s: trigger.condition unsupported %q", context, ability.trigger.condition)
+			}
+			if ability.trigger.condition == triggerConditionClassMatch && ability.trigger.event != eventKindAttack {
+				return nil, fmt.Errorf("%s: class-match condition requires attack event", context)
 			}
 			if ability.trigger.event == eventKindDestroy {
 				if err := validateDeathModifierDefinition(ability.deathModifier); err != nil || len(ability.effects) != 0 {
@@ -1271,6 +1529,7 @@ func compileAbilityDefinitions(definition CardDefinition, authored []authoredAbi
 			classCostReduction: ability.classCostReduction,
 			keyword:            ability.keyword,
 			effects:            make([]compiledEffect, 0, len(ability.effects)),
+			supportStatus:      status,
 		}
 		if ability.target != nil {
 			selector := *ability.target
@@ -1313,8 +1572,9 @@ func compileAbilityDefinitions(definition CardDefinition, authored []authoredAbi
 			field := fmt.Sprintf("effects[%d]", index)
 			switch effect.kind {
 			case effectKindDraw:
-				if (ability.kind != abilityKindCardistry && ability.kind != abilityKindObject) || effect.draw == nil || effect.damage != nil {
-					return nil, fmt.Errorf("%s: %s.draw payload is required only for Cardistry or Object", context, field)
+				setupDraw := ability.kind == abilityKindTriggered && ability.trigger != nil && ability.trigger.event == eventKindSetup
+				if (ability.kind != abilityKindCardistry && ability.kind != abilityKindObject && !setupDraw) || effect.draw == nil || effect.damage != nil {
+					return nil, fmt.Errorf("%s: %s.draw payload is required only for Cardistry, Object, or setup trigger", context, field)
 				}
 				if effect.draw.amount <= 0 {
 					return nil, fmt.Errorf("%s: %s.draw.amount must be positive", context, field)
@@ -1374,7 +1634,9 @@ func compileAbilityDefinitions(definition CardDefinition, authored []authoredAbi
 					chooseCard: *effect.chooseCard,
 				})
 			case effectKindChooseObject:
-				if (ability.kind != abilityKindCardistry && ability.kind != abilityKindObject) || effect.chooseObject == nil || (effect.chooseObject.selector != selectorControlledSuitedAlly && effect.chooseObject.selector != selectorAllAllies) {
+				triggeredEnter := ability.kind == abilityKindTriggered && ability.trigger != nil && ability.trigger.event == eventKindEnter
+				supportedSelector := effect.chooseObject != nil && (effect.chooseObject.selector == selectorControlledSuitedAlly || effect.chooseObject.selector == selectorAllAllies || effect.chooseObject.selector == selectorOtherControlledAllies || effect.chooseObject.selector == selectorUnits)
+				if (ability.kind != abilityKindCardistry && ability.kind != abilityKindObject && !triggeredEnter) || !supportedSelector {
 					return nil, fmt.Errorf("%s: %s.choose_object requires a supported Ally selector", context, field)
 				}
 				result.effects = append(result.effects, compiledEffect{
@@ -1480,6 +1742,13 @@ func compileAbilityDefinitions(definition CardDefinition, authored []authoredAbi
 				result.effects = append(result.effects, compiledEffect{
 					kind: effectKindPreventNonCombatDamage,
 				})
+			case effectKindRestGrantImmortality, effectKindSuitedThresholdCounter, effectKindSuitedThresholdDamage, effectKindSacrificeAllyPower, effectKindGrantTaunt:
+				if ability.kind != abilityKindTriggered || ability.trigger == nil || ability.trigger.event != eventKindEnter {
+					return nil, fmt.Errorf("%s: %s.kind requires enter trigger", context, field)
+				}
+				result.effects = append(result.effects, compiledEffect{
+					kind: effect.kind,
+				})
 			default:
 				return nil, fmt.Errorf("%s: %s.kind unknown %q", context, field, effect.kind)
 			}
@@ -1558,25 +1827,58 @@ func validateStaticEffectDefinition(effect *staticEffectDefinition) error {
 	if effect == nil {
 		return fmt.Errorf("definition is required")
 	}
-	if effect.layer != effectLayerAbility || effect.sublayer != effectSubLayerNone || effect.duration != staticDurationWhilePredicate || effect.sourcePresence != sourcePresenceRequired {
+	if (effect.layer != effectLayerAbility && effect.layer != effectLayerModifier) || effect.sublayer != effectSubLayerNone || effect.duration != staticDurationWhilePredicate || effect.sourcePresence != sourcePresenceRequired {
 		return fmt.Errorf("layer, sublayer, duration, or source presence unsupported")
 	}
 	switch effect.predicate {
 	case staticPredicateSelf:
+		if effect.layer != effectLayerAbility {
+			return fmt.Errorf("self predicate requires ability layer")
+		}
 		if !isPrideStaticModifier(effect.modifier) {
 			return fmt.Errorf("self predicate requires nonnegative Pride modifier")
 		}
 	case staticPredicateControlsQualifiedHumanAlly:
+		if effect.layer != effectLayerAbility {
+			return fmt.Errorf("qualified Human predicate requires ability layer")
+		}
 		if !isQualifiedHumanStaticModifier(effect.modifier) {
 			return fmt.Errorf("qualified Human predicate requires Pride removal and granted On Attack")
 		}
 	case staticPredicateOtherControlledSuitedAlly:
+		if effect.layer != effectLayerAbility {
+			return fmt.Errorf("other controlled Suited Ally predicate requires ability layer")
+		}
 		if !isOtherControlledSuitedAllyModifier(effect.modifier) {
 			return fmt.Errorf("other controlled Suited Ally predicate requires Immortality")
 		}
 	case staticPredicateClassMatchedSelf:
+		if effect.layer != effectLayerAbility {
+			return fmt.Errorf("class matched self predicate requires ability layer")
+		}
 		if !isClassBonusStaticModifier(effect.modifier) {
 			return fmt.Errorf("class matched self predicate requires +1 Power and optional +2 Reserve Cost")
+		}
+	case staticPredicateRestedSourceOtherAllies:
+		if effect.layer != effectLayerModifier {
+			return fmt.Errorf("rested source predicate requires modifier layer")
+		}
+		if !isArthurRestedAlliesModifier(effect.modifier) {
+			return fmt.Errorf("rested source predicate requires +1 Power")
+		}
+	case staticPredicateSelfWithOtherSuitedAlly:
+		if effect.layer != effectLayerAbility {
+			return fmt.Errorf("other Suited Ally predicate requires ability layer")
+		}
+		if !isNoireStealthModifier(effect.modifier) {
+			return fmt.Errorf("other Suited Ally predicate requires Stealth")
+		}
+	case staticPredicateSelfChampionDamaged:
+		if effect.layer != effectLayerModifier {
+			return fmt.Errorf("damaged Champion predicate requires modifier layer")
+		}
+		if !isHeatedVengeanceModifier(effect.modifier) {
+			return fmt.Errorf("damaged Champion predicate requires +3 Power")
 		}
 	default:
 		return fmt.Errorf("predicate unsupported %q", effect.predicate)
@@ -1714,6 +2016,24 @@ func isClassBonusStaticModifier(modifier continuousModifier) bool {
 		!modifier.GrantTrueSight &&
 		!modifier.RemovePride &&
 		!modifier.GrantRedHareOnAttack
+}
+
+// isArthurRestedAlliesModifier 驗證 Arthur 的 static 只向其他受控 Ally 提供 +1 Power。
+// 輸入為 continuous modifier；輸出為是否符合 Arthur 的已支援 payload，副作用為零。
+func isArthurRestedAlliesModifier(modifier continuousModifier) bool {
+	return isCardistryModifier(modifier) && modifier.PowerDelta == 1 && modifier.LifeDelta == 0
+}
+
+// isNoireStealthModifier 驗證 Noire 的 static 只授予 Stealth。
+// 輸入為 continuous modifier；輸出為是否符合 Noire 的已支援 payload，副作用為零。
+func isNoireStealthModifier(modifier continuousModifier) bool {
+	return modifier.SetPride == nil && modifier.SetPower == nil && modifier.SetLife == nil && modifier.PowerDelta == 0 && modifier.LifeDelta == 0 && modifier.ReserveCostDelta == 0 && !modifier.GrantImmortality && !modifier.ProhibitRecover && !modifier.SwitchPowerLife && modifier.GrantStealth && !modifier.GrantTrueSight && !modifier.RemovePride && !modifier.GrantRedHareOnAttack
+}
+
+// isHeatedVengeanceModifier 驗證 Heated Vengeance 的 static 只提供 +3 Power。
+// 輸入為 continuous modifier；輸出為是否符合 Heated Vengeance 的已支援 payload，副作用為零。
+func isHeatedVengeanceModifier(modifier continuousModifier) bool {
+	return isCardistryModifier(modifier) && modifier.PowerDelta == 3 && modifier.LifeDelta == 0
 }
 
 // cloneStaticEffectDefinition 複製 static 定義及其指標欄位，隔離編寫資料和編譯結果。
@@ -1875,9 +2195,45 @@ func (ability compiledAbilityDefinition) operations() []effectOperation {
 			operations = append(operations, effectOperation{
 				Kind: effectOperationPreventNonCombatDamage,
 			})
+		case effectKindRestGrantImmortality:
+			operations = append(operations, effectOperation{
+				Kind: effectOperationRestGrantImmortality,
+			})
+		case effectKindSuitedThresholdCounter:
+			operations = append(operations, effectOperation{
+				Kind: effectOperationSuitedThresholdCounter,
+			})
+		case effectKindSuitedThresholdDamage:
+			operations = append(operations, effectOperation{
+				Kind: effectOperationSuitedThresholdDamage,
+			})
+		case effectKindSacrificeAllyPower:
+			operations = append(operations, effectOperation{
+				Kind: effectOperationSacrificeAllyPower,
+			})
+		case effectKindGrantTaunt:
+			operations = append(operations, effectOperation{
+				Kind: effectOperationGrantTaunt,
+			})
 		}
 	}
 	return operations
+}
+
+// compiledTriggeredAbilities 取得來源卡指定事件的全部已編譯觸發能力。
+// 輸入為卡牌實例與事件；輸出依定義順序排列的能力，副作用為零。
+func (g *Game) compiledTriggeredAbilities(card cardInstanceID, event eventKind) []compiledAbilityDefinition {
+	definition, exists := g.definitions[g.state.Cards[card].Definition]
+	if !exists {
+		return nil
+	}
+	abilities := make([]compiledAbilityDefinition, 0)
+	for _, ability := range definition.abilities {
+		if ability.kind == abilityKindTriggered && ability.trigger != nil && ability.trigger.event == event {
+			abilities = append(abilities, ability)
+		}
+	}
+	return abilities
 }
 
 // compiledAbility 取得來源卡指定 kind 的已編譯定義，不讀取可變對局狀態以外的編寫資料。
@@ -1938,6 +2294,13 @@ func compileReplayDefinitions() (map[CardID]CardDefinition, error) {
 		twoOfHeartsCardID,
 		twoOfSpadesCardID,
 		impactHammerCardID,
+		arthurYoungHeirCardID,
+		noireCardID,
+		pepperedChefCardID,
+		heatedVengeanceCardID,
+		rougeCardID,
+		spiritOfFireCardID,
+		tonorisCardID,
 		bulwarkSwordCardID,
 		redHareCardID,
 		infernalVesselCardID,

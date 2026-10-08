@@ -28,9 +28,11 @@ func (g *Game) isImmortal(id objectID) bool {
 	return g.characteristicsFor(id).Immortal
 }
 
-func (g *Game) grantArthurImmortality(id objectID) {
+// restAndGrantTemporaryImmortality 休息場上來源，並授予到控制者下回合開始前的 Immortality。
+// 輸入為場上來源；無輸出；來源不存在時不改變狀態。
+func (g *Game) restAndGrantTemporaryImmortality(id objectID) {
 	object, exists := g.state.Objects[id]
-	if !exists || g.state.Cards[object.Card].Definition != arthurYoungHeirCardID {
+	if !exists {
 		return
 	}
 	object.Rested = true

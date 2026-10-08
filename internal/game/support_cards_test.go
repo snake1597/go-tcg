@@ -469,8 +469,8 @@ func TestSmokeBombsTrumpSetAndPepperedChefApplyTemporaryEffects(t *testing.T) {
 	game.state.Cards[chefCard] = chefDefinition
 	chef := objectID("ally:chef")
 	game.state.Objects[chef] = fieldObject{ID: chef, Card: chefCard, Owner: player, Types: []string{"ALLY"}}
-	if err := game.sacrificeForPepperedChef(player, chef, target); err != nil {
-		t.Fatalf("sacrificeForPepperedChef() error = %v", err)
+	if err := game.sacrificeAllyAndIncreaseSourcePower(player, chef, target); err != nil {
+		t.Fatalf("sacrificeAllyAndIncreaseSourcePower() error = %v", err)
 	}
 	if got := game.characteristicsFor(chef).Power; got != game.state.Cards[chefCard].Power+2 {
 		t.Fatalf("Peppered Chef power = %d, want +2", got)
@@ -529,7 +529,7 @@ func TestPepperedChefOffersOnlyOtherControlledAlliesAndCanBeSkipped(t *testing.T
 		Owner: model.PlayerTwo,
 		Types: []string{"ALLY"},
 	}
-	game.enqueueSuitedEnterAbility(player, chef, chefCard)
+	game.enqueueEnterAbilities(player, chef, chefCard)
 	game.resolveTopEffectStack()
 	choice := game.state.Knowledge.Choice
 	if choice == nil || !choice.CanPass || len(choice.Options) != 1 {
@@ -539,6 +539,29 @@ func TestPepperedChefOffersOnlyOtherControlledAlliesAndCanBeSkipped(t *testing.T
 		if target != entityID(legal) {
 			t.Fatalf("Peppered Chef target = %q, want %q", target, legal)
 		}
+	}
+}
+
+// TestArthurEnterAbilityUsesCompiledTrigger 驗證 Arthur 進場能力由 compiled slot 建立並結算。
+// 輸入為固定牌組中的 Arthur；輸出為休息與暫時 Immortality 斷言，副作用限於測試單局。
+func TestArthurEnterAbilityUsesCompiledTrigger(t *testing.T) {
+	game := newActionGame(t)
+	player := model.PlayerOne
+	arthurCard := findCard(t, game, player, arthurYoungHeirCardID)
+	game.putAllyOnField(player, arthurCard)
+	var arthur objectID
+	for id, object := range game.state.Objects {
+		if object.Card == arthurCard {
+			arthur = id
+			break
+		}
+	}
+	if arthur == "" || len(game.state.EffectsStack) == 0 || game.state.EffectsStack[len(game.state.EffectsStack)-1].Ability == nil || game.state.EffectsStack[len(game.state.EffectsStack)-1].Ability.Slot != "ability:GjM8b5fxqj:front:on-enter-rest-immortality" {
+		t.Fatalf("Arthur enter stack = %#v, want compiled enter slot", game.state.EffectsStack)
+	}
+	game.resolveTopEffectStack()
+	if !game.state.Objects[arthur].Rested || !game.isImmortal(arthur) {
+		t.Fatalf("Arthur = %#v, characteristics = %#v, want rested and immortal", game.state.Objects[arthur], game.characteristicsFor(arthur))
 	}
 }
 

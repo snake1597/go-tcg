@@ -244,41 +244,8 @@ func (g *Game) instancedEffectsFor(target objectID) []continuousEffect {
 
 func (g *Game) staticEffectsFor(target objectID) []continuousEffect {
 	effects := make([]continuousEffect, 0, 2)
-	targetObject, targetExists := g.state.Objects[target]
 	for sourceID, source := range g.state.Objects {
 		card := g.state.Cards[source.Card]
-		if card.Definition == arthurYoungHeirCardID && source.Rested && targetExists && sourceID != target && samePlayer(source.Owner, targetObject.Owner) && containsString(targetObject.Types, "ALLY") {
-			effects = append(effects, continuousEffect{
-				Source:     sourceID,
-				Controller: source.Owner,
-				Scope:      effectScopeOtherControlledAllies,
-				Layer:      effectLayerModifier,
-				PowerLife:  powerLifeModify,
-				Timestamp:  uint64(len(effects)),
-				Modifier: continuousModifier{
-					PowerDelta: 1,
-				},
-			})
-		}
-		if sourceID == target && card.Definition == noireCardID && g.controlsAnotherSuitedAlly(source.Owner, sourceID) {
-			effects = append(effects, continuousEffect{Source: sourceID, Controller: source.Owner, Scope: effectScopeObject, Layer: effectLayerAbility, Timestamp: uint64(len(effects)), Modifier: continuousModifier{GrantStealth: true}})
-		}
-		if sourceID == target && card.Definition == heatedVengeanceCardID && g.championDamagedThisTurn(source.Owner) {
-			effects = append(
-				effects,
-				continuousEffect{
-					Source:     sourceID,
-					Controller: source.Owner,
-					Scope:      effectScopeObject,
-					Layer:      effectLayerModifier,
-					PowerLife:  powerLifeModify,
-					Timestamp:  uint64(len(effects)),
-					Modifier: continuousModifier{
-						PowerDelta: 3,
-					},
-				},
-			)
-		}
 		definition, definitionExists := g.definitions[card.Definition]
 		if definitionExists {
 			for _, ability := range definition.abilities {
@@ -319,6 +286,13 @@ func (g *Game) staticAbilityApplies(ability *staticEffectDefinition, sourceID ob
 	case staticPredicateClassMatchedSelf:
 		card := g.state.Cards[source.Card]
 		return sourceID == target && g.championHasClass(source.Owner, card.Classes)
+	case staticPredicateRestedSourceOtherAllies:
+		targetObject, exists := g.state.Objects[target]
+		return source.Rested && exists && sourceID != target && samePlayer(source.Owner, targetObject.Owner) && containsString(targetObject.Types, "ALLY")
+	case staticPredicateSelfWithOtherSuitedAlly:
+		return sourceID == target && g.controlsAnotherSuitedAlly(source.Owner, sourceID)
+	case staticPredicateSelfChampionDamaged:
+		return sourceID == target && g.championDamagedThisTurn(source.Owner)
 	default:
 		return false
 	}

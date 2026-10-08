@@ -34,7 +34,7 @@ func newStandardSetup(
 	}
 
 	for _, player := range game.players {
-		if !game.resolveSpiritOfFireOnEnter(player) {
+		if !game.resolveSetupChampionAbilities(player) {
 			break
 		}
 	}
@@ -119,6 +119,23 @@ func (g *Game) nextRandom() uint64 {
 	return value ^ (value >> 31)
 }
 
-func (g *Game) resolveSpiritOfFireOnEnter(player *model.Player) bool {
-	return g.drawCardsWithDeckOut(player, 7, spiritOfFireOnEnterCause)
+// resolveSetupChampionAbilities 結算初始 Champion 的已編譯 setup 抽牌能力。
+// 輸入為控制者；輸出為是否未因牌庫耗盡結束，副作用為依定義抽牌並記錄事件。
+func (g *Game) resolveSetupChampionAbilities(player *model.Player) bool {
+	champion, exists := g.state.Champions[player.UID]
+	if !exists {
+		return true
+	}
+	for _, ability := range g.compiledTriggeredAbilities(champion.Card, eventKindSetup) {
+		for _, operation := range ability.operations() {
+			if operation.Kind == effectOperationDraw {
+				return g.drawCardsWithDeckOut(
+					player,
+					operation.Amount,
+					string(ability.slot),
+				)
+			}
+		}
+	}
+	return true
 }

@@ -246,7 +246,7 @@ func (g *Game) deployAlly(player *model.Player, card cardInstanceID) {
 func (g *Game) putAllyOnField(player *model.Player, card cardInstanceID) {
 	id := g.putFieldObject(player, card, "ally")
 	g.recordPublicEvent(player, "ability", "deploy", card)
-	g.enqueueSuitedEnterAbility(player, id, card)
+	g.enqueueEnterAbilities(player, id, card)
 }
 
 // putMaterialRegaliaOnField 將已從 Material Deck 付款完成的 Regalia 放入控制者戰場。
@@ -310,44 +310,64 @@ func suitedThresholdAmount(total int) int {
 	}
 }
 
-func (g *Game) enqueueSuitedEnterAbility(player *model.Player, source objectID, card cardInstanceID) {
-	switch g.state.Cards[card].Definition {
-	case noireCardID:
-		amount := suitedThresholdAmount(g.suitedReserveTotal(player))
-		if amount > 0 {
-			g.pushAbility(g.newAbilityInstance(player, card, source, []effectOperation{{Kind: effectOperationCounter, Counter: "BUFF", Amount: amount}}))
+// enqueueEnterAbilities 從來源卡已編譯的 enter triggers 建立 Ability Instances。
+// 輸入為控制者、場上來源與卡牌實例；無輸出；副作用為依定義順序把可執行能力加入 stack。
+func (g *Game) enqueueEnterAbilities(player *model.Player, source objectID, card cardInstanceID) {
+	for _, ability := range g.compiledTriggeredAbilities(card, eventKindEnter) {
+		operations := ability.operations()
+		if len(operations) == 0 || !g.canEnqueueEnterOperations(player, source, operations) {
+			continue
 		}
-	case rougeCardID:
-		if suitedThresholdAmount(g.suitedReserveTotal(player)) > 0 {
-			g.pushAbility(g.newAbilityInstance(player, card, "", []effectOperation{{Kind: effectOperationChoose, Options: g.legalTargets()}, {Kind: effectOperationSuitedThresholdDamage}}))
+		if ability.trigger.optional && len(operations) > 0 && operations[0].Kind == effectOperationChoose {
+			operations[0].CanPass = true
 		}
-	case pepperedChefCardID:
-		options := []objectID{}
-		for id, object := range g.state.Objects {
-			if id != source && samePlayer(object.Owner, player) && containsString(object.Types, "ALLY") {
-				options = append(options, id)
+		for index := range operations {
+			if operations[index].Selector == selectorOtherControlledAllies {
+				operations[index].Source = source
 			}
 		}
-		sort.Slice(options, func(first, second int) bool { return options[first] < options[second] })
-		if len(options) > 0 {
-			g.pushAbility(g.newAbilityInstance(
-				player,
-				card,
-				source,
-				[]effectOperation{
-					{
-						Kind:    effectOperationChoose,
-						Options: options,
-						CanPass: true,
-					},
-					{
-						Kind:   effectOperationSacrificeForChef,
-						Source: source,
-					},
-				},
-			))
+		instance := g.newAbilityInstance(
+			player,
+			card,
+			source,
+			operations,
+		)
+		instance.Slot = ability.slot
+		g.pushAbility(instance)
+	}
+}
+
+// canEnqueueEnterOperations 在建立 trigger 前檢查動態門檻與必要選項。
+// 輸入為控制者、來源與已編譯 operations；輸出為是否有可結算內容，副作用為零。
+func (g *Game) canEnqueueEnterOperations(player *model.Player, source objectID, operations []effectOperation) bool {
+	for _, operation := range operations {
+		switch operation.Kind {
+		case effectOperationSuitedThresholdCounter, effectOperationSuitedThresholdDamage:
+			if suitedThresholdAmount(g.suitedReserveTotal(player)) == 0 {
+				return false
+			}
+		case effectOperationChoose:
+			if operation.Selector == selectorOtherControlledAllies && len(g.otherControlledAllies(player, source)) == 0 {
+				return false
+			}
 		}
 	}
+	return true
+}
+
+// otherControlledAllies 回傳控制者除來源外的 Ally，並以 object ID 排序以維持 replay 決定性。
+// 輸入為控制者與要排除的來源；輸出為可選場上物件，副作用為零。
+func (g *Game) otherControlledAllies(player *model.Player, source objectID) []objectID {
+	options := make([]objectID, 0)
+	for id, object := range g.state.Objects {
+		if id != source && samePlayer(object.Owner, player) && containsString(object.Types, "ALLY") {
+			options = append(options, id)
+		}
+	}
+	sort.Slice(options, func(first, second int) bool {
+		return options[first] < options[second]
+	})
+	return options
 }
 
 func (g *Game) temporaryModifierOperation(power, life int) effectOperation {

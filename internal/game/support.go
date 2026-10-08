@@ -36,6 +36,9 @@ func NewStandardGame(configuration StandardGameConfig) (*Game, error) {
 	if err := validateDeckReferences(deck, definitions); err != nil {
 		return nil, fmt.Errorf("validate fixed deck references: %w", err)
 	}
+	if _, err := deriveSupportSet(deck, definitions); err != nil {
+		return nil, fmt.Errorf("derive fixed Support Set: %w", err)
+	}
 
 	return newStandardSetup(configuration, definitions, deck, deck)
 }
