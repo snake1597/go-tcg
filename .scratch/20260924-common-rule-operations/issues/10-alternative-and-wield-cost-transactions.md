@@ -12,6 +12,8 @@
 
 **Delivered slice:** DSL-ready Card Definitions 09 已證明 Verita 的一般與替代付款可在同一交易中取消、失敗或一次提交。剩餘工作是完成其他替代費用與 Wield payment 入口的共通化及直接區域修改清理。
 
+**Delivered slice:** DSL-ready Card Definitions 13 已讓 Bulwark Sword 的 class-matched static Slot 向中央 evaluator 輸出 `ReserveCostDelta: 2`，共用 Wield 合法性與付款流程消費該 derived cost；不足付款為非法，成功時仍由既有 Wield transaction 放逐兩張 Reserve。其餘 Wield 交易清理仍由本票負責。
+
 **Next implementation step:** 先讓 Wield Memory payment 使用既有 Declaration Transaction，保持隨機或明確付款選擇、Banishment 目的地、取消／失敗 rollback 與成功一次提交；完成後再盤點是否仍有其他替代費用入口未共用同一 contract。
 
 - [ ] 替代費用的多張選牌在完整合法後一次付款；保留一般付款與替代付款的玩家選擇。

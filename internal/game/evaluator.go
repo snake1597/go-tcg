@@ -260,20 +260,6 @@ func (g *Game) staticEffectsFor(target objectID) []continuousEffect {
 				},
 			})
 		}
-		if sourceID == target && card.Definition == bulwarkSwordCardID && g.championHasClass(source.Owner, card.Classes) {
-			effects = append(effects, continuousEffect{
-				Source:     sourceID,
-				Controller: source.Owner,
-				Scope:      effectScopeClassMatchedSource,
-				Layer:      effectLayerModifier,
-				PowerLife:  powerLifeModify,
-				Timestamp:  uint64(len(effects)),
-				Modifier: continuousModifier{
-					PowerDelta:       1,
-					ReserveCostDelta: 2,
-				},
-			})
-		}
 		if sourceID == target && card.Definition == noireCardID && g.controlsAnotherSuitedAlly(source.Owner, sourceID) {
 			effects = append(effects, continuousEffect{Source: sourceID, Controller: source.Owner, Scope: effectScopeObject, Layer: effectLayerAbility, Timestamp: uint64(len(effects)), Modifier: continuousModifier{GrantStealth: true}})
 		}
@@ -330,6 +316,9 @@ func (g *Game) staticAbilityApplies(ability *staticEffectDefinition, sourceID ob
 		return sourceID == target && g.controlsQualifiedHumanAlly(source.Owner, sourceID)
 	case staticPredicateOtherControlledSuitedAlly:
 		return g.isOtherControlledSuitedAlly(source.Owner, sourceID, target)
+	case staticPredicateClassMatchedSelf:
+		card := g.state.Cards[source.Card]
+		return sourceID == target && g.championHasClass(source.Owner, card.Classes)
 	default:
 		return false
 	}

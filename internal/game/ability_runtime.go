@@ -26,16 +26,20 @@ type resolutionBinding string
 type effectOperationKind string
 
 const (
-	effectOperationChoose             effectOperationKind = "choose"
-	effectOperationMove               effectOperationKind = "move"
-	effectOperationDraw               effectOperationKind = "draw"
-	effectOperationDrawToMemory       effectOperationKind = "draw_to_memory"
-	effectOperationCounter            effectOperationKind = "counter"
-	effectOperationDamage             effectOperationKind = "damage"
-	effectOperationContinuousModifier effectOperationKind = "continuous_modifier"
-	effectOperationChooseZoneCard     effectOperationKind = "choose_zone_card"
-	effectOperationDiscard            effectOperationKind = "discard"
-	effectOperationDeploy             effectOperationKind = "deploy"
+	effectOperationChoose                 effectOperationKind = "choose"
+	effectOperationMove                   effectOperationKind = "move"
+	effectOperationRestSource             effectOperationKind = "rest_source"
+	effectOperationBanishSource           effectOperationKind = "banish_source"
+	effectOperationCardistryDiscount      effectOperationKind = "cardistry_discount"
+	effectOperationPreventNonCombatDamage effectOperationKind = "prevent_non_combat_damage"
+	effectOperationDraw                   effectOperationKind = "draw"
+	effectOperationDrawToMemory           effectOperationKind = "draw_to_memory"
+	effectOperationCounter                effectOperationKind = "counter"
+	effectOperationDamage                 effectOperationKind = "damage"
+	effectOperationContinuousModifier     effectOperationKind = "continuous_modifier"
+	effectOperationChooseZoneCard         effectOperationKind = "choose_zone_card"
+	effectOperationDiscard                effectOperationKind = "discard"
+	effectOperationDeploy                 effectOperationKind = "deploy"
 	// effectOperationPutAllyOnField 以通用 ability runtime 結算被 play 的 Ally source。
 	effectOperationPutAllyOnField        effectOperationKind = "put_ally_on_field"
 	effectOperationSuitedThresholdDamage effectOperationKind = "suited_threshold_damage"
@@ -165,6 +169,23 @@ func (g *Game) resolveAbility(instance abilityInstance) {
 			g.recordPublicEvent(instance.Controller, "ability", "continuous-effect", instance.SourceLKI)
 		case effectOperationDraw:
 			g.drawCards(instance.Controller, operation.Amount)
+		case effectOperationCardistryDiscount:
+			g.state.CardistryDiscounts[instance.Controller.UID] = operation.Amount
+		case effectOperationPreventNonCombatDamage:
+			champion, exists := g.state.Champions[instance.Controller.UID]
+			if !exists {
+				continue
+			}
+			g.state.ReplacementEffects = append(
+				g.state.ReplacementEffects,
+				replacementEffect{
+					Kind:          replacementDamagePrevent,
+					Source:        objectID(instance.SourceLKI),
+					Controller:    instance.Controller,
+					Target:        champion.ID,
+					ExpiresAtTurn: g.state.Scheduler.TurnNumber + 1,
+				},
+			)
 		case effectOperationDrawToMemory:
 			g.drawToMemory(instance.Controller, operation.Amount)
 		case effectOperationCounter:
@@ -275,6 +296,9 @@ func (g *Game) resolveAbility(instance abilityInstance) {
 			options := operation.Options
 			if operation.Selector == selectorControlledSuitedAlly {
 				options = g.controlledSuitedAllies(instance.Controller)
+			}
+			if operation.Selector == selectorAllAllies {
+				options = g.allAllies()
 			}
 			if len(options) == 0 {
 				return

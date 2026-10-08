@@ -6,7 +6,9 @@
 
 **Related foundation:** 01 — 玩家卡牌區域移動、棄牌與 Memory recollection。玩家區域入口的完整共通化不阻擋本票建立 Object 離場、LKI 與 Banishment operation slice。
 
-**Status:** ready-for-agent
+**Status:** in-progress
+
+**Delivered slice:** DSL-ready Card Definitions 13 已以 Grand Crusader's Ring、Water／Wind Resonance Bauble、Smoke Bombs、Safeguard Amulet 與 The Duchess's Thornes 證明共用 typed `banish_source` cost：先驗證控制者、來源狀態與必要選擇，再一次移除 Field Object、移入 owner Banishment、保留 Ability Source LKI 與公開事件，後續效果統一進 Effects Stack；stale source 拒絕且 state hash 不變。剩餘工作是盤點非本 Support Set 的其他放逐入口並移除重複 zone mutation。
 
 **Next implementation step:** 選一個現有「放逐自身作為費用」的 Object ability，先抽出不含 Card ID 的 typed banish operation，經 Declaration Transaction 同時提交 Object 移除與 owner Banishment 移動，再以原 scenario 驗證 LKI、事件、失敗無副作用與 replay。若由 DSL 13 觸發此工作，完成本 operation slice 後立即回到該 Ability Slot。
 

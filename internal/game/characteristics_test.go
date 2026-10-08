@@ -64,6 +64,41 @@ func TestCharacteristicsApplyBulwarkClassBonus(t *testing.T) {
 	}
 }
 
+// TestCharacteristicsApplyImpactHammerClassBonusFromStaticDefinition 驗證 Weapon static Slot 只由中央 evaluator 套用。
+// 輸入為 class 相符的 Impact Hammer；輸出為 +1 Power，移除來源後不再產生 derived characteristics，副作用僅建立與移除測試物件。
+func TestCharacteristicsApplyImpactHammerClassBonusFromStaticDefinition(t *testing.T) {
+	game := newActionGame(t)
+	weaponCard := findCard(t, game, model.PlayerOne, impactHammerCardID)
+	weapon := game.state.Cards[weaponCard]
+	weapon.Classes = []string{
+		"GUARDIAN",
+	}
+	weapon.Power = 2
+	game.state.Cards[weaponCard] = weapon
+	champion := game.state.Champions[model.PlayerOne.UID]
+	championCard := game.state.Cards[champion.Card]
+	championCard.Classes = []string{
+		"GUARDIAN",
+	}
+	game.state.Cards[champion.Card] = championCard
+	weaponID := objectID("impact-hammer-static")
+	game.state.Objects[weaponID] = fieldObject{
+		ID:    weaponID,
+		Card:  weaponCard,
+		Owner: model.PlayerOne,
+		Types: []string{
+			"WEAPON",
+		},
+	}
+	if got := game.characteristicsFor(weaponID).Power; got != 3 {
+		t.Fatalf("derived weapon power = %d, want 3", got)
+	}
+	delete(game.state.Objects, weaponID)
+	if got := game.characteristicsFor(weaponID); got != (characteristics{}) {
+		t.Fatalf("characteristics after source left = %#v, want zero", got)
+	}
+}
+
 func TestImmortalityPreventsStateBasedDeathUntilExpiry(t *testing.T) {
 	game := newActionGame(t)
 	card := findCard(t, game, model.PlayerOne, CardID("rufki4o41y"))

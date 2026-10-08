@@ -272,10 +272,19 @@ func (g *Game) putFieldObject(player *model.Player, card cardInstanceID, objectK
 	return id
 }
 
-// hasHindered 回傳固定支援卡中具有 Hindered 關鍵字、應以 rested 狀態進場的卡牌。
+// hasHindered 由卡牌的已編譯 keyword Slot 判斷是否應以 rested 狀態進場。
 // 輸入為卡牌實例；輸出為是否 Hindered；不會改變對局狀態。
 func (g *Game) hasHindered(card cardInstanceID) bool {
-	return g.state.Cards[card].Definition == duchessThornesCardID
+	definition, exists := g.definitions[g.state.Cards[card].Definition]
+	if !exists {
+		return false
+	}
+	for _, ability := range definition.abilities {
+		if ability.kind == abilityKindKeyword && ability.keyword == keywordHindered {
+			return true
+		}
+	}
+	return false
 }
 
 func (g *Game) suitedReserveTotal(player *model.Player) int {

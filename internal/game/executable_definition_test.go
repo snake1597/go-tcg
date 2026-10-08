@@ -189,8 +189,8 @@ func TestCompileDuchessDefinition(t *testing.T) {
 	}
 }
 
-// TestCompileImpactHammerTriggeredDefinition 驗證 Impact Hammer 的 On Wield 能力由定義宣告事件條件與事件目標傷害。
-// 輸入為 Impact Hammer 的卡牌與牌面；輸出為帶穩定 Slot、wield 事件條件及事件目標參照的 triggered 定義，副作用為零。
+// TestCompileImpactHammerTriggeredDefinition 驗證 Impact Hammer 的 class bonus 與 On Wield 能力都由定義提供。
+// 輸入為 Impact Hammer 的卡牌與牌面；輸出為 stable static 與 triggered slots，副作用為零。
 func TestCompileImpactHammerTriggeredDefinition(t *testing.T) {
 	definition := CardDefinition{
 		id: impactHammerCardID,
@@ -206,12 +206,214 @@ func TestCompileImpactHammerTriggeredDefinition(t *testing.T) {
 	if err != nil {
 		t.Fatalf("compileAbilityDefinitions() error = %v", err)
 	}
-	if len(abilities) != 1 || abilities[0].kind != abilityKindTriggered || abilities[0].trigger == nil || abilities[0].trigger.event != eventKindWield {
-		t.Fatalf("compiled triggered ability = %#v, want one On Wield definition", abilities)
+	if len(abilities) != 2 || abilities[0].kind != abilityKindStatic || abilities[0].slot != "ability:chsbalegbs:front:class-bonus" || abilities[1].kind != abilityKindTriggered || abilities[1].trigger == nil || abilities[1].trigger.event != eventKindWield {
+		t.Fatalf("compiled abilities = %#v, want class bonus and On Wield definitions", abilities)
 	}
-	operations := abilities[0].operations()
+	operations := abilities[1].operations()
 	if len(operations) != 1 || operations[0].Kind != effectOperationDamage || operations[0].TargetReference != referenceEventTarget || operations[0].Value == nil || operations[0].Value.Kind != valueConstant || operations[0].Value.Constant != 3 {
 		t.Fatalf("triggered operations = %#v, want 3 damage to wield event target", operations)
+	}
+}
+
+// TestCompileBulwarkSwordStaticDefinition 驗證 Bulwark Sword 的 class bonus 與 wield cost 由中央 static evaluator 消費。
+// 輸入為 Bulwark Sword 卡牌定義；輸出為 stable static slot 與 +1 Power/+2 Reserve modifier，副作用為零。
+func TestCompileBulwarkSwordStaticDefinition(t *testing.T) {
+	definition := CardDefinition{
+		id: bulwarkSwordCardID,
+		face: CardFace{
+			id: CardFaceID("face:8kmoi0a5uh:front"),
+		},
+	}
+	abilities, err := compileAbilityDefinitions(
+		definition,
+		authoredAbilitiesForCard(definition.id),
+	)
+	if err != nil {
+		t.Fatalf("compileAbilityDefinitions() error = %v", err)
+	}
+	if len(abilities) != 1 || abilities[0].kind != abilityKindStatic || abilities[0].slot != "ability:8kmoi0a5uh:front:class-bonus-wield-cost" || abilities[0].static == nil || abilities[0].static.modifier.PowerDelta != 1 || abilities[0].static.modifier.ReserveCostDelta != 2 {
+		t.Fatalf("compiled abilities = %#v, want Bulwark static modifier", abilities)
+	}
+}
+
+// TestCompileViridianPermissionDefinition 驗證 Viridian 的 activation tax 只存在於穩定 permission Slot。
+// 輸入為 Viridian 卡牌定義；輸出為 Water、對手、控制者回合與來源存續條件，副作用為零。
+func TestCompileViridianPermissionDefinition(t *testing.T) {
+	definition := CardDefinition{
+		id: viridianProtectiveTrinketCardID,
+		face: CardFace{
+			id: CardFaceID("face:s3572j3oda:front"),
+		},
+	}
+	abilities, err := compileAbilityDefinitions(
+		definition,
+		authoredAbilitiesForCard(definition.id),
+	)
+	if err != nil {
+		t.Fatalf("compileAbilityDefinitions() error = %v", err)
+	}
+	if len(abilities) != 1 || abilities[0].slot != "ability:s3572j3oda:front:opponent-water-activation-tax" || abilities[0].kind != abilityKindPermission || abilities[0].permission == nil || abilities[0].permission.candidateElement != "WATER" || abilities[0].permission.reserveCostDelta != 2 {
+		t.Fatalf("compiled abilities = %#v, want Viridian permission definition", abilities)
+	}
+}
+
+// TestCompileDuchessThornesDefinitions 驗證 Hindered、Cardistry trigger 與 activated discount 都有穩定 Slot。
+// 輸入為 Duchess's Thornes 卡牌定義；輸出為三個已編譯能力及共用 operations，副作用為零。
+func TestCompileDuchessThornesDefinitions(t *testing.T) {
+	definition := CardDefinition{
+		id: duchessThornesCardID,
+		face: CardFace{
+			id: CardFaceID("face:bEXmm4rKOs:front"),
+		},
+	}
+	abilities, err := compileAbilityDefinitions(
+		definition,
+		authoredAbilitiesForCard(definition.id),
+	)
+	if err != nil {
+		t.Fatalf("compileAbilityDefinitions() error = %v", err)
+	}
+	if len(abilities) != 3 || abilities[0].slot != "ability:bEXmm4rKOs:front:hindered" || abilities[0].keyword != keywordHindered || abilities[1].slot != "ability:bEXmm4rKOs:front:ally-cardistry-bonus" || abilities[1].trigger == nil || abilities[1].trigger.event != eventKindCardistryActivated || abilities[2].slot != "ability:bEXmm4rKOs:front:rest-banish-cardistry-discount" {
+		t.Fatalf("compiled abilities = %#v, want Duchess's Thornes keyword, trigger, and Object slots", abilities)
+	}
+	operations := abilities[2].operations()
+	if len(operations) != 3 || operations[0].Kind != effectOperationRestSource || operations[1].Kind != effectOperationBanishSource || operations[2].Kind != effectOperationCardistryDiscount || operations[2].Amount != 6 {
+		t.Fatalf("activated operations = %#v, want rest, banish, and Cardistry discount", operations)
+	}
+}
+
+// TestCompileGrandCrusadersRingObjectDefinition 驗證 Grand Crusader's Ring 以穩定 Object slot 宣告放逐來源後抽牌。
+// 輸入為 Grand Crusader's Ring 的卡牌定義與 Go 編寫資料；輸出為一個可執行的 Object ability，副作用為零。
+func TestCompileGrandCrusadersRingObjectDefinition(t *testing.T) {
+	definition := CardDefinition{
+		id: grandCrusadersRingCardID,
+		face: CardFace{
+			id: CardFaceID("face:2gv7DC0KID:front"),
+		},
+	}
+	abilities, err := compileAbilityDefinitions(
+		definition,
+		authoredAbilitiesForCard(definition.id),
+	)
+	if err != nil {
+		t.Fatalf("compileAbilityDefinitions() error = %v", err)
+	}
+	if len(abilities) != 1 || abilities[0].kind != abilityKindObject || abilities[0].slot != "ability:2gv7DC0KID:front:banish-draw" {
+		t.Fatalf("compiled abilities = %#v, want one stable Object slot", abilities)
+	}
+	operations := abilities[0].operations()
+	if len(operations) != 2 || operations[0].Kind != effectOperationBanishSource || operations[1].Kind != effectOperationDraw || operations[1].Amount != 1 {
+		t.Fatalf("operations = %#v, want banish source followed by draw one", operations)
+	}
+}
+
+// TestCompileWaterResonanceBaubleObjectDefinition 驗證 Water Resonance Bauble 將元素條件、放逐來源與抽牌編譯為 Object slot。
+// 輸入為 Water Resonance Bauble 的卡牌定義與 Go 編寫資料；輸出為帶 Water 對手 Champion 條件的能力，副作用為零。
+func TestCompileWaterResonanceBaubleObjectDefinition(t *testing.T) {
+	definition := CardDefinition{
+		id: waterResonanceBaubleCardID,
+		face: CardFace{
+			id: CardFaceID("face:dSSRtNnPtw:front"),
+		},
+	}
+	abilities, err := compileAbilityDefinitions(
+		definition,
+		authoredAbilitiesForCard(definition.id),
+	)
+	if err != nil {
+		t.Fatalf("compileAbilityDefinitions() error = %v", err)
+	}
+	if len(abilities) != 1 || abilities[0].kind != abilityKindObject || abilities[0].objectCondition == nil || abilities[0].objectCondition.opponentChampionElement != "WATER" {
+		t.Fatalf("compiled abilities = %#v, want Water-conditioned Object slot", abilities)
+	}
+}
+
+// TestCompileWindResonanceBaubleObjectDefinition 驗證 Wind Resonance Bauble 將 Wind 條件編譯為獨立的 Object slot。
+// 輸入為 Wind Resonance Bauble 的卡牌定義與 Go 編寫資料；輸出為帶 Wind 對手 Champion 條件的能力，副作用為零。
+func TestCompileWindResonanceBaubleObjectDefinition(t *testing.T) {
+	definition := CardDefinition{
+		id: windResonanceBaubleCardID,
+		face: CardFace{
+			id: CardFaceID("face:bHGUNMFLg9:front"),
+		},
+	}
+	abilities, err := compileAbilityDefinitions(
+		definition,
+		authoredAbilitiesForCard(definition.id),
+	)
+	if err != nil {
+		t.Fatalf("compileAbilityDefinitions() error = %v", err)
+	}
+	if len(abilities) != 1 || abilities[0].objectCondition == nil || abilities[0].objectCondition.opponentChampionElement != "WIND" {
+		t.Fatalf("compiled abilities = %#v, want Wind-conditioned Object slot", abilities)
+	}
+}
+
+// TestCompileSmokeBombsAndSafeguardAmuletObjectDefinitions 驗證具有選擇與 replacement 的 Object slot 都由 Definition 編譯為可執行操作。
+// 輸入為 Smoke Bombs、Safeguard Amulet 的卡牌定義與 Go 編寫資料；輸出為穩定 slot 和對應 operation 序列，副作用為零。
+func TestCompileSmokeBombsAndSafeguardAmuletObjectDefinitions(t *testing.T) {
+	testCases := []struct {
+		name       string
+		definition CardDefinition
+		wantSlot   AbilitySlotID
+		wantKinds  []effectOperationKind
+	}{
+		{
+			name: "Smoke Bombs",
+			definition: CardDefinition{
+				id: smokeBombsCardID,
+				face: CardFace{
+					id: CardFaceID("face:ScGcOmkoQt:front"),
+				},
+			},
+			wantSlot: "ability:ScGcOmkoQt:front:banish-stealth-draw",
+			wantKinds: []effectOperationKind{
+				effectOperationBanishSource,
+				effectOperationChoose,
+				effectOperationContinuousModifier,
+				effectOperationDraw,
+			},
+		},
+		{
+			name: "Safeguard Amulet",
+			definition: CardDefinition{
+				id: safeguardAmuletCardID,
+				face: CardFace{
+					id: CardFaceID("face:yj2rJBREH8:front"),
+				},
+			},
+			wantSlot: "ability:yj2rJBREH8:front:banish-prevent-non-combat-damage",
+			wantKinds: []effectOperationKind{
+				effectOperationBanishSource,
+				effectOperationPreventNonCombatDamage,
+			},
+		},
+	}
+	for _, testCase := range testCases {
+		t.Run(
+			testCase.name,
+			func(t *testing.T) {
+				abilities, err := compileAbilityDefinitions(
+					testCase.definition,
+					authoredAbilitiesForCard(testCase.definition.id),
+				)
+				if err != nil {
+					t.Fatalf("compileAbilityDefinitions() error = %v", err)
+				}
+				if len(abilities) != 1 || abilities[0].slot != testCase.wantSlot {
+					t.Fatalf("compiled abilities = %#v, want slot %q", abilities, testCase.wantSlot)
+				}
+				operations := abilities[0].operations()
+				if len(operations) != len(testCase.wantKinds) {
+					t.Fatalf("operations = %#v, want %d operations", operations, len(testCase.wantKinds))
+				}
+				for index, wantKind := range testCase.wantKinds {
+					if operations[index].Kind != wantKind {
+						t.Fatalf("operations[%d].Kind = %q, want %q", index, operations[index].Kind, wantKind)
+					}
+				}
+			},
+		)
 	}
 }
 

@@ -24,41 +24,29 @@ const (
 	windResonanceBaubleCardID       CardID = "bHGUNMFLg9"
 )
 
-type objectAbilityDeclaration struct {
-	Controller *model.Player
-	Source     objectID
-}
-
 func (g *Game) beginObjectAbility(player *model.Player, source objectID) error {
 	object, exists := g.state.Objects[source]
 	if !exists || !samePlayer(object.Owner, player) || !g.canActivateObjectAbility(player, source) {
 		return fmt.Errorf("invalid object ability")
 	}
-	if g.state.Cards[object.Card].Definition == duchessThornesCardID {
-		return g.activateDuchessThornes(player, source)
+	if abilityDefinition, supported := g.compiledObject(object.Card); supported {
+		operations := abilityDefinition.operations()
+		resolutionStart, err := g.payObjectAbilityCosts(player, source, operations)
+		if err != nil {
+			return fmt.Errorf("invalid Object ability definition")
+		}
+		ability := g.newAbilityInstance(
+			player,
+			object.Card,
+			"",
+			operations[resolutionStart:],
+		)
+		ability.Slot = abilityDefinition.slot
+		g.pushAbility(ability)
+		g.grantOpportunity(player)
+		return nil
 	}
-	if g.state.Cards[object.Card].Definition == safeguardAmuletCardID {
-		return g.activateSafeguardAmulet(player, source)
-	}
-	if g.state.Cards[object.Card].Definition == grandCrusadersRingCardID {
-		return g.activateBanishDrawAbility(player, source)
-	}
-	if g.state.Cards[object.Card].Definition == waterResonanceBaubleCardID || g.state.Cards[object.Card].Definition == windResonanceBaubleCardID {
-		return g.activateBanishDrawAbility(player, source)
-	}
-	if g.state.Cards[object.Card].Definition != smokeBombsCardID {
-		return fmt.Errorf("unsupported object ability")
-	}
-	options := g.smokeBombsTargets()
-	if len(options) == 0 {
-		return fmt.Errorf("Smoke Bombs has no ally target")
-	}
-	g.state.Knowledge.ObjectAbility = &objectAbilityDeclaration{
-		Controller: player,
-		Source:     source,
-	}
-	g.setDeclarationChoice(player, options)
-	return nil
+	return fmt.Errorf("unsupported object ability")
 }
 
 // legalObjectAbilities 回傳目前玩家可啟動的場上物件能力，並以物件 ID 穩定排序。
@@ -83,20 +71,31 @@ func (g *Game) canActivateObjectAbility(player *model.Player, source objectID) b
 	if !exists || !samePlayer(object.Owner, player) {
 		return false
 	}
-	switch g.state.Cards[object.Card].Definition {
-	case duchessThornesCardID:
-		return !object.Rested
-	case smokeBombsCardID:
-		return len(g.smokeBombsTargets()) > 0
-	case safeguardAmuletCardID, grandCrusadersRingCardID:
-		return true
-	case waterResonanceBaubleCardID:
-		return g.opponentControlsElementChampion(player, "WATER")
-	case windResonanceBaubleCardID:
-		return g.opponentControlsElementChampion(player, "WIND")
-	default:
+	if ability, exists := g.compiledObject(object.Card); exists {
+		operations := ability.operations()
+		if len(operations) > 0 && operations[0].Kind == effectOperationRestSource && object.Rested {
+			return false
+		}
+		return g.objectAbilityCanBeDeclared(player, ability)
+	}
+	return false
+}
+
+// objectAbilityCanBeDeclared 判定已編譯 Object ability 的公開條件與必要選擇是否同時可在宣告時滿足。
+// 輸入為啟動者與已驗證的能力定義；輸出為當下是否可合法宣告，副作用為零。
+func (g *Game) objectAbilityCanBeDeclared(player *model.Player, ability compiledAbilityDefinition) bool {
+	if ability.objectCondition != nil && !g.opponentControlsElementChampion(
+		player,
+		ability.objectCondition.opponentChampionElement,
+	) {
 		return false
 	}
+	for _, effect := range ability.effects {
+		if effect.kind == effectKindChooseObject && effect.chooseObject.selector == selectorAllAllies && len(g.allAllies()) == 0 {
+			return false
+		}
+	}
+	return true
 }
 
 // opponentControlsElementChampion 檢查任一對手目前的 Champion 是否具有指定元素。
@@ -109,23 +108,6 @@ func (g *Game) opponentControlsElementChampion(player *model.Player, element str
 		return true
 	}
 	return false
-}
-
-// activateBanishDrawAbility 原子地放逐能力來源並將抽一張牌的能力推入 Effects Stack。
-// 輸入為控制者與可啟動的 Regalia 物件；成功時改變場上物件、放逐區、堆疊與公開事件，錯誤時不改變狀態。
-func (g *Game) activateBanishDrawAbility(player *model.Player, source objectID) error {
-	object, err := g.banishObjectForAbility(player, source)
-	if err != nil {
-		return err
-	}
-	g.pushAbility(g.newAbilityInstance(player, object.Card, "", []effectOperation{
-		{
-			Kind:   effectOperationDraw,
-			Amount: 1,
-		},
-	}))
-	g.grantOpportunity(player)
-	return nil
 }
 
 // banishObjectForAbility 驗證並一次提交場上物件移除與其卡牌放逐。
@@ -143,58 +125,75 @@ func (g *Game) banishObjectForAbility(player *model.Player, source objectID) (fi
 	return object, nil
 }
 
-func (g *Game) submitObjectAbilityChoice(player *model.Player, target objectID) error {
-	declaration := g.state.Knowledge.ObjectAbility
-	if declaration == nil || !samePlayer(declaration.Controller, player) {
-		return fmt.Errorf("invalid object ability choice")
-	}
-	g.state.Knowledge.ObjectAbility = nil
-	g.state.Knowledge.Choice = nil
-	return g.activateSmokeBombs(player, declaration.Source, target)
-}
-
-// activateDuchessThornes pays its printed rest-and-banish cost and records a
-// one-shot Cardistry discount. The discount is consumed by the next successful
-// Cardistry activation, rather than by an attempted declaration.
-func (g *Game) activateDuchessThornes(player *model.Player, source objectID) error {
+// payObjectAbilityCosts 依定義順序原子支付 Object 的可選 rest 與必要 banish 費用。
+// 輸入為控制者、場上來源與完整 operations；輸出為第一個結算 operation 索引或錯誤，成功時會休息並放逐來源。
+func (g *Game) payObjectAbilityCosts(player *model.Player, source objectID, operations []effectOperation) (int, error) {
 	object, exists := g.state.Objects[source]
-	if !exists || !samePlayer(object.Owner, player) || object.Rested || g.state.Cards[object.Card].Definition != duchessThornesCardID {
-		return fmt.Errorf("invalid Duchess's Thornes activation")
+	if !exists || !samePlayer(object.Owner, player) {
+		return 0, fmt.Errorf("invalid object ability")
 	}
-	object.Rested = true
-	g.state.Objects[source] = object
-	delete(g.state.Objects, source)
-	zones := g.state.Zones[player.UID]
-	zones.Banishment = append(zones.Banishment, object.Card)
-	g.state.Zones[player.UID] = zones
-	g.state.CardistryDiscounts[player.UID] = 6
-	g.recordPublicEvent(player, "ability", "banish", object.Card)
-	return nil
+	operationIndex := 0
+	if len(operations) > 0 && operations[0].Kind == effectOperationRestSource {
+		if object.Rested {
+			return 0, fmt.Errorf("object source is already rested")
+		}
+		object.Rested = true
+		g.state.Objects[source] = object
+		operationIndex++
+	}
+	if operationIndex >= len(operations)-1 || operations[operationIndex].Kind != effectOperationBanishSource {
+		return 0, fmt.Errorf("object source banish cost is missing")
+	}
+	if _, err := g.banishObjectForAbility(player, source); err != nil {
+		return 0, err
+	}
+	return operationIndex + 1, nil
 }
 
+// cardistryObserverTriggers 由場上來源的 triggered definitions 建立 Ally Cardistry 觀察者能力。
+// 輸入為啟動玩家與 Cardistry Ally；輸出為依物件 ID 排序的 stack items，副作用為零。
 func (g *Game) cardistryObserverTriggers(player *model.Player, source objectID) []effectStackItem {
 	object, exists := g.state.Objects[source]
 	if !exists || !containsString(g.state.Cards[object.Card].Types, "ALLY") {
 		return nil
 	}
 	triggers := []effectStackItem{}
-	for _, observer := range g.state.Objects {
-		if !samePlayer(observer.Owner, player) || g.state.Cards[observer.Card].Definition != duchessThornesCardID {
+	observerIDs := make([]objectID, 0, len(g.state.Objects))
+	for id := range g.state.Objects {
+		observerIDs = append(observerIDs, id)
+	}
+	sort.Slice(observerIDs, func(first, second int) bool {
+		return observerIDs[first] < observerIDs[second]
+	})
+	for _, observerID := range observerIDs {
+		observer := g.state.Objects[observerID]
+		if !samePlayer(observer.Owner, player) {
 			continue
 		}
-		ability := g.newAbilityInstance(player, observer.Card, source, []effectOperation{
-			g.temporaryModifierOperation(1, 0),
-			{
-				Kind: effectOperationContinuousModifier,
-				ContinuousEffect: continuousEffect{
-					Scope:         effectScopeObject,
-					Layer:         effectLayerAbility,
-					ExpiresAtTurn: g.state.Scheduler.TurnNumber + 1,
-					Modifier:      continuousModifier{GrantTrueSight: true},
-				},
-			},
-		})
-		triggers = append(triggers, effectStackItem{Kind: effectStackAbility, Controller: player, Source: observer.Card, SourceLKI: observer.Card, Target: source, Ability: &ability})
+		definition, definitionExists := g.definitions[g.state.Cards[observer.Card].Definition]
+		if !definitionExists {
+			continue
+		}
+		for _, authored := range definition.abilities {
+			if authored.kind != abilityKindTriggered || authored.trigger == nil || authored.trigger.event != eventKindCardistryActivated {
+				continue
+			}
+			ability := g.newAbilityInstance(
+				player,
+				observer.Card,
+				source,
+				authored.operations(),
+			)
+			ability.Slot = authored.slot
+			triggers = append(triggers, effectStackItem{
+				Kind:       effectStackAbility,
+				Controller: player,
+				Source:     observer.Card,
+				SourceLKI:  observer.Card,
+				Target:     source,
+				Ability:    &ability,
+			})
+		}
 	}
 	return triggers
 }
@@ -232,24 +231,9 @@ func containsCard(cards []cardInstanceID, want cardInstanceID) bool {
 	return false
 }
 
-func (g *Game) activateSmokeBombs(player *model.Player, source, target objectID) error {
-	object, exists := g.state.Objects[source]
-	targetObject, targetExists := g.state.Objects[target]
-	if !exists || !targetExists || !samePlayer(object.Owner, player) || g.state.Cards[object.Card].Definition != smokeBombsCardID || !containsObject(g.smokeBombsTargets(), target) || !containsString(targetObject.Types, "ALLY") {
-		return fmt.Errorf("invalid Smoke Bombs activation")
-	}
-	delete(g.state.Objects, source)
-	zones := g.state.Zones[player.UID]
-	zones.Banishment = append(zones.Banishment, object.Card)
-	g.state.Zones[player.UID] = zones
-	g.addContinuousEffect(continuousEffect{Source: source, Controller: player, Target: target, Scope: effectScopeObject, Layer: effectLayerAbility, ExpiresAtTurn: g.state.Scheduler.TurnNumber + 1, Modifier: continuousModifier{GrantStealth: true}})
-	g.drawCards(player, 1)
-	return nil
-}
-
-// smokeBombsTargets 回傳場上全部可作為 Smoke Bombs 目標的 Ally，依物件 ID 排序。
+// allAllies 回傳場上所有 Ally，依物件 ID 排序。
 // 此查詢不改變遊戲狀態，並排除 Champion 與非 Ally 物件。
-func (g *Game) smokeBombsTargets() []objectID {
+func (g *Game) allAllies() []objectID {
 	targets := make([]objectID, 0, len(g.state.Objects))
 	for id, object := range g.state.Objects {
 		if containsString(object.Types, "ALLY") {

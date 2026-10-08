@@ -12,6 +12,8 @@
 
 **Delivered slice:** DSL-ready Card Definitions 05 已證明 Cardistry Memory payment 在完整合法性驗證後只提交一次，拒絕或過期輸入不改變權威狀態。剩餘工作是完成 Action、Ally 及其他 Reserve／Memory payment 入口的共通化與直接移區清理。
 
+**Delivered slice:** DSL-ready Card Definitions 13 已讓 Viridian Protective Trinket 的 permission Slot 只向共用 activation Reserve cost query 輸出費用增量；來源離場、非 Water、控制者自身或非控制者回合都不加費，沒有卡牌專用付款 mutation。其餘入口仍依本票 Next implementation step 收斂。
+
 **Next implementation step:** 先遷移 Action Reserve payment，讓來源卡、付款卡與 Stack Item 在同一 Declaration Transaction 提交；正常、取消、非法目標、非法付款與 stale handle scenario 通過後，再用同一 contract 遷移 Ally payment，最後移除其餘重複付款路徑。
 
 - [ ] Action、Ally 與 Cardistry 的付款均保留各自合法來源、明確選牌及隨機支付規則，來源卡與付款卡進入正確區域。

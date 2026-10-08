@@ -10,6 +10,8 @@
 
 **Blocked reason:** 02、03、04、06、07、08、10 尚未全部完成；本票是共通 Object ability declaration 的整合與清理 gate。
 
+**Delivered slice:** DSL-ready Card Definitions 13 已交付固定 Support Set 的窄整合：Object activated abilities 共用條件查詢、`rest_source`／`banish_source` cost prefix、Ability Instance、Effects Stack 與 resolution operations；Duchess's Thornes 的 `cardistry_discount` 亦在結算時才生效。此 slice 不解除其餘前置 Common issues，剩餘非固定 Support Set 入口仍待本票最終清理。
+
 **Next implementation step:** 所有前置 Common issues 完成後，依 Card ID、卡名 operation、單用途旗標與 direct Game State mutation 四類搜尋剩餘路徑；逐條以已完成 operation contract 取代並保留既有正式介面 scenario，最後執行完整 Standard Game、Support Set、replay 與 mirror-game gate。
 
 - [ ] 現有可組合的 Object ability 使用共通啟動條件、費用與 operation 提交語意；玩家可用行動與原有規則一致。

@@ -272,10 +272,10 @@ func TestStraightFlareUsesReplacementPipeline(t *testing.T) {
 	if err := game.Submit(player, Input{
 		Revision: view.Revision,
 		Action:   amulet.Handle,
-		Reserve:  reserveHandles(amulet),
 	}); err != nil {
 		t.Fatalf("activate Amulet: %v", err)
 	}
+	passOpportunityRound(t, game, player)
 	view, err = game.PlayerView(player)
 	if err != nil {
 		t.Fatalf("PlayerView after Amulet: %v", err)

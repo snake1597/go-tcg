@@ -24,7 +24,6 @@ type knowledgeState struct {
 	TriggerOrder    *triggerOrder               `json:"trigger_order,omitempty"`
 	Attack          *attackDeclaration          `json:"attack,omitempty"`
 	Wield           *wieldDeclaration           `json:"wield,omitempty"`
-	ObjectAbility   *objectAbilityDeclaration   `json:"object_ability,omitempty"`
 	AlternativeCost *alternativeCostDeclaration `json:"alternative_cost,omitempty"`
 }
 
@@ -173,10 +172,14 @@ func (g *Game) refreshLegalActions() {
 				}
 				for _, source := range g.legalObjectAbilities(player) {
 					handle := g.newViewHandle(player, constants.ViewHandleSubjectActionAbilityPrefix+string(source))
-					abilities[handle] = activatedAbility{
+					ability := activatedAbility{
 						Kind:   activatedAbilityObject,
 						Source: source,
 					}
+					if compiled, exists := g.compiledObject(g.state.Objects[source].Card); exists {
+						ability.Slot = compiled.slot
+					}
+					abilities[handle] = ability
 				}
 			case samePlayer(player, g.state.Scheduler.TurnPlayer) && g.state.Scheduler.Phase == constants.PhaseMaterialize:
 				for _, card := range g.legalMaterializations(player) {
@@ -308,9 +311,10 @@ func (g *Game) legalActions(player *model.Player) []LegalAction {
 			legalActions = append(
 				legalActions,
 				LegalAction{
-					Handle:   handle,
-					Kind:     constants.ActionActivate,
-					CardName: g.state.Entities[entityID(g.state.Objects[ability.Source].Card)].Name,
+					Handle:      handle,
+					Kind:        constants.ActionActivate,
+					CardName:    g.state.Entities[entityID(g.state.Objects[ability.Source].Card)].Name,
+					AbilitySlot: ability.Slot,
 				},
 			)
 		}
@@ -740,13 +744,6 @@ func (g *Game) submitChoice(player *model.Player, input Input) error {
 	}
 	if g.state.Knowledge.Wield != nil {
 		if err := g.submitWieldChoice(player, subject); err != nil {
-			return err
-		}
-		g.advanceKnowledgeRevision()
-		return nil
-	}
-	if g.state.Knowledge.ObjectAbility != nil {
-		if err := g.submitObjectAbilityChoice(player, objectID(subject)); err != nil {
 			return err
 		}
 		g.advanceKnowledgeRevision()

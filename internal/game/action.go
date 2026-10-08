@@ -358,26 +358,40 @@ func (g *Game) actionReserveCost(player *model.Player, card cardInstanceID) int 
 	if ability, exists := g.compiledAction(card); exists && ability.classCostReduction > 0 && g.championHasClass(player, g.state.Cards[card].Classes) && cost > 0 {
 		cost -= ability.classCostReduction
 	}
-	if g.viridianProtectiveTrinketTaxApplies(player, card) {
-		return cost + 2
-	}
-	return cost
+	return cost + g.activationReserveTax(player, card)
 }
 
-// viridianProtectiveTrinketTaxApplies 判定啟動者是否須支付 Viridian Protective Trinket 的額外費用。
-// 輸入為啟動行動的玩家與卡牌；輸出為是否加稅，副作用為零。
-func (g *Game) viridianProtectiveTrinketTaxApplies(player *model.Player, card cardInstanceID) bool {
+// activationReserveTax 匯總場上已編譯 permission 對指定 activation 增加的 Reserve 費用。
+// 輸入為啟動玩家與候選卡；輸出為所有適用 permission 的費用增量，副作用為零。
+func (g *Game) activationReserveTax(player *model.Player, card cardInstanceID) int {
 	candidate, exists := g.state.Cards[card]
-	if !exists || !containsString(candidate.Elements, "WATER") {
-		return false
+	if !exists {
+		return 0
 	}
+	tax := 0
 	for _, object := range g.state.Objects {
-		if g.state.Cards[object.Card].Definition != viridianProtectiveTrinketCardID || !samePlayer(object.Owner, g.state.Scheduler.TurnPlayer) || samePlayer(object.Owner, player) {
+		definition, definitionExists := g.definitions[g.state.Cards[object.Card].Definition]
+		if !definitionExists {
 			continue
 		}
-		return true
+		for _, ability := range definition.abilities {
+			permission := ability.permission
+			if ability.kind != abilityKindPermission || permission == nil {
+				continue
+			}
+			if permission.sourcePresence != sourcePresenceRequired || !containsString(candidate.Elements, permission.candidateElement) {
+				continue
+			}
+			if permission.duringControllerTurn && !samePlayer(object.Owner, g.state.Scheduler.TurnPlayer) {
+				continue
+			}
+			if permission.opponentsOnly && samePlayer(object.Owner, player) {
+				continue
+			}
+			tax += permission.reserveCostDelta
+		}
 	}
-	return false
+	return tax
 }
 
 func (g *Game) legalTargets() []objectID {

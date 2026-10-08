@@ -15,6 +15,9 @@ const (
 	abilityKindStatic      abilityDefinitionKind = "static"
 	abilityKindReplacement abilityDefinitionKind = "replacement"
 	abilityKindAlly        abilityDefinitionKind = "ally"
+	abilityKindObject      abilityDefinitionKind = "object"
+	abilityKindPermission  abilityDefinitionKind = "permission"
+	abilityKindKeyword     abilityDefinitionKind = "keyword"
 )
 
 type abilityTiming string
@@ -35,18 +38,22 @@ const reductionDistinctSuitedCosts abilityCostReduction = "distinct-suited-reser
 type authoredEffectKind string
 
 const (
-	effectKindDraw                  authoredEffectKind = "draw"
-	effectKindDrawToMemory          authoredEffectKind = "draw-to-memory"
-	effectKindDamage                authoredEffectKind = "damage"
-	effectKindChooseCard            authoredEffectKind = "choose-card"
-	effectKindChooseObject          authoredEffectKind = "choose-object"
-	effectKindDiscard               authoredEffectKind = "discard"
-	effectKindDeploy                authoredEffectKind = "deploy"
-	effectKindCounter               authoredEffectKind = "counter"
-	effectKindModifier              authoredEffectKind = "modifier"
-	effectKindCopyAction            authoredEffectKind = "copy-action"
-	effectKindRetargetAttack        authoredEffectKind = "retarget-attack"
-	effectKindMoveSourceToGraveyard authoredEffectKind = "move-source-to-graveyard"
+	effectKindDraw                   authoredEffectKind = "draw"
+	effectKindDrawToMemory           authoredEffectKind = "draw-to-memory"
+	effectKindDamage                 authoredEffectKind = "damage"
+	effectKindChooseCard             authoredEffectKind = "choose-card"
+	effectKindChooseObject           authoredEffectKind = "choose-object"
+	effectKindDiscard                authoredEffectKind = "discard"
+	effectKindDeploy                 authoredEffectKind = "deploy"
+	effectKindCounter                authoredEffectKind = "counter"
+	effectKindModifier               authoredEffectKind = "modifier"
+	effectKindCopyAction             authoredEffectKind = "copy-action"
+	effectKindRetargetAttack         authoredEffectKind = "retarget-attack"
+	effectKindMoveSourceToGraveyard  authoredEffectKind = "move-source-to-graveyard"
+	effectKindRestSource             authoredEffectKind = "rest-source"
+	effectKindBanishSource           authoredEffectKind = "banish-source"
+	effectKindCardistryDiscount      authoredEffectKind = "cardistry-discount"
+	effectKindPreventNonCombatDamage authoredEffectKind = "prevent-non-combat-damage"
 )
 
 type abilityReference string
@@ -60,9 +67,14 @@ const (
 type eventKind string
 
 const (
-	eventKindWield   eventKind = "wield"
-	eventKindDestroy eventKind = "destroy"
+	eventKindWield              eventKind = "wield"
+	eventKindDestroy            eventKind = "destroy"
+	eventKindCardistryActivated eventKind = "cardistry-activated"
 )
+
+type keywordDefinition string
+
+const keywordHindered keywordDefinition = "hindered"
 
 type selectorKind string
 
@@ -70,6 +82,7 @@ const (
 	selectorUnits                            selectorKind = "units"
 	selectorControlledSuited                 selectorKind = "controlled-suited"
 	selectorControlledSuitedAlly             selectorKind = "controlled-suited-ally"
+	selectorAllAllies                        selectorKind = "all-allies"
 	selectorRetargetableControlledSuitedAlly selectorKind = "retargetable-controlled-suited-ally"
 )
 
@@ -157,6 +170,7 @@ const (
 	staticPredicateSelf                       staticPredicateKind = "self"
 	staticPredicateControlsQualifiedHumanAlly staticPredicateKind = "controls-qualified-human-ally"
 	staticPredicateOtherControlledSuitedAlly  staticPredicateKind = "other-controlled-suited-ally"
+	staticPredicateClassMatchedSelf           staticPredicateKind = "class-matched-self"
 )
 
 type effectSubLayer string
@@ -194,12 +208,26 @@ type replacementDefinition struct {
 	amount         int
 }
 
+type permissionDefinition struct {
+	candidateElement     string
+	reserveCostDelta     int
+	duringControllerTurn bool
+	opponentsOnly        bool
+	sourcePresence       sourcePresence
+}
+
 type modifierDuration string
 
 const (
 	modifierDurationEndOfTurn     modifierDuration = "end-of-turn"
 	modifierDurationEndOfNextTurn modifierDuration = "end-of-next-turn"
 )
+
+// objectActivationCondition 描述 Object ability 在宣告時必須滿足的公開盤面條件。
+// 輸入為對手 Champion 所需元素；輸出供 compiler 與合法性查詢使用；不保存可變對局狀態。
+type objectActivationCondition struct {
+	opponentChampionElement string
+}
 
 type deathModifierDefinition struct {
 	selector selectorKind
@@ -232,9 +260,12 @@ type authoredAbilityDefinition struct {
 	trigger            *triggerDefinition
 	static             *staticEffectDefinition
 	replacement        *replacementDefinition
+	permission         *permissionDefinition
+	keyword            keywordDefinition
 	alternative        *alternativeCostSpec
 	deathModifier      *deathModifierDefinition
 	cost               *actionCostDefinition
+	objectCondition    *objectActivationCondition
 	effects            []authoredEffectDefinition
 }
 
@@ -265,9 +296,12 @@ type compiledAbilityDefinition struct {
 	trigger            *triggerDefinition
 	static             *staticEffectDefinition
 	replacement        *replacementDefinition
+	permission         *permissionDefinition
+	keyword            keywordDefinition
 	alternative        *alternativeCostSpec
 	deathModifier      *deathModifierDefinition
 	cost               *actionCostDefinition
+	objectCondition    *objectActivationCondition
 	effects            []compiledEffect
 }
 
@@ -687,10 +721,24 @@ func trumpSetAbilities() []authoredAbilityDefinition {
 	}
 }
 
-// impactHammerAbilities 宣告 Impact Hammer 觀察 wield event 後對該事件 unit 造成傷害的 triggered Slot。
+// impactHammerAbilities 宣告 Impact Hammer 的職業加成 static 與 wield 傷害 triggered slots。
 // 輸入為零；輸出為新的 Go 編寫資料，副作用為零。
 func impactHammerAbilities() []authoredAbilityDefinition {
 	return []authoredAbilityDefinition{
+		{
+			slot: "ability:chsbalegbs:front:class-bonus",
+			kind: abilityKindStatic,
+			static: &staticEffectDefinition{
+				predicate: staticPredicateClassMatchedSelf,
+				layer:     effectLayerAbility,
+				sublayer:  effectSubLayerNone,
+				modifier: continuousModifier{
+					PowerDelta: 1,
+				},
+				duration:       staticDurationWhilePredicate,
+				sourcePresence: sourcePresenceRequired,
+			},
+		},
 		{
 			slot: "ability:chsbalegbs:front:on-wield-self-damage",
 			kind: abilityKindTriggered,
@@ -708,6 +756,28 @@ func impactHammerAbilities() []authoredAbilityDefinition {
 						},
 					},
 				},
+			},
+		},
+	}
+}
+
+// bulwarkSwordAbilities 宣告 Bulwark Sword 的職業加成與 wield 額外費用 static slot。
+// 輸入為零；輸出為不可共享的 Go 編寫資料，副作用為零。
+func bulwarkSwordAbilities() []authoredAbilityDefinition {
+	return []authoredAbilityDefinition{
+		{
+			slot: "ability:8kmoi0a5uh:front:class-bonus-wield-cost",
+			kind: abilityKindStatic,
+			static: &staticEffectDefinition{
+				predicate: staticPredicateClassMatchedSelf,
+				layer:     effectLayerAbility,
+				sublayer:  effectSubLayerNone,
+				modifier: continuousModifier{
+					PowerDelta:       1,
+					ReserveCostDelta: 2,
+				},
+				duration:       staticDurationWhilePredicate,
+				sourcePresence: sourcePresenceRequired,
 			},
 		},
 	}
@@ -816,6 +886,202 @@ func veritaAbilities() []authoredAbilityDefinition {
 	}
 }
 
+// duchessThornesAbilities 宣告 Hindered、Ally Cardistry 觸發與休息放逐折扣三個穩定 Slot。
+// 輸入為零；輸出為不共享可變狀態的 Go 編寫資料，副作用為零。
+func duchessThornesAbilities() []authoredAbilityDefinition {
+	return []authoredAbilityDefinition{
+		{
+			slot:    "ability:bEXmm4rKOs:front:hindered",
+			kind:    abilityKindKeyword,
+			keyword: keywordHindered,
+		},
+		{
+			slot: "ability:bEXmm4rKOs:front:ally-cardistry-bonus",
+			kind: abilityKindTriggered,
+			trigger: &triggerDefinition{
+				event: eventKindCardistryActivated,
+			},
+			effects: []authoredEffectDefinition{
+				{
+					kind: effectKindModifier,
+					modifier: &modifierEffectDefinition{
+						duration: modifierDurationEndOfTurn,
+						modifier: continuousModifier{
+							PowerDelta:     1,
+							GrantTrueSight: true,
+						},
+					},
+				},
+			},
+		},
+		{
+			slot: "ability:bEXmm4rKOs:front:rest-banish-cardistry-discount",
+			kind: abilityKindObject,
+			effects: []authoredEffectDefinition{
+				{
+					kind: effectKindRestSource,
+				},
+				{
+					kind: effectKindBanishSource,
+				},
+				{
+					kind: effectKindCardistryDiscount,
+				},
+			},
+		},
+	}
+}
+
+// grandCrusadersRingAbilities 宣告 Grand Crusader's Ring 的放逐自身並抽牌 Object slot。
+// 輸入為零；輸出為不共享可變狀態的 Go 編寫資料，副作用為零。
+func grandCrusadersRingAbilities() []authoredAbilityDefinition {
+	return []authoredAbilityDefinition{
+		{
+			slot: "ability:2gv7DC0KID:front:banish-draw",
+			kind: abilityKindObject,
+			effects: []authoredEffectDefinition{
+				{
+					kind: effectKindBanishSource,
+				},
+				{
+					kind: effectKindDraw,
+					draw: &drawEffectDefinition{
+						amount:    1,
+						recipient: referenceController,
+					},
+				},
+			},
+		},
+	}
+}
+
+// waterResonanceBaubleAbilities 宣告 Water Resonance Bauble 在對手控制 Water Champion 時可放逐自身抽牌的 Object slot。
+// 輸入為零；輸出為不共享可變狀態的 Go 編寫資料，副作用為零。
+func waterResonanceBaubleAbilities() []authoredAbilityDefinition {
+	return []authoredAbilityDefinition{
+		{
+			slot: "ability:dSSRtNnPtw:front:banish-draw-water-champion",
+			kind: abilityKindObject,
+			objectCondition: &objectActivationCondition{
+				opponentChampionElement: "WATER",
+			},
+			effects: []authoredEffectDefinition{
+				{
+					kind: effectKindBanishSource,
+				},
+				{
+					kind: effectKindDraw,
+					draw: &drawEffectDefinition{
+						amount:    1,
+						recipient: referenceController,
+					},
+				},
+			},
+		},
+	}
+}
+
+// windResonanceBaubleAbilities 宣告 Wind Resonance Bauble 在對手控制 Wind Champion 時可放逐自身抽牌的 Object slot。
+// 輸入為零；輸出為不共享可變狀態的 Go 編寫資料，副作用為零。
+func windResonanceBaubleAbilities() []authoredAbilityDefinition {
+	return []authoredAbilityDefinition{
+		{
+			slot: "ability:bHGUNMFLg9:front:banish-draw-wind-champion",
+			kind: abilityKindObject,
+			objectCondition: &objectActivationCondition{
+				opponentChampionElement: "WIND",
+			},
+			effects: []authoredEffectDefinition{
+				{
+					kind: effectKindBanishSource,
+				},
+				{
+					kind: effectKindDraw,
+					draw: &drawEffectDefinition{
+						amount:    1,
+						recipient: referenceController,
+					},
+				},
+			},
+		},
+	}
+}
+
+// smokeBombsAbilities 宣告 Smoke Bombs 的放逐、選擇任一 Ally、賦予 stealth 與抽牌 Object slot。
+// 輸入為零；輸出為不共享可變狀態的 Go 編寫資料，副作用為零。
+func smokeBombsAbilities() []authoredAbilityDefinition {
+	return []authoredAbilityDefinition{
+		{
+			slot: "ability:ScGcOmkoQt:front:banish-stealth-draw",
+			kind: abilityKindObject,
+			effects: []authoredEffectDefinition{
+				{
+					kind: effectKindBanishSource,
+				},
+				{
+					kind: effectKindChooseObject,
+					chooseObject: &chooseObjectEffectDefinition{
+						selector: selectorAllAllies,
+					},
+				},
+				{
+					kind: effectKindModifier,
+					modifier: &modifierEffectDefinition{
+						duration: modifierDurationEndOfTurn,
+						modifier: continuousModifier{
+							GrantStealth: true,
+						},
+					},
+				},
+				{
+					kind: effectKindDraw,
+					draw: &drawEffectDefinition{
+						amount:    1,
+						recipient: referenceController,
+					},
+				},
+			},
+		},
+	}
+}
+
+// safeguardAmuletAbilities 宣告 Safeguard Amulet 的放逐自身與本回合非戰鬥傷害防止 Object slot。
+// 輸入為零；輸出為不共享可變狀態的 Go 編寫資料，副作用為零。
+func safeguardAmuletAbilities() []authoredAbilityDefinition {
+	return []authoredAbilityDefinition{
+		{
+			slot: "ability:yj2rJBREH8:front:banish-prevent-non-combat-damage",
+			kind: abilityKindObject,
+			effects: []authoredEffectDefinition{
+				{
+					kind: effectKindBanishSource,
+				},
+				{
+					kind: effectKindPreventNonCombatDamage,
+				},
+			},
+		},
+	}
+}
+
+// viridianProtectiveTrinketAbilities 宣告控制者回合中對手 Water 卡 activation Reserve tax permission slot。
+// 輸入為零；輸出為不可共享的 Go 編寫資料，副作用為零。
+func viridianProtectiveTrinketAbilities() []authoredAbilityDefinition {
+	return []authoredAbilityDefinition{
+		{
+			slot: "ability:s3572j3oda:front:opponent-water-activation-tax",
+			kind: abilityKindPermission,
+			permission: &permissionDefinition{
+				candidateElement:     "WATER",
+				reserveCostDelta:     2,
+				duringControllerTurn: true,
+				opponentsOnly:        true,
+				sourcePresence:       sourcePresenceRequired,
+			},
+		},
+	}
+}
+
 // authoredAbilitiesForCard 將固定卡牌的 Go 能力編寫資料交給同一個 compiler。
 // 輸入為 Card ID；輸出為該卡目前已遷移的能力資料，副作用為零。
 func authoredAbilitiesForCard(id CardID) []authoredAbilityDefinition {
@@ -848,12 +1114,28 @@ func authoredAbilitiesForCard(id CardID) []authoredAbilityDefinition {
 		return twoOfSpadesAbilities()
 	case impactHammerCardID:
 		return impactHammerAbilities()
+	case bulwarkSwordCardID:
+		return bulwarkSwordAbilities()
 	case redHareCardID:
 		return redHareAbilities()
 	case infernalVesselCardID:
 		return infernalVesselAbilities()
 	case veritaCardID:
 		return veritaAbilities()
+	case grandCrusadersRingCardID:
+		return grandCrusadersRingAbilities()
+	case waterResonanceBaubleCardID:
+		return waterResonanceBaubleAbilities()
+	case windResonanceBaubleCardID:
+		return windResonanceBaubleAbilities()
+	case smokeBombsCardID:
+		return smokeBombsAbilities()
+	case safeguardAmuletCardID:
+		return safeguardAmuletAbilities()
+	case viridianProtectiveTrinketCardID:
+		return viridianProtectiveTrinketAbilities()
+	case duchessThornesCardID:
+		return duchessThornesAbilities()
 	}
 	return nil
 }
@@ -927,11 +1209,18 @@ func compileAbilityDefinitions(definition CardDefinition, authored []authoredAbi
 			if err := validateAlternativeCostSpec(ability.alternative); err != nil {
 				return nil, fmt.Errorf("%s: alternative cost: %w", context, err)
 			}
+		case abilityKindObject:
+			if ability.timing != "" || ability.usage != "" || ability.reduction != "" || ability.baseCost != 0 || ability.classCostReduction != 0 || ability.target != nil || ability.trigger != nil || ability.static != nil || ability.replacement != nil || ability.alternative != nil || ability.deathModifier != nil || ability.cost != nil {
+				return nil, fmt.Errorf("%s: Object declaration payload unsupported", context)
+			}
+			if err := validateObjectActivationCondition(ability.objectCondition); err != nil {
+				return nil, fmt.Errorf("%s: Object condition: %w", context, err)
+			}
 		case abilityKindTriggered:
 			if ability.timing != "" || ability.usage != "" || ability.reduction != "" || ability.baseCost != 0 || ability.classCostReduction != 0 || ability.target != nil || ability.cost != nil {
 				return nil, fmt.Errorf("%s: triggered declaration payload unsupported", context)
 			}
-			if ability.trigger == nil || (ability.trigger.event != eventKindWield && ability.trigger.event != eventKindDestroy) {
+			if ability.trigger == nil || (ability.trigger.event != eventKindWield && ability.trigger.event != eventKindDestroy && ability.trigger.event != eventKindCardistryActivated) {
 				return nil, fmt.Errorf("%s: trigger.event unsupported", context)
 			}
 			if ability.trigger.event == eventKindDestroy {
@@ -955,10 +1244,21 @@ func compileAbilityDefinitions(definition CardDefinition, authored []authoredAbi
 			if err := validateReplacementDefinition(ability.replacement); err != nil {
 				return nil, fmt.Errorf("%s: replacement: %w", context, err)
 			}
+		case abilityKindPermission:
+			if ability.timing != "" || ability.usage != "" || ability.reduction != "" || ability.baseCost != 0 || ability.classCostReduction != 0 || ability.target != nil || ability.trigger != nil || ability.static != nil || ability.replacement != nil || ability.alternative != nil || ability.deathModifier != nil || ability.cost != nil || ability.objectCondition != nil || len(ability.effects) != 0 {
+				return nil, fmt.Errorf("%s: permission declaration payload unsupported", context)
+			}
+			if err := validatePermissionDefinition(ability.permission); err != nil {
+				return nil, fmt.Errorf("%s: permission: %w", context, err)
+			}
+		case abilityKindKeyword:
+			if ability.keyword != keywordHindered || ability.timing != "" || ability.usage != "" || ability.reduction != "" || ability.baseCost != 0 || ability.classCostReduction != 0 || ability.target != nil || ability.trigger != nil || ability.static != nil || ability.replacement != nil || ability.permission != nil || ability.alternative != nil || ability.deathModifier != nil || ability.cost != nil || ability.objectCondition != nil || len(ability.effects) != 0 {
+				return nil, fmt.Errorf("%s: keyword declaration payload unsupported", context)
+			}
 		default:
 			return nil, fmt.Errorf("%s: unknown kind %q", context, ability.kind)
 		}
-		if ability.kind != abilityKindStatic && ability.kind != abilityKindReplacement && ability.kind != abilityKindAlly && !(ability.kind == abilityKindTriggered && ability.trigger != nil && ability.trigger.event == eventKindDestroy) && len(ability.effects) == 0 {
+		if ability.kind != abilityKindStatic && ability.kind != abilityKindReplacement && ability.kind != abilityKindPermission && ability.kind != abilityKindKeyword && ability.kind != abilityKindAlly && !(ability.kind == abilityKindTriggered && ability.trigger != nil && ability.trigger.event == eventKindDestroy) && len(ability.effects) == 0 {
 			return nil, fmt.Errorf("%s: effects must not be empty", context)
 		}
 		result := compiledAbilityDefinition{
@@ -969,6 +1269,7 @@ func compileAbilityDefinitions(definition CardDefinition, authored []authoredAbi
 			reduction:          ability.reduction,
 			baseCost:           ability.baseCost,
 			classCostReduction: ability.classCostReduction,
+			keyword:            ability.keyword,
 			effects:            make([]compiledEffect, 0, len(ability.effects)),
 		}
 		if ability.target != nil {
@@ -987,6 +1288,10 @@ func compileAbilityDefinitions(definition CardDefinition, authored []authoredAbi
 			replacement := *ability.replacement
 			result.replacement = &replacement
 		}
+		if ability.permission != nil {
+			permission := *ability.permission
+			result.permission = &permission
+		}
 		if ability.alternative != nil {
 			alternative := *ability.alternative
 			result.alternative = &alternative
@@ -999,13 +1304,17 @@ func compileAbilityDefinitions(definition CardDefinition, authored []authoredAbi
 			cost := *ability.cost
 			result.cost = &cost
 		}
+		if ability.objectCondition != nil {
+			condition := *ability.objectCondition
+			result.objectCondition = &condition
+		}
 		bindings := make(map[resolutionBinding]cardSelectionSpec)
 		for index, effect := range ability.effects {
 			field := fmt.Sprintf("effects[%d]", index)
 			switch effect.kind {
 			case effectKindDraw:
-				if ability.kind != abilityKindCardistry || effect.draw == nil || effect.damage != nil {
-					return nil, fmt.Errorf("%s: %s.draw payload is required only for Cardistry", context, field)
+				if (ability.kind != abilityKindCardistry && ability.kind != abilityKindObject) || effect.draw == nil || effect.damage != nil {
+					return nil, fmt.Errorf("%s: %s.draw payload is required only for Cardistry or Object", context, field)
 				}
 				if effect.draw.amount <= 0 {
 					return nil, fmt.Errorf("%s: %s.draw.amount must be positive", context, field)
@@ -1065,8 +1374,8 @@ func compileAbilityDefinitions(definition CardDefinition, authored []authoredAbi
 					chooseCard: *effect.chooseCard,
 				})
 			case effectKindChooseObject:
-				if ability.kind != abilityKindCardistry || effect.chooseObject == nil || effect.chooseObject.selector != selectorControlledSuitedAlly {
-					return nil, fmt.Errorf("%s: %s.choose_object requires a controlled Suited Ally selector", context, field)
+				if (ability.kind != abilityKindCardistry && ability.kind != abilityKindObject) || effect.chooseObject == nil || (effect.chooseObject.selector != selectorControlledSuitedAlly && effect.chooseObject.selector != selectorAllAllies) {
+					return nil, fmt.Errorf("%s: %s.choose_object requires a supported Ally selector", context, field)
 				}
 				result.effects = append(result.effects, compiledEffect{
 					kind:         effectKindChooseObject,
@@ -1107,7 +1416,7 @@ func compileAbilityDefinitions(definition CardDefinition, authored []authoredAbi
 					counter: *effect.counter,
 				})
 			case effectKindModifier:
-				if effect.modifier == nil || effect.modifier.duration != modifierDurationEndOfTurn || (ability.kind == abilityKindCardistry && (!isCardistryModifier(effect.modifier.modifier) || effect.modifier.requiresRetargetSuccess)) || (ability.kind == abilityKindAction && (!isActionModifier(effect.modifier.modifier) || (effect.modifier.requiresRetargetSuccess && (ability.target == nil || ability.target.kind != selectorRetargetableControlledSuitedAlly)))) || (ability.kind != abilityKindCardistry && ability.kind != abilityKindAction) {
+				if effect.modifier == nil || effect.modifier.duration != modifierDurationEndOfTurn || (ability.kind == abilityKindCardistry && (!isCardistryModifier(effect.modifier.modifier) || effect.modifier.requiresRetargetSuccess)) || (ability.kind == abilityKindAction && (!isActionModifier(effect.modifier.modifier) || (effect.modifier.requiresRetargetSuccess && (ability.target == nil || ability.target.kind != selectorRetargetableControlledSuitedAlly)))) || (ability.kind == abilityKindObject && (effect.modifier.requiresRetargetSuccess || !effect.modifier.modifier.GrantStealth)) || (ability.kind == abilityKindTriggered && (ability.trigger == nil || ability.trigger.event != eventKindCardistryActivated || effect.modifier.requiresRetargetSuccess || !isCardistryObserverModifier(effect.modifier.modifier))) || (ability.kind != abilityKindCardistry && ability.kind != abilityKindAction && ability.kind != abilityKindObject && ability.kind != abilityKindTriggered) {
 					return nil, fmt.Errorf("%s: %s.modifier payload unsupported", context, field)
 				}
 				result.effects = append(result.effects, compiledEffect{
@@ -1143,12 +1452,43 @@ func compileAbilityDefinitions(definition CardDefinition, authored []authoredAbi
 				result.effects = append(result.effects, compiledEffect{
 					kind: effectKindMoveSourceToGraveyard,
 				})
+			case effectKindRestSource:
+				if ability.kind != abilityKindObject || index != 0 {
+					return nil, fmt.Errorf("%s: %s.rest_source must be the first Object effect", context, field)
+				}
+				result.effects = append(result.effects, compiledEffect{
+					kind: effectKindRestSource,
+				})
+			case effectKindBanishSource:
+				if ability.kind != abilityKindObject || (index != 0 && (index != 1 || ability.effects[0].kind != effectKindRestSource)) {
+					return nil, fmt.Errorf("%s: %s.banish_source must follow optional Object rest source", context, field)
+				}
+				result.effects = append(result.effects, compiledEffect{
+					kind: effectKindBanishSource,
+				})
+			case effectKindCardistryDiscount:
+				if ability.kind != abilityKindObject || index == 0 {
+					return nil, fmt.Errorf("%s: %s.cardistry_discount requires Object costs", context, field)
+				}
+				result.effects = append(result.effects, compiledEffect{
+					kind: effectKindCardistryDiscount,
+				})
+			case effectKindPreventNonCombatDamage:
+				if ability.kind != abilityKindObject || index == 0 {
+					return nil, fmt.Errorf("%s: %s requires a preceding Object banish source", context, field)
+				}
+				result.effects = append(result.effects, compiledEffect{
+					kind: effectKindPreventNonCombatDamage,
+				})
 			default:
 				return nil, fmt.Errorf("%s: %s.kind unknown %q", context, field, effect.kind)
 			}
 		}
 		if ability.kind == abilityKindAction && (len(result.effects) == 0 || result.effects[len(result.effects)-1].kind != effectKindMoveSourceToGraveyard) {
 			return nil, fmt.Errorf("%s: Action must end by moving its source to graveyard", context)
+		}
+		if ability.kind == abilityKindObject && !validObjectEffectSequence(result.effects) {
+			return nil, fmt.Errorf("%s: Object must pay optional rest then banish before its resolving effects", context)
 		}
 		compiled = append(compiled, result)
 	}
@@ -1158,6 +1498,31 @@ func compileAbilityDefinitions(definition CardDefinition, authored []authoredAbi
 		}
 	}
 	return compiled, nil
+}
+
+// validateObjectActivationCondition 限制目前支援集合的 Object 宣告條件為對手 Water 或 Wind Champion。
+// 輸入為可選 Object 宣告條件；輸出為驗證錯誤或 nil，副作用為零。
+func validateObjectActivationCondition(condition *objectActivationCondition) error {
+	if condition == nil {
+		return nil
+	}
+	if condition.opponentChampionElement != "WATER" && condition.opponentChampionElement != "WIND" {
+		return fmt.Errorf("opponent champion element unsupported %q", condition.opponentChampionElement)
+	}
+	return nil
+}
+
+// validObjectEffectSequence 驗證 Object 先支付可選 rest 與必要 banish，再保留至少一個結算效果。
+// 輸入為已編譯效果；輸出為是否符合共用 Object 宣告生命週期，副作用為零。
+func validObjectEffectSequence(effects []compiledEffect) bool {
+	if len(effects) < 2 {
+		return false
+	}
+	banishIndex := 0
+	if effects[0].kind == effectKindRestSource {
+		banishIndex = 1
+	}
+	return banishIndex < len(effects)-1 && effects[banishIndex].kind == effectKindBanishSource
 }
 
 // validateReplacementDefinition 限制 replacement event filter 與 transformation 為 Infernal Vessel 已證明的 recover 規則。
@@ -1174,6 +1539,15 @@ func validateReplacementDefinition(definition *replacementDefinition) error {
 	}
 	if definition.amount != 3 {
 		return fmt.Errorf("amount must be 3")
+	}
+	return nil
+}
+
+// validatePermissionDefinition 限制 permission 為場上來源於控制者回合對對手 Water activation 增加 2 Reserve。
+// 輸入為 permission 定義；輸出為驗證錯誤或 nil，副作用為零。
+func validatePermissionDefinition(definition *permissionDefinition) error {
+	if definition == nil || definition.candidateElement != "WATER" || definition.reserveCostDelta != 2 || !definition.duringControllerTurn || !definition.opponentsOnly || definition.sourcePresence != sourcePresenceRequired {
+		return fmt.Errorf("unsupported activation tax permission")
 	}
 	return nil
 }
@@ -1199,6 +1573,10 @@ func validateStaticEffectDefinition(effect *staticEffectDefinition) error {
 	case staticPredicateOtherControlledSuitedAlly:
 		if !isOtherControlledSuitedAllyModifier(effect.modifier) {
 			return fmt.Errorf("other controlled Suited Ally predicate requires Immortality")
+		}
+	case staticPredicateClassMatchedSelf:
+		if !isClassBonusStaticModifier(effect.modifier) {
+			return fmt.Errorf("class matched self predicate requires +1 Power and optional +2 Reserve Cost")
 		}
 	default:
 		return fmt.Errorf("predicate unsupported %q", effect.predicate)
@@ -1237,6 +1615,24 @@ func isCardistryModifier(modifier continuousModifier) bool {
 		!modifier.GrantStealth &&
 		!modifier.GrantTrueSight &&
 		modifier.SetPride == nil &&
+		!modifier.RemovePride &&
+		!modifier.GrantRedHareOnAttack
+}
+
+// isCardistryObserverModifier 驗證 Cardistry 觸發效果只提供 +1 Power 與 true sight。
+// 輸入為 continuous modifier；輸出為是否符合共用 triggered modifier 形狀，副作用為零。
+func isCardistryObserverModifier(modifier continuousModifier) bool {
+	return modifier.SetPride == nil &&
+		modifier.SetPower == nil &&
+		modifier.SetLife == nil &&
+		modifier.PowerDelta == 1 &&
+		modifier.LifeDelta == 0 &&
+		modifier.ReserveCostDelta == 0 &&
+		!modifier.GrantImmortality &&
+		!modifier.ProhibitRecover &&
+		!modifier.SwitchPowerLife &&
+		!modifier.GrantStealth &&
+		modifier.GrantTrueSight &&
 		!modifier.RemovePride &&
 		!modifier.GrantRedHareOnAttack
 }
@@ -1300,6 +1696,24 @@ func isQualifiedHumanStaticModifier(modifier continuousModifier) bool {
 // 輸入為連續效果修正；輸出為是否符合已支援的修正形狀，副作用為零。
 func isOtherControlledSuitedAllyModifier(modifier continuousModifier) bool {
 	return modifier.SetPride == nil && modifier.SetPower == nil && modifier.SetLife == nil && modifier.PowerDelta == 0 && modifier.LifeDelta == 0 && modifier.ReserveCostDelta == 0 && modifier.GrantImmortality && !modifier.ProhibitRecover && !modifier.SwitchPowerLife && !modifier.GrantStealth && !modifier.GrantTrueSight && !modifier.RemovePride && !modifier.GrantRedHareOnAttack
+}
+
+// isClassBonusStaticModifier 驗證 Weapon 職業加成只提供 +1 Power，Bulwark 可同時增加 2 點 wield Reserve 費用。
+// 輸入為靜態能力 modifier；輸出為是否符合 Weapon class bonus 形狀，副作用為零。
+func isClassBonusStaticModifier(modifier continuousModifier) bool {
+	return modifier.SetPride == nil &&
+		modifier.SetPower == nil &&
+		modifier.SetLife == nil &&
+		modifier.PowerDelta == 1 &&
+		modifier.LifeDelta == 0 &&
+		(modifier.ReserveCostDelta == 0 || modifier.ReserveCostDelta == 2) &&
+		!modifier.GrantImmortality &&
+		!modifier.ProhibitRecover &&
+		!modifier.SwitchPowerLife &&
+		!modifier.GrantStealth &&
+		!modifier.GrantTrueSight &&
+		!modifier.RemovePride &&
+		!modifier.GrantRedHareOnAttack
 }
 
 // cloneStaticEffectDefinition 複製 static 定義及其指標欄位，隔離編寫資料和編譯結果。
@@ -1444,6 +1858,23 @@ func (ability compiledAbilityDefinition) operations() []effectOperation {
 				Kind:                  effectOperationMove,
 				MoveSourceToGraveyard: true,
 			})
+		case effectKindBanishSource:
+			operations = append(operations, effectOperation{
+				Kind: effectOperationBanishSource,
+			})
+		case effectKindRestSource:
+			operations = append(operations, effectOperation{
+				Kind: effectOperationRestSource,
+			})
+		case effectKindCardistryDiscount:
+			operations = append(operations, effectOperation{
+				Kind:   effectOperationCardistryDiscount,
+				Amount: 6,
+			})
+		case effectKindPreventNonCombatDamage:
+			operations = append(operations, effectOperation{
+				Kind: effectOperationPreventNonCombatDamage,
+			})
 		}
 	}
 	return operations
@@ -1476,6 +1907,12 @@ func (g *Game) compiledCardistry(card cardInstanceID) (compiledAbilityDefinition
 	return g.compiledAbility(card, abilityKindCardistry)
 }
 
+// compiledObject 回傳指定場上卡牌已編譯的 Object activated ability。
+// 輸入為卡牌實例；輸出為對應能力及是否存在，副作用為零。
+func (g *Game) compiledObject(card cardInstanceID) (compiledAbilityDefinition, bool) {
+	return g.compiledAbility(card, abilityKindObject)
+}
+
 // compiledAlly 取得來源卡已編譯的 Ally 宣告定義。
 // 輸入為卡牌實例；輸出為 Ally 能力及存在旗標，副作用為零。
 func (g *Game) compiledAlly(card cardInstanceID) (compiledAbilityDefinition, bool) {
@@ -1501,9 +1938,17 @@ func compileReplayDefinitions() (map[CardID]CardDefinition, error) {
 		twoOfHeartsCardID,
 		twoOfSpadesCardID,
 		impactHammerCardID,
+		bulwarkSwordCardID,
 		redHareCardID,
 		infernalVesselCardID,
 		veritaCardID,
+		grandCrusadersRingCardID,
+		waterResonanceBaubleCardID,
+		windResonanceBaubleCardID,
+		smokeBombsCardID,
+		safeguardAmuletCardID,
+		viridianProtectiveTrinketCardID,
+		duchessThornesCardID,
 	} {
 		definition := CardDefinition{
 			id: id,

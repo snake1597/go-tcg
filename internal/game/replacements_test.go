@@ -14,9 +14,10 @@ func TestSafeguardAmuletPreventsOnlyNonCombatDamageForItsDuration(t *testing.T) 
 	player := model.PlayerOne
 	champion := game.state.Champions[player.UID]
 	amulet := replacementObject(t, game, player, safeguardAmuletCardID, "amulet")
-	if err := game.activateSafeguardAmulet(player, amulet); err != nil {
-		t.Fatalf("activateSafeguardAmulet() error = %v", err)
+	if err := game.beginObjectAbility(player, amulet); err != nil {
+		t.Fatalf("beginObjectAbility() error = %v", err)
 	}
+	game.resolveTopEffectStack()
 	if _, exists := game.state.Objects[amulet]; exists {
 		t.Fatal("Safeguard Amulet remained on the Field")
 	}
@@ -59,10 +60,10 @@ func TestSafeguardAmuletAbilityAndReplacementCauseChainReplay(t *testing.T) {
 	if err := game.Submit(model.PlayerOne, Input{
 		Revision: view.Revision,
 		Action:   amuletAction.Handle,
-		Reserve:  reserveHandles(amuletAction),
 	}); err != nil {
 		t.Fatalf("Submit() Safeguard Amulet error = %v", err)
 	}
+	passOpportunityRound(t, game, model.PlayerOne)
 	submitActionKind(t, game, model.PlayerOne, constants.ActionPass)
 	view, err = game.PlayerView(model.PlayerTwo)
 	if err != nil {
@@ -116,6 +117,24 @@ func TestInfernalVesselRecomputesRecoverAndDoesNotChangeRecoverCosts(t *testing.
 	}
 	if got := game.state.Champions[player.UID].Damage; got != 5 {
 		t.Fatalf("damage after recover cost = %d, want 5 without Infernal replacement", got)
+	}
+}
+
+// TestInfernalVesselReplacementStopsWhenSourceLeaves 驗證 replacement definition 只由仍在場的來源輸入 Pipeline。
+// 輸入為離場的 Infernal Vessel 與 5 點 recover；輸出為完整 recover 5，副作用為移除測試來源並更新 Champion damage。
+func TestInfernalVesselReplacementStopsWhenSourceLeaves(t *testing.T) {
+	game := newActionGame(t)
+	player := model.PlayerOne
+	champion := game.state.Champions[player.UID]
+	champion.Damage = 8
+	game.state.Champions[player.UID] = champion
+	vessel := replacementObject(t, game, player, infernalVesselCardID, "leaving-vessel")
+	delete(game.state.Objects, vessel)
+	if !game.recoverChampion(champion.ID, 5) {
+		t.Fatal("recoverChampion() returned false without replacement source")
+	}
+	if got := game.state.Champions[player.UID].Damage; got != 3 {
+		t.Fatalf("damage after source left = %d, want 3", got)
 	}
 }
 

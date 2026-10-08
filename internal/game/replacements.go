@@ -53,36 +53,6 @@ type replacementChoice struct {
 	Continuation abilityInstance   `json:"continuation"`
 }
 
-// activateSafeguardAmulet 放逐己方場上的 Amulet，建立本回合對己方 Champion 的非戰鬥傷害 prevention。
-// 輸入為控制者與 Amulet 物件；成功時移除物件、放逐卡牌並加入 delayed replacement。
-func (g *Game) activateSafeguardAmulet(player *model.Player, source objectID) error {
-	object, exists := g.state.Objects[source]
-	if !exists || !samePlayer(object.Owner, player) || g.state.Cards[object.Card].Definition != safeguardAmuletCardID {
-		return fmt.Errorf("invalid Safeguard Amulet activation")
-	}
-	champion, exists := g.state.Champions[player.UID]
-	if !exists {
-		return fmt.Errorf("Safeguard Amulet controller has no champion")
-	}
-	delete(g.state.Objects, source)
-	zones := g.state.Zones[player.UID]
-	zones.Banishment = append(zones.Banishment, object.Card)
-	g.state.Zones[player.UID] = zones
-	effect := replacementEffect{
-		Kind:          replacementDamagePrevent,
-		Source:        source,
-		Controller:    player,
-		Target:        champion.ID,
-		ExpiresAtTurn: g.state.Scheduler.TurnNumber + 1,
-	}
-	g.state.ReplacementEffects = append(
-		g.state.ReplacementEffects,
-		effect,
-	)
-	g.recordPublicEvent(player, "ability", "banish", object.Card)
-	return nil
-}
-
 // expireReplacementEffects 移除已到期的 delayed replacement，避免它們殘留在後續 canonical state。
 // 輸入使用目前回合數判定；輸出保留未到期效果，副作用是重建 ReplacementEffects 切片。
 func (g *Game) expireReplacementEffects() {

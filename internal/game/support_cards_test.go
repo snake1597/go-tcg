@@ -27,13 +27,21 @@ func TestDuchessThornesObservesAllyCardistryAndDiscountIsConsumed(t *testing.T) 
 	if len(game.state.EffectsStack) != 2 {
 		t.Fatalf("effects stack = %#v, want Cardistry and Thornes trigger", game.state.EffectsStack)
 	}
+	trigger := game.state.EffectsStack[len(game.state.EffectsStack)-1]
+	if trigger.Ability == nil || trigger.Ability.Slot != "ability:bEXmm4rKOs:front:ally-cardistry-bonus" {
+		t.Fatalf("Thornes trigger = %#v, want stable triggered slot", trigger)
+	}
 	game.resolveTopEffectStack()
 	if got := game.characteristicsFor(source); got.Power != game.state.Cards[game.state.Objects[source].Card].Power+1 || !got.TrueSight {
 		t.Fatalf("observed Cardistry characteristics = %#v, want +1 power and true sight", got)
 	}
-	if err := game.activateDuchessThornes(player, thornes); err != nil {
-		t.Fatalf("activateDuchessThornes() error = %v", err)
+	if err := game.beginObjectAbility(player, thornes); err != nil {
+		t.Fatalf("beginObjectAbility() error = %v", err)
 	}
+	if _, exists := game.state.CardistryDiscounts[player.UID]; exists {
+		t.Fatal("Cardistry discount applied before Object ability resolved")
+	}
+	game.resolveTopEffectStack()
 	if got := game.cardistryCost(player, 6, reductionDistinctSuitedCosts); got != 0 {
 		t.Fatalf("discounted Cardistry cost = %d, want 0", got)
 	}
@@ -449,7 +457,9 @@ func TestSmokeBombsTrumpSetAndPepperedChefApplyTemporaryEffects(t *testing.T) {
 	); err != nil {
 		t.Fatalf("Submit() Smoke Bombs error = %v", err)
 	}
+	game.resolveTopEffectStack()
 	selectPendingChoiceSubject(t, game, player, entityID(target))
+	game.resolveTopEffectStack()
 	if !game.characteristicsFor(target).Stealth {
 		t.Fatal("Smoke Bombs did not grant stealth")
 	}
@@ -556,8 +566,50 @@ func TestSmokeBombsRevalidatesAttackTargetsForStealthAndTrueSight(t *testing.T) 
 			"ITEM",
 		},
 	}
-	if err := game.activateSmokeBombs(defender, smoke, target); err != nil {
-		t.Fatalf("activateSmokeBombs() error = %v", err)
+	game.advanceKnowledgeRevision()
+	view, err := game.PlayerView(defender)
+	if err != nil {
+		t.Fatalf("PlayerView() error = %v", err)
+	}
+	action := actionByCardName(t, view, "Smoke Bombs")
+	if action.AbilitySlot != "ability:ScGcOmkoQt:front:banish-stealth-draw" {
+		t.Fatalf("AbilitySlot = %q, want Smoke Bombs slot", action.AbilitySlot)
+	}
+	if err := game.Submit(
+		defender,
+		Input{
+			Revision: view.Revision,
+			Action:   action.Handle,
+		},
+	); err != nil {
+		t.Fatalf("Submit() error = %v", err)
+	}
+	if _, exists := game.state.Objects[smoke]; exists {
+		t.Fatal("Smoke Bombs remained on field after its banish cost")
+	}
+	game.resolveTopEffectStack()
+	choice := game.state.Knowledge.Choice
+	if choice == nil {
+		t.Fatal("Smoke Bombs resolution did not request an Ally target")
+	}
+	var choiceHandle ViewHandle
+	for handle, candidate := range choice.Options {
+		if candidate == entityID(target) {
+			choiceHandle = handle
+			break
+		}
+	}
+	if choiceHandle == "" {
+		t.Fatalf("Smoke Bombs choices = %#v, want target %q", choice.Options, target)
+	}
+	if err := game.Submit(
+		defender,
+		Input{
+			Revision: game.state.Revision,
+			Choice:   choiceHandle,
+		},
+	); err != nil {
+		t.Fatalf("Submit() choice error = %v", err)
 	}
 	attackingChampion := game.state.Champions[attacker.UID]
 	defendingChampion := game.state.Champions[defender.UID]
