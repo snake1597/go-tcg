@@ -30,17 +30,19 @@ func TestNewGamePinsReplayVersionsAndSeed(t *testing.T) {
 	replay := game.Replay()
 
 	wantVersions := Versions{
-		Engine:   "grand-archive-v3",
-		Rules:    "602c917f2f8fd4df7198429a72eb596bf7f647c6",
-		CardData: "card-data-v3",
-		Deck:     "standard-fire-v2",
-		PRNG:     "splitmix64-v1",
+		Engine:               "grand-archive-v3",
+		Rules:                "602c917f2f8fd4df7198429a72eb596bf7f647c6",
+		CardData:             "card-data-v3",
+		CardDefinitionSchema: 1,
+		CompiledContent:      "compiled-content-v1",
+		Deck:                 "standard-fire-v2",
+		PRNG:                 "splitmix64-v1",
 	}
-	if replay.FormatVersion != 6 {
-		t.Fatalf("Replay().FormatVersion = %d, want 6", replay.FormatVersion)
+	if replay.FormatVersion != 7 {
+		t.Fatalf("Replay().FormatVersion = %d, want 7", replay.FormatVersion)
 	}
-	if constants.CanonicalStateSchemaVersion != 7 {
-		t.Fatalf("CanonicalStateSchemaVersion = %d, want 7", constants.CanonicalStateSchemaVersion)
+	if constants.CanonicalStateSchemaVersion != 8 {
+		t.Fatalf("CanonicalStateSchemaVersion = %d, want 8", constants.CanonicalStateSchemaVersion)
 	}
 	if replay.Versions != wantVersions {
 		t.Fatalf("Replay().Versions = %#v, want %#v", replay.Versions, wantVersions)
@@ -456,7 +458,7 @@ func TestSubmitRejectsActionAfterGameFinishes(t *testing.T) {
 
 func TestStateHashUsesCanonicalVersionedState(t *testing.T) {
 	game := newTestGame(42)
-	const want = "acf06b26bd4c454f63c9931ae1d12ef37adad5a9f5483ec547f72d601b75f848"
+	const want = "3379fd6f2074105d2df7a30b03324ec22ffa60ce39d57583d00f68c61ee03832"
 
 	if got := game.StateHash(); got != want {
 		t.Fatalf("StateHash() = %q, want canonical digest %q", got, want)
@@ -634,6 +636,16 @@ func TestReplayRejectsEachIncompatibleVersion(t *testing.T) {
 			wantReason: "card data version",
 		},
 		{
+			name:       "compiled content",
+			field:      "compiled_content",
+			wantReason: "compiled content version",
+		},
+		{
+			name:       "card definition schema",
+			field:      "card_definition_schema",
+			wantReason: "card definition schema version",
+		},
+		{
 			name:       "deck",
 			field:      "deck",
 			wantReason: "deck version",
@@ -660,6 +672,10 @@ func TestReplayRejectsEachIncompatibleVersion(t *testing.T) {
 					replay.Versions.Rules = "old"
 				case "card_data":
 					replay.Versions.CardData = "old"
+				case "compiled_content":
+					replay.Versions.CompiledContent = "old"
+				case "card_definition_schema":
+					replay.Versions.CardDefinitionSchema = 0
 				case "deck":
 					replay.Versions.Deck = "old"
 				case "prng":

@@ -40,11 +40,13 @@ func describeReplayFailure(f constants.ReplayFailure) string {
 }
 
 type Versions struct {
-	Engine   string `json:"engine"`
-	Rules    string `json:"rules"`
-	CardData string `json:"card_data"`
-	Deck     string `json:"deck"`
-	PRNG     string `json:"prng"`
+	Engine               string `json:"engine"`
+	Rules                string `json:"rules"`
+	CardData             string `json:"card_data"`
+	CardDefinitionSchema int    `json:"card_definition_schema"`
+	CompiledContent      string `json:"compiled_content"`
+	Deck                 string `json:"deck"`
+	PRNG                 string `json:"prng"`
 }
 
 type Replay struct {
@@ -173,6 +175,24 @@ func verifyVersions(got Versions) error {
 				"incompatible card data version %q, want %q",
 				got.CardData,
 				want.CardData,
+			),
+		)
+	}
+	if got.CardDefinitionSchema != want.CardDefinitionSchema {
+		return newReplayVersionMismatch(
+			fmt.Sprintf(
+				"incompatible card definition schema version %d, want %d",
+				got.CardDefinitionSchema,
+				want.CardDefinitionSchema,
+			),
+		)
+	}
+	if got.CompiledContent != want.CompiledContent {
+		return newReplayVersionMismatch(
+			fmt.Sprintf(
+				"incompatible compiled content version %q, want %q",
+				got.CompiledContent,
+				want.CompiledContent,
 			),
 		)
 	}

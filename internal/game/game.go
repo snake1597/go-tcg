@@ -51,11 +51,13 @@ func NewGame(config StandardGameConfig) *Game {
 
 func currentVersions() Versions {
 	return Versions{
-		Engine:   "grand-archive-v3",
-		Rules:    "602c917f2f8fd4df7198429a72eb596bf7f647c6",
-		CardData: "card-data-v3",
-		Deck:     "standard-fire-v2",
-		PRNG:     "splitmix64-v1",
+		Engine:               "grand-archive-v3",
+		Rules:                "602c917f2f8fd4df7198429a72eb596bf7f647c6",
+		CardData:             "card-data-v3",
+		CardDefinitionSchema: constants.CardDefinitionDSLSchemaVersion,
+		CompiledContent:      constants.FixedCompiledContentVersion,
+		Deck:                 "standard-fire-v2",
+		PRNG:                 "splitmix64-v1",
 	}
 }
 

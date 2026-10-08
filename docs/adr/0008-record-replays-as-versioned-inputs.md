@@ -1,8 +1,8 @@
 # 重播以版本化輸入序列為準
 
-Canonical replay 記錄引擎版本、規則 commit、卡面資料版本、固定牌組版本、PRNG 演算法與版本、初始隨機 seed，以及依序提交的玩家行動與選擇；重播時由對應版本的規則引擎重新執行這些輸入。同一引擎版本必須固定 shuffle 實作及亂數消耗順序；若某種隨機機制無法保證該順序，replay 必須額外記錄實際 chance outcome。每一步可附加狀態 hash 以偵測不一致，但完整狀態快照與衍生遊戲事件都不是 replay 的真相來源，因此此設計不等同於 event sourcing。首版 canonical replay 是可能包含完整隱藏資訊的私人診斷產物，不提供可公開分享或觀戰的版本；未來的公開 replay 必須另由玩家或 spectator 視角產生 redacted projection，並接受防洩漏測試。
+Canonical replay 記錄引擎版本、規則 commit、卡面資料版本、Card Definition DSL schema、compiled content 版本、固定牌組版本、PRNG 演算法與版本、初始隨機 seed，以及依序提交的玩家行動與選擇；重播時由對應版本的規則引擎重新執行這些輸入。同一引擎版本必須固定 shuffle 實作及亂數消耗順序；若某種隨機機制無法保證該順序，replay 必須額外記錄實際 chance outcome。每一步可附加狀態 hash 以偵測不一致，但完整狀態快照與衍生遊戲事件都不是 replay 的真相來源，因此此設計不等同於 event sourcing。首版 canonical replay 是可能包含完整隱藏資訊的私人診斷產物，不提供可公開分享或觀戰的版本；未來的公開 replay 必須另由玩家或 spectator 視角產生 redacted projection，並接受防洩漏測試。
 
-目前 replay format version 為 `6`，因 Resolution Frame 將 `ability_choice` 改為包含具名 binding 的 `resolution_frame`；canonical state schema version 為 `7`，因 hash 納入該新續行資料。兩種舊格式都不提供相容層或 migration。兩個版本分別由 `ReplayFormatVersion` 與 `CanonicalStateSchemaVersion` 固定，不可用其中一個推測另一個。
+目前 replay format version 為 `7`，因 header 新增獨立的 compiled content version；canonical state schema version 為 `8`，因版本 bundle 也納入 canonical hash。舊格式與舊 state schema 都不提供相容層或 migration。兩個版本分別由 `ReplayFormatVersion` 與 `CanonicalStateSchemaVersion` 固定，不可用其中一個推測另一個。
 
 ## 曾考慮的方案
 

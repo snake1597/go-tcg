@@ -2,7 +2,7 @@
 
 ## 目標
 
-卡片、回合流程與付款流程以相同的規則操作改變遊戲狀態。卡片只宣告條件、選擇與效果的組合；Go runtime 執行可序列化的 typed operations。未來 DSL 應產生同一種操作資料，不另建一套規則引擎。本計畫不要求現在實作 DSL parser。
+卡片、回合流程與付款流程以相同的規則操作改變遊戲狀態。卡片只宣告條件、選擇與效果的組合；Go runtime 執行可序列化的 typed operations。Wonderland's Reign 的版本化 DSL vertical slice 已產生同一種 compiled operation data，沒有另建規則引擎；本計畫仍不擴張完整卡池 DSL。
 
 ## 現況與候選共通能力
 

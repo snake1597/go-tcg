@@ -4,14 +4,14 @@
 
 **Blocked by:** 14 — 由可執行定義產生 production 支援登錄。
 
-**Status:** blocked
+**Status:** completed
 
-**Blocked reason:** 14 — definition-derived production support gate 尚未完成；在中介表示與 production registration 成為單一來源前不固定 DSL schema。
+**Completed:** Wonderland's Reign 已成為唯一 versioned DSL vertical slice；schema version 1 JSON 在 content loading 與 replay definition rebuild 時嚴格編譯成既有 immutable IR，失敗不 fallback。Player View、合法／非法 Cardistry、state hash 與 replay 沿用相同 runtime，Ability Slot ID 與既有 Go Definition 完全一致。
 
-**Next implementation step:** 14 完成後，選一張已由 Go Definition 完整驗證的卡牌作唯一 DSL vertical slice，序列化既有中介表示並沿用相同 compiler validation 與 runtime；不得藉此新增 selector、expression、cost 或 operation kind。
+**Quality gate:** `go test ./...`、`go test -race ./...`、`go vet ./...`、`FuzzRejectedInputPreservesStateHash` 10 秒與 `FuzzReplayHashDeterminism` 10 秒均通過；GitNexus change detection 已檢查 content loading、建局、Player View、replay 與 Standard Game 受影響流程。
 
-- [ ] DSL 在 content loading 階段編譯一次成相同不可變中介表示；失敗不 fallback，resolution loop 不重新解析。
-- [ ] schema 及 compiled content version 納入既有契約；不讀舊 schema，Ability Slot ID 在 Go 與 DSL 間穩定。
-- [ ] compiler 測試拒絕未知 kind、selector、expression、zone、duration、reference、錯誤型別、無效／未使用欄位及不支援版本，並指出 Definition、Face、Slot 和欄位。
-- [ ] DSL 卡牌的正常、非法及 replay scenario 通過；相關 Go 編寫 ADR 更新。
-- [ ] 通過完整 repository quality gate；Standard Game、Support Set、replay 與鏡像對戰無回歸。
+- [x] DSL 在 content loading 階段編譯一次成相同不可變中介表示；失敗不 fallback，resolution loop 不重新解析。
+- [x] schema 及 compiled content version 納入既有契約；不讀舊 schema，Ability Slot ID 在 Go 與 DSL 間穩定。
+- [x] compiler 測試拒絕未知 kind、selector、expression、zone、duration、reference、錯誤型別、無效／未使用欄位及不支援版本，並指出 Definition、Face、Slot 和欄位。
+- [x] DSL 卡牌的正常、非法及 replay scenario 通過；相關 Go 編寫 ADR 更新。
+- [x] 通過完整 repository quality gate；Standard Game、Support Set、replay 與鏡像對戰無回歸。

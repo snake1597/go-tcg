@@ -2319,7 +2319,7 @@ func compileReplayDefinitions() (map[CardID]CardDefinition, error) {
 				id: CardFaceID("face:" + string(id) + ":front"),
 			},
 		}
-		abilities, err := compileAbilityDefinitions(definition, authoredAbilitiesForCard(id))
+		abilities, err := compileContentAbilityDefinitions(definition)
 		if err != nil {
 			return nil, fmt.Errorf("compile replay definition: %w", err)
 		}

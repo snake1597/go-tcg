@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "compiled_content_version": "compiled-content-v1",
+  "definition": "0mf1ug6yfi",
+  "face": "face:0mf1ug6yfi:front",
+  "abilities": [
+    {
+      "slot": "ability:0mf1ug6yfi:front:cardistry-draw",
+      "kind": "cardistry",
+      "timing": "main-phase",
+      "usage": "once-per-object",
+      "cost_reduction": "distinct-suited-reserve-costs",
+      "base_cost": 10,
+      "effects": [
+        {
+          "kind": "draw",
+          "amount": 1,
+          "recipient": "controller"
+        }
+      ]
+    }
+  ]
+}

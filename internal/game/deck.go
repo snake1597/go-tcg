@@ -224,10 +224,7 @@ func loadCardDefinitions(cardDirectory, manifestPath string) (map[CardID]CardDef
 			},
 			card: card,
 		}
-		definition.abilities, err = compileAbilityDefinitions(
-			definition,
-			authoredAbilitiesForCard(id),
-		)
+		definition.abilities, err = compileContentAbilityDefinitions(definition)
 		if err != nil {
 			return nil, fmt.Errorf("compile card definition: %w", err)
 		}

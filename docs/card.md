@@ -1,12 +1,13 @@
 # 卡牌資料與固定 Standard 牌組
 
-首版只會建立一種固定的鏡像 Standard 對局。卡牌行為由 Game Module 的 Go 程式碼執行；此文件只說明載入資料與建局的最小關係，不維護另一份 runtime 支援清單。
+首版只會建立一種固定的鏡像 Standard 對局。卡牌行為由 Game Module 的統一 Ability Runtime 執行；此文件只說明載入資料與建局的最小關係，不維護另一份 runtime 支援清單。
 
-Support Set 的所有 rules-bearing behavior 都由 `internal/game/executable_definition.go` 提供可執行定義。卡面資料與 Go 編寫資料在 content loading 時編譯為同一份 immutable definitions，再交給 Ability Runtime、trigger collector 與 derived-characteristic evaluator 執行；replay 依固定引擎版本重建同一份定義。production 支援 metadata 不另設手寫 registry，而是從編譯結果衍生 CardFace、Ability Slot、mechanism、typed operation、content dependency 與 card-data ruling reference。
+Support Set 的 rules-bearing behavior 由 Go 編寫資料與唯一的 Wonderland's Reign v1 JSON DSL 提供。兩種來源都在 content loading 時通過同一個 compiler，產生相同的 immutable definitions，再交給 Ability Runtime、trigger collector 與 derived-characteristic evaluator 執行；resolution loop 不解析 DSL。DSL 解析或驗證失敗會直接拒絕載入，不會 fallback 到 Go Definition。replay 以 `compiled-content-v1` 重建相同定義。production 支援 metadata 不另設手寫 registry，而是從編譯結果衍生 CardFace、Ability Slot、mechanism、typed operation、content dependency 與 card-data ruling reference。
 
 ## 資料來源
 
 - `card/*.json` 是卡面資料來源。
+- `internal/game/card_definitions/wonderlands_reign.json` 是 schema version 1 的唯一 DSL vertical slice；Ability Slot 與既有 Go Definition 保持相同穩定 ID。
 - `card-data-manifest.json` 固定資料版本、檔案清單與 SHA-256 digest。
 - [deck.go](../internal/game/deck.go) 的 `fixedStandardDeck` 是唯一牌組定義。
 
@@ -32,7 +33,7 @@ runtime 在建局前保護「無法安全建立對局」的條件：
 NewStandardGame
 ├── 驗證玩家
 ├── 載入並驗證 card-data manifest
-├── 編譯並驗證已遷移的可執行能力定義
+├── 將 Go／DSL 編寫資料編譯並驗證為相同中介表示
 ├── 取得 fixedStandardDeck
 ├── 驗證卡片引用與起始 Champion
 ├── 從 compiled definitions 衍生並驗證 Support Set

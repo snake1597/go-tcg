@@ -945,7 +945,7 @@ func TestDuchessCopiedActionFizzlesAfterTargetLeaves(t *testing.T) {
 	if len(replay.Steps) == 0 || replay.Steps[len(replay.Steps)-1].StateHash != game.StateHash() {
 		t.Fatalf("final replay hash = %#v, want %q", replay.Steps, game.StateHash())
 	}
-	const wantStateHash = "7d74349c3f56138605f61b0d051cabaaaf92bb5587bee6ad4b67986e951a8ca9"
+	const wantStateHash = "2077dba2aa9299de91656a98800283c4a39005d73f984b3999704a41c0ddd912"
 	if got := game.StateHash(); got != wantStateHash {
 		t.Fatalf("StateHash() = %q, want conserved Duchess fizzle state %q", got, wantStateHash)
 	}
