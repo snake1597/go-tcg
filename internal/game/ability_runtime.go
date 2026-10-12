@@ -256,7 +256,9 @@ func (g *Game) resolveAbility(instance abilityInstance) {
 			if operation.Binding != "" {
 				card = cardInstanceID(instance.Bindings[operation.Binding])
 			}
-			g.discardCard(instance.Controller, operation.CardZone, card)
+			if err := g.discardCard(instance.Controller, operation.CardZone, card); err != nil {
+				return
+			}
 		case effectOperationDeploy:
 			card := cardInstanceID(target)
 			if operation.Binding != "" {
@@ -369,18 +371,30 @@ func (g *Game) beginAbilityCardChoice(instance abilityInstance, operationIndex i
 }
 
 // discardCard 將指定區域的卡牌棄至墓地；來源未指定時依規則使用手牌。
-// 輸入為玩家、來源區域與卡牌；卡牌不在該區域時不產生副作用，成功時記錄公開事件。
-func (g *Game) discardCard(player *model.Player, from cardZone, card cardInstanceID) {
+// 輸入為玩家、來源區域與卡牌；輸出為錯誤或 nil；失敗無副作用，成功時移動區域、更新追蹤權並記錄公開事件。
+func (g *Game) discardCard(player *model.Player, from cardZone, card cardInstanceID) error {
 	if from == "" {
 		from = cardZoneHand
 	}
-	zones := g.state.Zones[player.UID]
-	updated, err := moveCardBetweenZones(zones, from, cardZoneGraveyard, card)
+	err := g.commitPlayerCardMoves(
+		playerCardMoveRequest{
+			Player: player,
+			Moves: []playerCardMove{
+				{
+					Card: card,
+					From: from,
+					To:   cardZoneGraveyard,
+				},
+			},
+			Cause:        "ability",
+			EventKind:    "discard",
+			VisibleToAll: true,
+		},
+	)
 	if err != nil {
-		return
+		return fmt.Errorf("discard card: %w", err)
 	}
-	g.state.Zones[player.UID] = updated
-	g.recordPublicEvent(player, "ability", "discard", card)
+	return nil
 }
 
 // drawToMemory 逐張由主牌組頂抽至 Memory，並於抽空時停止結算及使玩家敗北。

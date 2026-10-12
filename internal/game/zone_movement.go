@@ -1,6 +1,26 @@
 package game
 
-import "fmt"
+import (
+	"fmt"
+
+	"go-tcg/internal/model"
+)
+
+// playerCardMove 描述同一玩家持有的單張 Card Instance 在兩個玩家卡牌區域間的移動。
+type playerCardMove struct {
+	Card cardInstanceID
+	From cardZone
+	To   cardZone
+}
+
+// playerCardMoveRequest 描述一批必須全部成功才提交的玩家卡牌移動及其可觀察事件語意。
+type playerCardMoveRequest struct {
+	Player       *model.Player
+	Moves        []playerCardMove
+	Cause        string
+	EventKind    string
+	VisibleToAll bool
+}
 
 type cardZone string
 
@@ -76,6 +96,80 @@ func moveCardBetweenZones(zones playerZones, from, to cardZone, card cardInstanc
 		return zones, fmt.Errorf("add card to zone: %w", err)
 	}
 	return updated, nil
+}
+
+// commitPlayerCardMoves 重新驗證 owner 與來源區域後，原子提交一批玩家卡牌移動並寫入事件與追蹤權。
+// 輸入為玩家、移動清單與可見事件設定；輸出為錯誤或 nil；失敗無副作用，成功時更新區域、Knowledge State 與 Game Event。
+func (g *Game) commitPlayerCardMoves(request playerCardMoveRequest) error {
+	if !g.hasPlayer(request.Player) {
+		return fmt.Errorf("unknown player %q", request.Player)
+	}
+	if len(request.Moves) == 0 || request.Cause == "" || request.EventKind == "" {
+		return fmt.Errorf("player card move requires moves, cause, and event kind")
+	}
+	updated := g.state.Zones[request.Player.UID]
+	for _, move := range request.Moves {
+		if !isPlayerCardZone(move.From) || !isPlayerCardZone(move.To) || move.From == move.To {
+			return fmt.Errorf("invalid player card move from %q to %q", move.From, move.To)
+		}
+		card, exists := g.state.Cards[move.Card]
+		if !exists || !samePlayer(card.Owner, request.Player) {
+			return fmt.Errorf("card %q is not owned by player %q", move.Card, request.Player)
+		}
+		var err error
+		updated, err = moveCardBetweenZones(
+			updated,
+			move.From,
+			move.To,
+			move.Card,
+		)
+		if err != nil {
+			return fmt.Errorf("move player card %q: %w", move.Card, err)
+		}
+	}
+	g.state.Zones[request.Player.UID] = updated
+	eventCapacity := len(request.Moves)
+	batch := eventBatch{
+		Player: request.Player,
+		Cause:  request.Cause,
+		Events: make([]gameEvent, 0, eventCapacity),
+	}
+	for _, move := range request.Moves {
+		cardEntity := entityID(move.Card)
+		g.grantCardTracking(request.Player, cardEntity)
+		g.state.NextEvent++
+		batch.Events = append(
+			batch.Events,
+			gameEvent{
+				Sequence: g.state.NextEvent,
+				Kind:     request.EventKind,
+				Card:     move.Card,
+			},
+		)
+		if request.VisibleToAll {
+			for _, viewer := range g.players {
+				g.recordVisibleEvent(viewer, request.EventKind, cardEntity)
+			}
+			continue
+		}
+		g.recordVisibleEvent(request.Player, request.EventKind, cardEntity)
+	}
+	g.state.Events = append(g.state.Events, batch)
+	return nil
+}
+
+// isPlayerCardZone 判斷區域是否屬於可由玩家 Card Instance 移動流程處理的卡牌區域。
+// 輸入為區域種類；輸出為是否合法；無副作用。
+func isPlayerCardZone(zone cardZone) bool {
+	switch zone {
+	case cardZoneHand,
+		cardZoneGraveyard,
+		cardZoneMemory,
+		cardZoneBanishment:
+		return true
+	default:
+		return false
+	}
 }
 
 // banishCardsFromGraveyard 驗證所有指定牌位於墓地且不重複，再於區域副本中一併放逐；失敗不修改原區域。

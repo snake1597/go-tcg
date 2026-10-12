@@ -176,28 +176,29 @@ func (g *Game) recollectMemory(player *model.Player) {
 	if len(zones.Memory) == 0 {
 		return
 	}
-	batch := eventBatch{
-		Player: player,
-		Cause:  "turn:recollection",
-		Events: make([]gameEvent, 0, len(zones.Memory)),
-	}
+	moveCapacity := len(zones.Memory)
+	moves := make([]playerCardMove, 0, moveCapacity)
 	for _, card := range zones.Memory {
-		zones.Hand = append(zones.Hand, card)
-		g.grantCardTracking(player, entityID(card))
-		g.state.NextEvent++
-		batch.Events = append(
-			batch.Events,
-			gameEvent{
-				Sequence: g.state.NextEvent,
-				Kind:     "recollect",
-				Card:     card,
+		moves = append(
+			moves,
+			playerCardMove{
+				Card: card,
+				From: cardZoneMemory,
+				To:   cardZoneHand,
 			},
 		)
-		g.recordVisibleEvent(player, "recollect", entityID(card))
 	}
-	zones.Memory = nil
-	g.state.Zones[player.UID] = zones
-	g.state.Events = append(g.state.Events, batch)
+	err := g.commitPlayerCardMoves(
+		playerCardMoveRequest{
+			Player:    player,
+			Moves:     moves,
+			Cause:     "turn:recollection",
+			EventKind: "recollect",
+		},
+	)
+	if err != nil {
+		panic(fmt.Sprintf("recollect Memory: %v", err))
+	}
 }
 
 func (g *Game) grantOpportunity(player *model.Player) {

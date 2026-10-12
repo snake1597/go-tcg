@@ -1,6 +1,7 @@
 package game
 
 import (
+	"reflect"
 	"testing"
 
 	"go-tcg/internal/model"
@@ -17,14 +18,58 @@ func TestDiscardUsesSpecifiedZone(t *testing.T) {
 	zones.Memory = append(zones.Memory, memoryCard)
 	game.state.Zones[player.UID] = zones
 
-	game.discardCard(player, "", handCard)
-	game.discardCard(player, cardZoneMemory, memoryCard)
+	if err := game.discardCard(player, "", handCard); err != nil {
+		t.Fatalf("discard hand card: %v", err)
+	}
+	if err := game.discardCard(player, cardZoneMemory, memoryCard); err != nil {
+		t.Fatalf("discard Memory card: %v", err)
+	}
 	zones = game.state.Zones[player.UID]
 	if cardIndex(zones.Hand, handCard) >= 0 || cardIndex(zones.Memory, memoryCard) >= 0 {
 		t.Fatal("discarded cards remained in their source zones")
 	}
 	if cardIndex(zones.Graveyard, handCard) < 0 || cardIndex(zones.Graveyard, memoryCard) < 0 {
 		t.Fatal("discarded cards did not reach the graveyard")
+	}
+}
+
+// TestDiscardFromExpiredSourceFizzesRemainingAbility 驗證指定卡牌已離開來源區域時，棄牌失敗不會產生卡牌或繼續結算後續操作。
+// 輸入為含失效棄牌與後續 counter 的能力；輸出為未變動的區域與 counter；副作用為建立隔離能力結算。
+func TestDiscardFromExpiredSourceFizzesRemainingAbility(t *testing.T) {
+	game := newActionGame(t)
+	player := model.PlayerOne
+	source := findCard(t, game, player, blazingThrowCardID)
+	target := objectID("discard-fizzle-target")
+	game.state.Objects[target] = fieldObject{
+		ID:    target,
+		Card:  source,
+		Owner: player,
+	}
+	beforeZones := game.state.Zones[player.UID]
+	instance := game.newAbilityInstance(
+		player,
+		source,
+		target,
+		[]effectOperation{
+			{
+				Kind:     effectOperationDiscard,
+				CardZone: cardZoneHand,
+				Target:   objectID("expired-card"),
+			},
+			{
+				Kind:    effectOperationCounter,
+				Counter: "POWER",
+				Amount:  1,
+			},
+		},
+	)
+	game.pushAbility(instance)
+	game.resolveTopEffectStack()
+	if got := game.state.Objects[target].Counters["POWER"]; got != 0 {
+		t.Fatalf("POWER counters = %d, want 0 after expired discard", got)
+	}
+	if got := game.state.Zones[player.UID]; !reflect.DeepEqual(got, beforeZones) {
+		t.Fatalf("zones = %#v, want unchanged %#v", got, beforeZones)
 	}
 }
 
