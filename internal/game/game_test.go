@@ -101,9 +101,9 @@ func TestPlayerViewScopesOpaqueActionHandles(t *testing.T) {
 	}
 }
 
-// TestPlayerViewIncludesHeuristicRank 驗證 PlayerView 對每個合法 action 提供 bot 可用的固定優先級。
-// 輸入為新建對局與 Player One；輸出為投降 action 的最低優先級 rank，副作用是無。
-func TestPlayerViewIncludesHeuristicRank(t *testing.T) {
+// TestPlayerViewOmitsControllerStrategyRank 驗證 Game Module 不把 Bot Controller 的策略順位寫入 legal action。
+// 輸入為新建對局與 Player One；輸出為不含 heuristic_rank 的通用 action JSON，副作用為零。
+func TestPlayerViewOmitsControllerStrategyRank(t *testing.T) {
 	game := newTestGame(1)
 	view, err := game.PlayerView(model.PlayerOne)
 	if err != nil {
@@ -112,8 +112,15 @@ func TestPlayerViewIncludesHeuristicRank(t *testing.T) {
 	if len(view.LegalActions) != 1 {
 		t.Fatalf("LegalActions = %#v, want one action", view.LegalActions)
 	}
-	if view.LegalActions[0].Kind != constants.ActionConcede || view.LegalActions[0].HeuristicRank != 6 {
-		t.Fatalf("LegalAction = %#v, want concede with rank 6", view.LegalActions[0])
+	if view.LegalActions[0].Kind != constants.ActionConcede {
+		t.Fatalf("LegalAction = %#v, want concede", view.LegalActions[0])
+	}
+	encoded, err := json.Marshal(view.LegalActions[0])
+	if err != nil {
+		t.Fatalf("json.Marshal() error = %v", err)
+	}
+	if strings.Contains(string(encoded), "heuristic_rank") {
+		t.Fatalf("LegalAction JSON = %s, want controller strategy omitted", encoded)
 	}
 }
 

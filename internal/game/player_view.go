@@ -8,10 +8,16 @@ import (
 )
 
 type LegalAction struct {
-	Handle      ViewHandle           `json:"handle"`
-	Kind        constants.ActionKind `json:"kind"`
-	CardName    string               `json:"card_name,omitempty"`
-	AbilitySlot AbilitySlotID        `json:"ability_slot,omitempty"`
+	Handle ViewHandle           `json:"handle"`
+	Kind   constants.ActionKind `json:"kind"`
+	// Source 關聯同一份 PlayerView 中玩家可見的來源 card handle。
+	Source      ViewHandle    `json:"source,omitempty"`
+	CardName    string        `json:"card_name,omitempty"`
+	AbilitySlot AbilitySlotID `json:"ability_slot,omitempty"`
+	// CanWinGame 表示依目前玩家可見資訊，該行動具有可立即結束單局的合法選項。
+	CanWinGame bool `json:"can_win_game,omitempty"`
+	// TriggeredAbilitySlots 列出該行動依公開來源定義會觸發的穩定能力位置。
+	TriggeredAbilitySlots []AbilitySlotID `json:"triggered_ability_slots,omitempty"`
 	// CostMethod 區分一般 Reserve 與來源卡宣告的替代費用。
 	CostMethod string `json:"cost_method,omitempty"`
 	// ReserveCost 與 ReserveOptions 定義 activation 必須提交的手牌付款張數與可選 handles。
@@ -20,7 +26,6 @@ type LegalAction struct {
 	// MemoryPaymentRequired 指出本次 Memory Cost 至少必須使用的非隨機付款來源數量。
 	MemoryPaymentRequired int           `json:"memory_payment_required,omitempty"`
 	MemoryPaymentOptions  []VisibleCard `json:"memory_payment_options,omitempty"`
-	HeuristicRank         int           `json:"heuristic_rank"`
 }
 
 // VisibleChoice 提供 PendingChoice 選項的玩家可見描述與啟發式優先級。

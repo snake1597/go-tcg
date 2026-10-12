@@ -878,6 +878,7 @@ func TestMaterializationExposesEveryEligibleFixedMaterialDeckCard(t *testing.T) 
 	for _, action := range view.LegalActions {
 		if action.Kind == constants.ActionMaterialize {
 			actualNames[action.CardName] = true
+			assertVisibleActionSource(t, view, action)
 		}
 	}
 	wantNames := []string{

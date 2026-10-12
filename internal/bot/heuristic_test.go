@@ -6,6 +6,7 @@ import (
 	"go-tcg/internal/game"
 	"go-tcg/internal/model"
 	tcgErrors "go-tcg/internal/tcg_errors"
+	"strings"
 	"testing"
 )
 
@@ -19,19 +20,16 @@ func TestHeuristicDecideUsesOnlyViewPriority(t *testing.T) {
 		Revision: 12,
 		LegalActions: []game.LegalAction{
 			{
-				Handle:        "pass",
-				Kind:          constants.ActionPass,
-				HeuristicRank: 5,
+				Handle: "pass",
+				Kind:   constants.ActionPass,
 			},
 			{
-				Handle:        "activate",
-				Kind:          constants.ActionActivate,
-				HeuristicRank: 1,
+				Handle: "activate",
+				Kind:   constants.ActionActivate,
 			},
 			{
-				Handle:        "attack",
-				Kind:          constants.ActionAttack,
-				HeuristicRank: 0,
+				Handle: "attack",
+				Kind:   constants.ActionAttack,
 			},
 		},
 	}
@@ -78,16 +76,14 @@ func TestHeuristicDecideUsesSeededRandomOnlyForTies(t *testing.T) {
 		Revision: 3,
 		LegalActions: []game.LegalAction{
 			{
-				Handle:        "first",
-				Kind:          constants.ActionActivate,
-				CardName:      "A",
-				HeuristicRank: 1,
+				Handle:   "first",
+				Kind:     constants.ActionActivate,
+				CardName: "A",
 			},
 			{
-				Handle:        "second",
-				Kind:          constants.ActionActivate,
-				CardName:      "B",
-				HeuristicRank: 1,
+				Handle:   "second",
+				Kind:     constants.ActionActivate,
+				CardName: "B",
 			},
 		},
 	}
@@ -105,6 +101,129 @@ func TestHeuristicDecideUsesSeededRandomOnlyForTies(t *testing.T) {
 	}
 	if first.Revision != second.Revision || first.Action != second.Action || first.Choice != second.Choice {
 		t.Fatalf("same seed decisions = %#v and %#v, want equal", first, second)
+	}
+}
+
+// TestHeuristicDecideInterpretsGenericLegalActionMetadata 驗證 bot 自行解讀玩家可見的通用行動資訊。
+// 輸入為卡名刻意不具語意且只有攻擊標示可立即獲勝的視圖；輸出為攻擊提交，副作用為零。
+func TestHeuristicDecideInterpretsGenericLegalActionMetadata(t *testing.T) {
+	view := game.PlayerView{
+		Revision: 5,
+		LegalActions: []game.LegalAction{
+			{
+				Handle:   "named-activation",
+				Kind:     constants.ActionActivate,
+				CardName: "Arbitrary Card",
+			},
+			{
+				Handle:     "winning-attack",
+				Kind:       constants.ActionAttack,
+				CanWinGame: true,
+			},
+		},
+	}
+
+	input, err := NewHeuristic(
+		NewSeededRandom(3),
+	).Decide(view)
+	if err != nil {
+		t.Fatalf("Decide() error = %v", err)
+	}
+	if input.Action != "winning-attack" {
+		t.Fatalf("Decide().Action = %q, want winning attack", input.Action)
+	}
+}
+
+// TestHeuristicDecidePreservesOtherLegalActionSources 驗證 Reserve 付款優先避開仍有合法行動的可見來源卡。
+// 輸入為一張一般付款卡與一張作為另一合法 action source 的卡；輸出只支付一般卡，副作用為零。
+func TestHeuristicDecidePreservesOtherLegalActionSources(t *testing.T) {
+	view := game.PlayerView{
+		Revision: 9,
+		LegalActions: []game.LegalAction{
+			{
+				Handle:               "selected",
+				Kind:                 constants.ActionActivate,
+				ReserveCost:          1,
+				MemoryPaymentOptions: []game.VisibleCard{},
+				ReserveOptions: []game.VisibleCard{
+					{
+						Handle: "valuable-source",
+						Name:   "First Arbitrary Card",
+					},
+					{
+						Handle: "payment",
+						Name:   "Second Arbitrary Card",
+					},
+				},
+			},
+			{
+				Handle: "other-action",
+				Kind:   constants.ActionActivate,
+				Source: "valuable-source",
+			},
+		},
+	}
+
+	input, err := NewHeuristic(
+		NewSeededRandom(3),
+	).Decide(view)
+	if err != nil {
+		t.Fatalf("Decide() error = %v", err)
+	}
+	if len(input.Reserve) != 1 || input.Reserve[0] != "payment" {
+		t.Fatalf("Decide().Reserve = %#v, want uncommitted payment card", input.Reserve)
+	}
+}
+
+// TestHeuristicDecideWieldsOnlyForDefinitionDerivedTriggers 驗證 bot 以通用 triggered slots 區分有效與無進展的 Wield。
+// 輸入為 pass 與不同 metadata 的 Wield；輸出為略過無 trigger 的 Wield、選取有 trigger 的 Wield，副作用為零。
+func TestHeuristicDecideWieldsOnlyForDefinitionDerivedTriggers(t *testing.T) {
+	testCases := []struct {
+		name           string
+		triggeredSlots []game.AbilitySlotID
+		want           game.ViewHandle
+	}{
+		{
+			name: "wield without triggered ability yields to pass",
+			want: "pass",
+		},
+		{
+			name: "wield with triggered ability precedes pass",
+			triggeredSlots: []game.AbilitySlotID{
+				"ability:any-card:front:on-wield",
+			},
+			want: "wield",
+		},
+	}
+	for _, testCase := range testCases {
+		t.Run(
+			testCase.name,
+			func(t *testing.T) {
+				view := game.PlayerView{
+					Revision: 4,
+					LegalActions: []game.LegalAction{
+						{
+							Handle: "pass",
+							Kind:   constants.ActionPass,
+						},
+						{
+							Handle:                "wield",
+							Kind:                  constants.ActionWield,
+							TriggeredAbilitySlots: testCase.triggeredSlots,
+						},
+					},
+				}
+				input, err := NewHeuristic(
+					NewSeededRandom(2),
+				).Decide(view)
+				if err != nil {
+					t.Fatalf("Decide() error = %v", err)
+				}
+				if input.Action != testCase.want {
+					t.Fatalf("Decide().Action = %q, want %q", input.Action, testCase.want)
+				}
+			},
+		)
 	}
 }
 
@@ -149,9 +268,8 @@ func TestHeuristicRunRefreshesStaleViewAndStopsAtLimit(t *testing.T) {
 				Revision: 1,
 				LegalActions: []game.LegalAction{
 					{
-						Handle:        "pass-one",
-						Kind:          constants.ActionPass,
-						HeuristicRank: 5,
+						Handle: "pass-one",
+						Kind:   constants.ActionPass,
 					},
 				},
 			},
@@ -159,9 +277,8 @@ func TestHeuristicRunRefreshesStaleViewAndStopsAtLimit(t *testing.T) {
 				Revision: 2,
 				LegalActions: []game.LegalAction{
 					{
-						Handle:        "activate-two",
-						Kind:          constants.ActionActivate,
-						HeuristicRank: 1,
+						Handle: "activate-two",
+						Kind:   constants.ActionActivate,
 					},
 				},
 			},
@@ -201,9 +318,9 @@ func TestHeuristicRunRejectsNoProgressCycle(t *testing.T) {
 				Revision: 1,
 				LegalActions: []game.LegalAction{
 					{
-						Handle:        "pass-one",
-						Kind:          constants.ActionPass,
-						HeuristicRank: 5,
+						Handle:   "pass-one",
+						Kind:     constants.ActionPass,
+						CardName: "First Display Name",
 					},
 				},
 			},
@@ -211,9 +328,9 @@ func TestHeuristicRunRejectsNoProgressCycle(t *testing.T) {
 				Revision: 2,
 				LegalActions: []game.LegalAction{
 					{
-						Handle:        "pass-two",
-						Kind:          constants.ActionPass,
-						HeuristicRank: 5,
+						Handle:   "pass-two",
+						Kind:     constants.ActionPass,
+						CardName: "Second Display Name",
 					},
 				},
 			},
@@ -229,6 +346,10 @@ func TestHeuristicRunRejectsNoProgressCycle(t *testing.T) {
 	)
 	if err == nil {
 		t.Fatal("Run() error = nil, want no progress cycle")
+	}
+	message := err.Error()
+	if !strings.Contains(message, "no progress cycle") {
+		t.Fatalf("Run() error = %v, want no progress cycle", err)
 	}
 	if len(controller.inputs) != 2 {
 		t.Fatalf("Submit() calls = %d, want 2", len(controller.inputs))

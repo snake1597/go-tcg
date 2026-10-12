@@ -23,7 +23,7 @@
 
 ## Bot 現況與邊界
 
-目前 Bot 是固定優先級 heuristic，從自身 PlayerView 的 Legal Actions 或 PendingChoice 選擇候選，同順位時使用注入的亂數來源。部分戰術排序目前仍位於 Game Module，尚無訓練資料、模型版本、self-play pipeline、評測或發布機制。
+目前 Bot 是固定優先級 heuristic，從自身 PlayerView 的 Legal Actions 或 PendingChoice 選擇候選，同順位時使用注入的亂數來源。Game Module 只投影可見來源、可立即獲勝及 definition-derived triggered ability slots 等通用 metadata；Legal Action 的戰術排序由 Bot Controller 解讀。尚無訓練資料、模型版本、self-play pipeline、評測或發布機制。
 
 Bot 必須持續遵守：
 

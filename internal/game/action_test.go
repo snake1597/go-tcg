@@ -7,6 +7,45 @@ import (
 	"go-tcg/internal/model"
 )
 
+// TestPlayerViewLegalActionMetadataUsesVisibleSourceHandle 驗證手牌 activation 只以同一視圖的可見 handle 關聯來源。
+// 輸入為正式 Standard Game 的起始 PlayerView；輸出為每個手牌 action source 都存在於該視圖 Hand，副作用僅為建立測試單局。
+func TestPlayerViewLegalActionMetadataUsesVisibleSourceHandle(t *testing.T) {
+	game, err := NewStandardGame(
+		StandardGameConfig{
+			Players: []*model.Player{
+				model.PlayerOne,
+				model.PlayerTwo,
+			},
+			RepositoryRoot: "../..",
+			Seed:           42,
+		},
+	)
+	if err != nil {
+		t.Fatalf("NewStandardGame() error = %v", err)
+	}
+	view, err := game.PlayerView(model.PlayerOne)
+	if err != nil {
+		t.Fatalf("PlayerView() error = %v", err)
+	}
+	handles := make(map[ViewHandle]bool, len(view.Hand))
+	for _, card := range view.Hand {
+		handles[card.Handle] = true
+	}
+	activationCount := 0
+	for _, action := range view.LegalActions {
+		if action.Kind != constants.ActionActivate || action.ReserveOptions == nil {
+			continue
+		}
+		activationCount++
+		if action.Source == "" || !handles[action.Source] {
+			t.Fatalf("LegalAction = %#v, want source from PlayerView.Hand %#v", action, view.Hand)
+		}
+	}
+	if activationCount == 0 {
+		t.Fatalf("PlayerView().LegalActions = %#v, want hand activation", view.LegalActions)
+	}
+}
+
 func TestActionCardsUsePlayerViewDeclarationAndResolveToGraveyard(t *testing.T) {
 	game := newActionGame(t)
 	player := model.PlayerOne

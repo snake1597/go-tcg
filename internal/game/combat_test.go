@@ -7,6 +7,50 @@ import (
 	"go-tcg/internal/model"
 )
 
+// TestPlayerViewMarksPotentialWinningAttack 驗證立即獲勝資訊只由目前可見的攻擊者與 Champion 狀態導出。
+// 輸入為攻擊力足以擊敗對手 Champion 的公開局面；輸出為標記 CanWinGame 的合法攻擊，副作用僅為重建視圖。
+func TestPlayerViewMarksPotentialWinningAttack(t *testing.T) {
+	view := newWinningAttackViewFixture(t)
+	attack := actionByKind(t, view, constants.ActionAttack)
+	if !attack.CanWinGame {
+		t.Fatalf("LegalAction = %#v, want potential winning attack metadata", attack)
+	}
+	assertVisibleActionSource(t, view, attack)
+}
+
+// TestPlayerViewWieldMetadataUsesTriggeredDefinitionSlots 驗證 Wield action 公開來源定義中的 on-wield slots。
+// 輸入為場上的 Impact Hammer；輸出為只含其 on-wield triggered slot 的合法行動 metadata，副作用僅為重建視圖。
+func TestPlayerViewWieldMetadataUsesTriggeredDefinitionSlots(t *testing.T) {
+	view := newWieldMetadataViewFixture(t)
+	var wield LegalAction
+	for _, action := range view.LegalActions {
+		if action.Kind == constants.ActionWield && action.CardName == "Impact Hammer" {
+			wield = action
+			break
+		}
+	}
+	if wield.Handle == "" {
+		t.Fatalf("PlayerView().LegalActions = %#v, want Impact Hammer Wield", view.LegalActions)
+	}
+	want := AbilitySlotID("ability:chsbalegbs:front:on-wield-self-damage")
+	if len(wield.TriggeredAbilitySlots) != 1 || wield.TriggeredAbilitySlots[0] != want {
+		t.Fatalf("LegalAction.TriggeredAbilitySlots = %#v, want %q", wield.TriggeredAbilitySlots, want)
+	}
+	assertVisibleActionSource(t, view, wield)
+}
+
+// assertVisibleActionSource 驗證 legal action source 指向同一份 PlayerView 中的可見卡牌。
+// 輸入為視圖與有來源的合法行動；無輸出，失敗時終止測試，除此之外無副作用。
+func assertVisibleActionSource(t *testing.T, view PlayerView, action LegalAction) {
+	t.Helper()
+	for _, card := range view.Cards {
+		if card.Handle == action.Source {
+			return
+		}
+	}
+	t.Fatalf("LegalAction.Source = %q, want handle from PlayerView.Cards %#v", action.Source, view.Cards)
+}
+
 func TestChampionAttackUsesPlayerViewAndDealsSimultaneousCombatDamage(t *testing.T) {
 	game := newActionGame(t)
 	attacker := game.state.Champions[model.PlayerOne.UID]

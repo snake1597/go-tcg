@@ -183,6 +183,10 @@ func (g *Game) refreshLegalActions() {
 				}
 			case samePlayer(player, g.state.Scheduler.TurnPlayer) && g.state.Scheduler.Phase == constants.PhaseMaterialize:
 				for _, card := range g.legalMaterializations(player) {
+					g.grantCardTracking(
+						player,
+						entityID(card),
+					)
 					handle := g.newViewHandle(
 						player,
 						constants.ViewHandleSubjectMaterializePrefix+string(card),
@@ -232,11 +236,13 @@ func (g *Game) legalActions(player *model.Player) []LegalAction {
 	}
 	for handle, card := range playKnowledge.Materializations {
 		memoryCost := g.characteristicsForCard(card).MemoryCost
+		source := playKnowledge.Cards[entityID(card)]
 		legalActions = append(
 			legalActions,
 			LegalAction{
 				Handle:   handle,
 				Kind:     constants.ActionMaterialize,
+				Source:   source,
 				CardName: g.state.Entities[entityID(card)].Name,
 				MemoryPaymentRequired: max(
 					memoryCost-len(g.state.Zones[player.UID].Memory),
@@ -249,6 +255,7 @@ func (g *Game) legalActions(player *model.Player) []LegalAction {
 	for handle, option := range playKnowledge.Activations {
 		reserveCost := g.actionReserveCost(player, option.Card)
 		costMethod := "reserve"
+		source := playKnowledge.Cards[entityID(option.Card)]
 		var slot AbilitySlotID
 		if ability, exists := g.compiledAction(option.Card); exists {
 			slot = ability.slot
@@ -262,6 +269,7 @@ func (g *Game) legalActions(player *model.Player) []LegalAction {
 			LegalAction{
 				Handle:         handle,
 				Kind:           constants.ActionActivate,
+				Source:         source,
 				CardName:       g.state.Entities[entityID(option.Card)].Name,
 				AbilitySlot:    slot,
 				CostMethod:     costMethod,
@@ -278,18 +286,34 @@ func (g *Game) legalActions(player *model.Player) []LegalAction {
 		legalActions = append(
 			legalActions,
 			LegalAction{
-				Handle:   handle,
-				Kind:     constants.ActionAttack,
-				CardName: g.cardName(card.ID),
+				Handle:     handle,
+				Kind:       constants.ActionAttack,
+				Source:     playKnowledge.Cards[entityID(card.ID)],
+				CardName:   g.cardName(card.ID),
+				CanWinGame: g.attackWinsGame(player, handle),
 			},
 		)
 	}
 	for handle, weapon := range playKnowledge.Wields {
-		legalActions = append(legalActions, LegalAction{
-			Handle:   handle,
-			Kind:     constants.ActionWield,
-			CardName: g.state.Entities[entityID(g.state.Objects[weapon].Card)].Name,
-		})
+		card := g.state.Objects[weapon].Card
+		abilities := g.compiledTriggeredAbilities(
+			card,
+			eventKindWield,
+		)
+		triggeredSlots := make([]AbilitySlotID, 0, len(abilities))
+		for _, ability := range abilities {
+			triggeredSlots = append(triggeredSlots, ability.slot)
+		}
+		legalActions = append(
+			legalActions,
+			LegalAction{
+				Handle:                handle,
+				Kind:                  constants.ActionWield,
+				Source:                playKnowledge.Cards[entityID(card)],
+				CardName:              g.state.Entities[entityID(card)].Name,
+				TriggeredAbilitySlots: triggeredSlots,
+			},
+		)
 	}
 	for handle, ability := range playKnowledge.Abilities {
 		switch ability.Kind {
@@ -299,31 +323,31 @@ func (g *Game) legalActions(player *model.Player) []LegalAction {
 			reduction := g.cardistryReduction(card)
 			cost := g.cardistryCost(player, baseCost, reduction)
 			memoryCount := len(g.state.Zones[player.UID].Memory)
-			legalActions = append(legalActions, LegalAction{
-				Handle:                handle,
-				Kind:                  constants.ActionActivate,
-				CardName:              g.cardName(card),
-				AbilitySlot:           ability.Slot,
-				MemoryPaymentRequired: max(cost-memoryCount, 0),
-				MemoryPaymentOptions:  g.visibleMemoryPaymentSources(player),
-			})
+			legalActions = append(
+				legalActions,
+				LegalAction{
+					Handle:                handle,
+					Kind:                  constants.ActionActivate,
+					Source:                playKnowledge.Cards[entityID(card)],
+					CardName:              g.cardName(card),
+					AbilitySlot:           ability.Slot,
+					MemoryPaymentRequired: max(cost-memoryCount, 0),
+					MemoryPaymentOptions:  g.visibleMemoryPaymentSources(player),
+				},
+			)
 		case activatedAbilityObject:
+			card := g.state.Objects[ability.Source].Card
 			legalActions = append(
 				legalActions,
 				LegalAction{
 					Handle:      handle,
 					Kind:        constants.ActionActivate,
-					CardName:    g.state.Entities[entityID(g.state.Objects[ability.Source].Card)].Name,
+					Source:      playKnowledge.Cards[entityID(card)],
+					CardName:    g.state.Entities[entityID(card)].Name,
 					AbilitySlot: ability.Slot,
 				},
 			)
 		}
-	}
-	for index := range legalActions {
-		legalActions[index].HeuristicRank = g.heuristicRank(
-			player,
-			legalActions[index],
-		)
 	}
 	sort.Slice(
 		legalActions,
@@ -387,41 +411,6 @@ func (g *Game) visibleMemoryPaymentSources(player *model.Player) []VisibleCard {
 		},
 	)
 	return options
-}
-
-// heuristicRank 依公開 Champion 狀態與已合法的 action 建立 bot 可消費的固定戰術優先級。
-// 輸入為決策玩家與合法 action；輸出為越小越優先的 rank，無副作用且不讀取隱藏區域資料。
-func (g *Game) heuristicRank(player *model.Player, action LegalAction) int {
-	if action.Kind == constants.ActionAttack && g.attackWinsGame(player, action.Handle) {
-		return 0
-	}
-	switch action.Kind {
-	case constants.ActionAttack:
-		return 1
-	case constants.ActionActivate:
-		if action.CardName == "Red Hare, Unrivaled Stallion" {
-			return 2
-		}
-		if action.CardName == "Duchess, Six of Hearts" {
-			return 2
-		}
-		if action.MemoryPaymentOptions != nil {
-			return 2
-		}
-		return 3
-	case constants.ActionWield:
-		return 3
-	case constants.ActionMaterialize:
-		return 4
-	case constants.ActionSkipMaterialize:
-		return 5
-	case constants.ActionPass:
-		return 5
-	case constants.ActionConcede:
-		return 6
-	default:
-		return 7
-	}
 }
 
 // attackWinsGame 判斷指定合法攻擊是否能以公開攻擊力擊敗任一可攻擊對方 Champion。

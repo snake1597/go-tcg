@@ -3,7 +3,6 @@ package bot
 import (
 	"errors"
 	"fmt"
-	"slices"
 	"sort"
 	"strings"
 
@@ -154,12 +153,12 @@ func (bot *Heuristic) decidePendingChoice(view game.PlayerView) (game.Input, err
 // 輸入為沒有 PendingChoice 的視圖；輸出為 action Input，副作用僅於最高優先級平手時消耗亂數。
 func (bot *Heuristic) decideAction(view game.PlayerView) (game.Input, error) {
 	var emptyInput game.Input
-	bestPriority := view.LegalActions[0].HeuristicRank
+	bestPriority := actionPriority(view.LegalActions[0])
 	candidates := []game.ViewHandle{
 		view.LegalActions[0].Handle,
 	}
 	for _, action := range view.LegalActions[1:] {
-		priority := action.HeuristicRank
+		priority := actionPriority(action)
 		switch {
 		case priority < bestPriority:
 			bestPriority = priority
@@ -195,27 +194,59 @@ func (bot *Heuristic) decideAction(view game.PlayerView) (game.Input, error) {
 		if action.ReserveCost > availableOptions {
 			return emptyInput, fmt.Errorf("reserve options = %d, want at least %d", availableOptions, action.ReserveCost)
 		}
-		for _, option := range action.ReserveOptions {
-			if action.CardName != option.Name && (option.Name == "Red Hare, Unrivaled Stallion" || option.Name == "Duchess, Six of Hearts") {
-				continue
-			}
-			input.Reserve = append(input.Reserve, option.Handle)
-			if len(input.Reserve) == action.ReserveCost {
-				return input, nil
+		protectedSources := make(map[game.ViewHandle]bool, len(view.LegalActions))
+		for _, candidate := range view.LegalActions {
+			if candidate.Handle != action.Handle && candidate.Source != "" {
+				protectedSources[candidate.Source] = true
 			}
 		}
-		for _, option := range action.ReserveOptions {
-			if slices.Contains(input.Reserve, option.Handle) {
-				continue
-			}
-			input.Reserve = append(input.Reserve, option.Handle)
-			if len(input.Reserve) == action.ReserveCost {
-				break
+		for _, protected := range []bool{
+			false,
+			true,
+		} {
+			for _, option := range action.ReserveOptions {
+				if protectedSources[option.Handle] != protected {
+					continue
+				}
+				input.Reserve = append(input.Reserve, option.Handle)
+				if len(input.Reserve) == action.ReserveCost {
+					return input, nil
+				}
 			}
 		}
 		break
 	}
 	return input, nil
+}
+
+// actionPriority 將通用且玩家可見的 legal-action metadata 轉為 bot 固定策略順位。
+// 輸入為單一合法行動；輸出為越小越優先的順位，無副作用且不解讀卡名或內部遊戲狀態。
+func actionPriority(action game.LegalAction) int {
+	if action.CanWinGame {
+		return 0
+	}
+	switch action.Kind {
+	case constants.ActionAttack:
+		return 1
+	case constants.ActionActivate:
+		if action.MemoryPaymentOptions != nil {
+			return 2
+		}
+		return 3
+	case constants.ActionWield:
+		if len(action.TriggeredAbilitySlots) > 0 {
+			return 3
+		}
+		return 7
+	case constants.ActionMaterialize:
+		return 4
+	case constants.ActionSkipMaterialize, constants.ActionPass:
+		return 5
+	case constants.ActionConcede:
+		return 6
+	default:
+		return 7
+	}
 }
 
 // selectChoice 從引擎提供的可見 choice rank 中保留最高優先級候選，再交由平手機制處理。
@@ -255,11 +286,21 @@ func (bot *Heuristic) selectHandle(handles []game.ViewHandle) (game.ViewHandle, 
 }
 
 // viewSignature 建立不含 revision、handle 或隱藏資訊的可見決策摘要以偵測循環。
-// 輸入為 PlayerView；輸出為排序後的行動種類、卡名與待選狀態，無副作用。
+// 輸入為 PlayerView；輸出為排序後的通用決策 metadata 與待選狀態，無副作用。
 func viewSignature(view game.PlayerView) string {
 	actions := make([]string, 0, len(view.LegalActions))
 	for _, action := range view.LegalActions {
-		actions = append(actions, fmt.Sprintf("%s:%s:%d", action.Kind, action.CardName, action.HeuristicRank))
+		actions = append(
+			actions,
+			fmt.Sprintf(
+				"%s:%t:%d:%d:%t",
+				action.Kind,
+				action.CanWinGame,
+				len(action.TriggeredAbilitySlots),
+				action.ReserveCost,
+				action.MemoryPaymentOptions != nil,
+			),
+		)
 	}
 	sort.Strings(actions)
 	pending := "none"

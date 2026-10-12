@@ -162,6 +162,7 @@ Effect Source Card 與 Stack Item 是兩種資料：
 
 - 可見但不可用的 action、card、target 或 payment source 提供穩定 reason code 與非敏感參數。
 - Legal Action 與 PendingChoice 是提交能力的唯一來源；卡牌出現在任何區域不代表可操作。
+- Legal Action 以同一份 PlayerView 的可見 source handle 關聯來源，並可提供 `can_win_game` 與 definition-derived `triggered_ability_slots`；這些是通用事實，不包含 Bot Controller 的策略 rank。
 - Game Module 在提交時重新驗證 actor、revision、handle、來源與目前合法性。
 - 拒絕非法提交時，canonical state、event、trigger、Replay 與 PRNG cursor 都不改變。
 - JSON／Protobuf 投影不得包含 CardInstanceID、ObjectID、StackItemID、AbilityInstanceID 或其他內部 runtime ID。
