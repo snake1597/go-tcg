@@ -132,7 +132,9 @@ func (g *Game) resolveSetupChampionAbilities(player *model.Player) bool {
 				return g.drawCardsWithDeckOut(
 					player,
 					operation.Amount,
+					cardZoneHand,
 					string(ability.slot),
+					"draw",
 				)
 			}
 		}

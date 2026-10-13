@@ -162,6 +162,102 @@ func TestAbilityChoiceUsesVisibleHandleAndResumesTypedOperations(t *testing.T) {
 	}
 }
 
+// TestAbilityDrawsInOnePrivateBatch 驗證能力抽多張牌會依主牌組頂端順序移至手牌，並保留單一私有 Event Batch。
+// 輸入為含兩張已知牌組頂的能力；輸出為依序可見的手牌與兩個 draw Game Event；副作用為更新抽牌玩家的追蹤權及私有可見事件。
+func TestAbilityDrawsInOnePrivateBatch(t *testing.T) {
+	game := newActionGame(t)
+	player := model.PlayerOne
+	zones := game.state.Zones[player.UID]
+	firstDraw := zones.MainDeck[len(zones.MainDeck)-1]
+	secondDraw := zones.MainDeck[len(zones.MainDeck)-2]
+	opponentView, err := game.PlayerView(model.PlayerTwo)
+	if err != nil {
+		t.Fatalf("opponent PlayerView() error = %v", err)
+	}
+
+	instance := game.newAbilityInstance(
+		player,
+		firstDraw,
+		"",
+		[]effectOperation{
+			{
+				Kind:   effectOperationDraw,
+				Amount: 2,
+			},
+		},
+	)
+	game.pushAbility(instance)
+	game.resolveTopEffectStack()
+
+	zones = game.state.Zones[player.UID]
+	if zones.Hand[len(zones.Hand)-2] != firstDraw || zones.Hand[len(zones.Hand)-1] != secondDraw {
+		t.Fatalf("drawn hand order = %#v, want %q then %q", zones.Hand, firstDraw, secondDraw)
+	}
+	batch := game.state.Events[len(game.state.Events)-1]
+	if batch.Cause != "ability" || len(batch.Events) != 2 {
+		t.Fatalf("draw batch = %#v, want one ability batch with two events", batch)
+	}
+	if batch.Events[0].Kind != "draw" || batch.Events[1].Kind != "draw" {
+		t.Fatalf("draw events = %#v, want two draw events", batch.Events)
+	}
+	opponentAfter, err := game.PlayerView(model.PlayerTwo)
+	if err != nil {
+		t.Fatalf("opponent PlayerView() after draw error = %v", err)
+	}
+	if len(opponentAfter.VisibleEvents) != len(opponentView.VisibleEvents) {
+		t.Fatalf("opponent VisibleEvents = %#v, want no private draws", opponentAfter.VisibleEvents)
+	}
+}
+
+// TestAbilityDrawsToMemoryInOnePrivateBatch 驗證能力抽至 Memory 會維持牌組頂端順序與私有事件批次。
+// 輸入為含兩張已知牌組頂的抽至 Memory 能力；輸出為依序存入 Memory 的兩張牌與兩個 draw-to-memory Game Event；副作用為更新抽牌玩家的追蹤權及私有可見事件。
+func TestAbilityDrawsToMemoryInOnePrivateBatch(t *testing.T) {
+	game := newActionGame(t)
+	player := model.PlayerOne
+	zones := game.state.Zones[player.UID]
+	firstDraw := zones.MainDeck[len(zones.MainDeck)-1]
+	secondDraw := zones.MainDeck[len(zones.MainDeck)-2]
+	opponentView, err := game.PlayerView(model.PlayerTwo)
+	if err != nil {
+		t.Fatalf("opponent PlayerView() error = %v", err)
+	}
+
+	instance := game.newAbilityInstance(
+		player,
+		firstDraw,
+		"",
+		[]effectOperation{
+			{
+				Kind:   effectOperationDrawToMemory,
+				Amount: 2,
+			},
+		},
+	)
+	game.pushAbility(instance)
+	game.resolveTopEffectStack()
+
+	zones = game.state.Zones[player.UID]
+	if zones.Memory[len(zones.Memory)-2] != firstDraw || zones.Memory[len(zones.Memory)-1] != secondDraw {
+		t.Fatalf("drawn Memory order = %#v, want %q then %q", zones.Memory, firstDraw, secondDraw)
+	}
+	batch := game.state.Events[len(game.state.Events)-1]
+	if batch.Cause != "ability" || len(batch.Events) != 2 {
+		t.Fatalf("draw-to-memory batch = %#v, want one ability batch with two events", batch)
+	}
+	if batch.Events[0].Kind != "draw-to-memory" || batch.Events[1].Kind != "draw-to-memory" {
+		t.Fatalf("draw-to-memory events = %#v, want two draw-to-memory events", batch.Events)
+	}
+	opponentAfter, err := game.PlayerView(model.PlayerTwo)
+	if err != nil {
+		t.Fatalf("opponent PlayerView() after Memory draw error = %v", err)
+	}
+	if len(opponentAfter.VisibleEvents) != len(opponentView.VisibleEvents) {
+		t.Fatalf("opponent VisibleEvents = %#v, want no private Memory draws", opponentAfter.VisibleEvents)
+	}
+}
+
+// TestTypedOperationsDrawAndCounterProduceStateChanges 驗證抽牌與 Counter 操作可在同一能力中更新對應遊戲狀態。
+// 輸入為含抽牌與 Counter 操作的能力；輸出為多一張手牌與兩個 POWER counter；副作用為更新私有區域、追蹤權、事件及目標特徵。
 func TestTypedOperationsDrawAndCounterProduceStateChanges(t *testing.T) {
 	game := newActionGame(t)
 	source := findCard(t, game, model.PlayerOne, blazingThrowCardID)

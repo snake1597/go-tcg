@@ -224,20 +224,29 @@ func (g *Game) drawTurnCard(player *model.Player) bool {
 	return g.drawCardsWithDeckOut(
 		player,
 		1,
+		cardZoneHand,
 		"turn:draw",
+		"draw",
 	)
 }
 
-// drawCardsWithDeckOut 將指定張數由主牌組頂移入手牌，並在牌組抽空時結束對局。
-// 輸入為玩家、抽牌張數與事件原因；輸出為是否完成抽牌，副作用為移動卡牌、記錄事件或結束對局。
-func (g *Game) drawCardsWithDeckOut(player *model.Player, count int, cause string) bool {
+// drawCardsWithDeckOut 依主牌組頂端逐張抽至指定私有區域，並在牌組耗盡時結束對局。
+// 輸入為玩家、張數、Hand 或 Memory 目的區域、事件原因與事件種類；輸出為是否完成全部抽牌。
+// 副作用為移動卡牌、授予抽牌玩家追蹤權、以單一 Event Batch 記錄每個離散抽牌事件、更新私有 Player View，或於抽空時結束對局。
+func (g *Game) drawCardsWithDeckOut(
+	player *model.Player,
+	count int,
+	destination cardZone,
+	cause string,
+	eventKind string,
+) bool {
 	batch := eventBatch{
 		Player: player,
 		Cause:  cause,
 		Events: make([]gameEvent, 0, count),
 	}
 	for range count {
-		card, drawn := g.drawOneCard(player, cardZoneHand)
+		card, drawn := g.drawOneCard(player, destination)
 		if !drawn {
 			if len(batch.Events) > 0 {
 				g.state.Events = append(g.state.Events, batch)
@@ -247,10 +256,10 @@ func (g *Game) drawCardsWithDeckOut(player *model.Player, count int, cause strin
 		g.state.NextEvent++
 		batch.Events = append(batch.Events, gameEvent{
 			Sequence: g.state.NextEvent,
-			Kind:     "draw",
+			Kind:     eventKind,
 			Card:     card,
 		})
-		g.recordVisibleEvent(player, "draw", entityID(card))
+		g.recordVisibleEvent(player, eventKind, entityID(card))
 	}
 	g.state.Events = append(g.state.Events, batch)
 	return true

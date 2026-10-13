@@ -171,7 +171,13 @@ func (g *Game) resolveAbility(instance abilityInstance) {
 			g.addContinuousEffect(effect)
 			g.recordPublicEvent(instance.Controller, "ability", "continuous-effect", instance.SourceLKI)
 		case effectOperationDraw:
-			g.drawCards(instance.Controller, operation.Amount)
+			g.drawCardsWithDeckOut(
+				instance.Controller,
+				operation.Amount,
+				cardZoneHand,
+				"ability",
+				"draw",
+			)
 		case effectOperationCardistryDiscount:
 			g.state.CardistryDiscounts[instance.Controller.UID] = operation.Amount
 		case effectOperationPreventNonCombatDamage:
@@ -190,7 +196,13 @@ func (g *Game) resolveAbility(instance abilityInstance) {
 				},
 			)
 		case effectOperationDrawToMemory:
-			g.drawToMemory(instance.Controller, operation.Amount)
+			g.drawCardsWithDeckOut(
+				instance.Controller,
+				operation.Amount,
+				cardZoneMemory,
+				"ability",
+				"draw-to-memory",
+			)
 		case effectOperationCounter:
 			if g.addCounter(target, operation.Counter, operation.Amount) {
 				g.recordPublicEvent(instance.Controller, "ability", "counter", instance.SourceLKI)
@@ -395,49 +407,6 @@ func (g *Game) discardCard(player *model.Player, from cardZone, card cardInstanc
 		return fmt.Errorf("discard card: %w", err)
 	}
 	return nil
-}
-
-// drawToMemory 逐張由主牌組頂抽至 Memory，並於抽空時停止結算及使玩家敗北。
-// 輸入為玩家及張數；輸出為零，副作用為區域、公開事件、追蹤權及可能的終局狀態變更。
-func (g *Game) drawToMemory(player *model.Player, amount int) {
-	for range amount {
-		card, drawn := g.drawOneCard(player, cardZoneMemory)
-		if !drawn {
-			return
-		}
-		g.recordDrawEvent(player, "draw-to-memory", card)
-	}
-}
-
-// drawCards 逐張由主牌組頂抽至手牌，並於抽空時停止結算及使玩家敗北。
-// 輸入為玩家及張數；輸出為零，副作用為區域、公開事件、追蹤權及可能的終局狀態變更。
-func (g *Game) drawCards(player *model.Player, amount int) {
-	for range amount {
-		card, drawn := g.drawOneCard(player, cardZoneHand)
-		if !drawn {
-			return
-		}
-		g.recordDrawEvent(player, "draw", card)
-	}
-}
-
-// recordDrawEvent 保存能力抽牌事件，僅讓抽牌玩家看見私有區域的卡名。
-// 輸入為玩家、抽牌種類與卡牌；輸出為零，副作用為新增 Game Event 與該玩家的可見事件。
-func (g *Game) recordDrawEvent(player *model.Player, kind string, card cardInstanceID) {
-	g.state.NextEvent++
-	g.state.Events = append(g.state.Events, eventBatch{
-		Player: player,
-		Cause:  "ability",
-		Events: []gameEvent{
-			{
-				Sequence: g.state.NextEvent,
-				Kind:     kind,
-				Card:     card,
-			},
-		},
-	})
-	cardEntity := entityID(card)
-	g.recordVisibleEvent(player, kind, cardEntity)
 }
 
 func (g *Game) addCounter(target objectID, counter string, amount int) bool {
