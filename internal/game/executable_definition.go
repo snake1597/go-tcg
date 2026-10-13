@@ -2175,8 +2175,7 @@ func (ability compiledAbilityDefinition) operations() []effectOperation {
 			})
 		case effectKindMoveSourceToGraveyard:
 			operations = append(operations, effectOperation{
-				Kind:                  effectOperationMove,
-				MoveSourceToGraveyard: true,
+				Kind: effectOperationMoveSourceToGraveyard,
 			})
 		case effectKindBanishSource:
 			operations = append(operations, effectOperation{

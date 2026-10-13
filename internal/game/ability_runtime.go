@@ -26,8 +26,9 @@ type resolutionBinding string
 type effectOperationKind string
 
 const (
-	effectOperationChoose                 effectOperationKind = "choose"
-	effectOperationMove                   effectOperationKind = "move"
+	effectOperationChoose effectOperationKind = "choose"
+	// effectOperationMoveSourceToGraveyard 以共通來源提交器將已結算的 Source Card 移入墓地。
+	effectOperationMoveSourceToGraveyard  effectOperationKind = "move_source_to_graveyard"
 	effectOperationRestSource             effectOperationKind = "rest_source"
 	effectOperationBanishSource           effectOperationKind = "banish_source"
 	effectOperationCardistryDiscount      effectOperationKind = "cardistry_discount"
@@ -60,7 +61,6 @@ type effectOperation struct {
 	Source                  objectID            `json:"source,omitempty"`
 	Amount                  int                 `json:"amount,omitempty"`
 	Counter                 string              `json:"counter,omitempty"`
-	MoveSourceToGraveyard   bool                `json:"move_source_to_graveyard,omitempty"`
 	Value                   *valueExpression    `json:"value,omitempty"`
 	CanPass                 bool                `json:"can_pass,omitempty"`
 	CardZone                cardZone            `json:"card_zone,omitempty"`
@@ -278,19 +278,7 @@ func (g *Game) resolveAbility(instance abilityInstance) {
 			}
 			g.deployAlly(instance.Controller, card)
 		case effectOperationPutAllyOnField:
-			sourceIndex := cardIndex(g.state.EffectSources, instance.Source)
-			if sourceIndex < 0 {
-				return
-			}
-			g.state.EffectSources = removeCardAt(g.state.EffectSources, sourceIndex)
-			source, exists := g.state.Cards[instance.Source]
-			if !exists || !samePlayer(source.Owner, instance.Controller) || !containsString(source.Types, "ALLY") {
-				if exists {
-					g.putInGraveyard(instance.Source)
-				}
-				return
-			}
-			g.putAllyOnField(instance.Controller, instance.Source)
+			g.resolveAllyEffectSource(instance.Controller, instance.Source)
 		case effectOperationRestGrantImmortality:
 			g.restAndGrantTemporaryImmortality(target)
 		case effectOperationSuitedThresholdCounter:
@@ -313,11 +301,8 @@ func (g *Game) resolveAbility(instance abilityInstance) {
 			}
 		case effectOperationGrantTaunt:
 			g.grantTemporaryTaunt(instance.Controller, instance.Source)
-		case effectOperationMove:
-			if operation.MoveSourceToGraveyard {
-				g.removeEffectSource(instance.Source)
-				g.putInGraveyard(instance.Source)
-			}
+		case effectOperationMoveSourceToGraveyard:
+			g.resolveEffectSourceToGraveyard(instance.Source)
 		case effectOperationChoose:
 			options := operation.Options
 			if operation.Selector == selectorControlledSuitedAlly {

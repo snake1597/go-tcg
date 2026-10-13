@@ -152,7 +152,7 @@ func copyActionDependencies(selection cardSelectionSpec, definitions map[CardID]
 func isSupportedOperation(operation effectOperationKind) bool {
 	switch operation {
 	case effectOperationChoose,
-		effectOperationMove,
+		effectOperationMoveSourceToGraveyard,
 		effectOperationRestSource,
 		effectOperationBanishSource,
 		effectOperationCardistryDiscount,

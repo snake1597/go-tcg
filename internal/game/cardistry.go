@@ -233,13 +233,13 @@ func (g *Game) controlledSuitedAllies(player *model.Player) []objectID {
 }
 
 func (g *Game) deployAlly(player *model.Player, card cardInstanceID) {
-	zones := g.state.Zones[player.UID]
-	index := cardIndex(zones.Memory, card)
-	if index < 0 {
+	candidate, exists := g.state.Cards[card]
+	if !exists || !samePlayer(candidate.Owner, player) || !containsString(candidate.Types, "ALLY") {
 		return
 	}
-	zones.Memory = removeCardAt(zones.Memory, index)
-	g.state.Zones[player.UID] = zones
+	if !g.takeSourceCard(card, sourceCardOriginMemory) {
+		return
+	}
 	g.putAllyOnField(player, card)
 }
 

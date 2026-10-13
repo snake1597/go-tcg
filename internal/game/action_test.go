@@ -161,7 +161,7 @@ func TestAllyActivationUsesEffectsStackBeforeEnteringField(t *testing.T) {
 	if _, exists := objectIDForCard(game, source); exists {
 		t.Fatal("Ally entered Field before its activation resolved")
 	}
-	if !containsCard(game.state.EffectSources, source) || len(game.state.EffectsStack) != 1 || game.state.EffectsStack[0].Kind != effectStackAbility || game.state.EffectsStack[0].Ability == nil {
+	if !containsCard(game.state.EffectSources, source) || len(game.state.EffectsStack) != 1 || game.state.EffectsStack[0].Kind != effectStackAbility || game.state.EffectsStack[0].Source != source || game.state.EffectsStack[0].Ability == nil || game.state.EffectsStack[0].Ability.Source != source || game.state.EffectsStack[0].Ability.SourceLKI != source {
 		t.Fatalf("activation state = sources %#v, stack %#v; want one Ally ability runtime activation", game.state.EffectSources, game.state.EffectsStack)
 	}
 	if game.state.Scheduler.OpportunityHolder != player {
@@ -174,6 +174,84 @@ func TestAllyActivationUsesEffectsStackBeforeEnteringField(t *testing.T) {
 	}
 	if containsCard(game.state.EffectSources, source) {
 		t.Fatalf("EffectSources = %#v, want resolved source removed", game.state.EffectSources)
+	}
+	if occurrences := cardInstanceOccurrences(game, source); occurrences != 1 {
+		t.Fatalf("source card occurrences = %d, want 1", occurrences)
+	}
+	finalView, err := game.PlayerView(player)
+	if err != nil {
+		t.Fatalf("PlayerView() after resolution error = %v", err)
+	}
+	if len(finalView.EffectsStack) != 0 {
+		t.Fatalf("PlayerView().EffectsStack = %#v, want empty after resolution", finalView.EffectsStack)
+	}
+	foundAlly := false
+	for _, object := range finalView.Field {
+		if object.CardName == "Red Hare, Unrivaled Stallion" {
+			foundAlly = true
+			break
+		}
+	}
+	if !foundAlly {
+		t.Fatalf("PlayerView().Field = %#v, want deployed Ally", finalView.Field)
+	}
+	foundDeploymentEvent := false
+	for _, event := range finalView.VisibleEvents {
+		if event.Kind == "deploy" && event.CardName == "Red Hare, Unrivaled Stallion" {
+			foundDeploymentEvent = true
+			break
+		}
+	}
+	if !foundDeploymentEvent {
+		t.Fatalf("PlayerView().VisibleEvents = %#v, want public deployment event", finalView.VisibleEvents)
+	}
+	replay := game.Replay()
+	if err := replay.Verify(); err != nil {
+		t.Fatalf("Replay().Verify() error = %v", err)
+	}
+	if got := replay.Steps[len(replay.Steps)-1].StateHash; got != game.StateHash() {
+		t.Fatalf("final replay state hash = %q, want %q", got, game.StateHash())
+	}
+}
+
+// TestAllyActivationSourceLeavingEffectsStackDoesNotRestoreCosts 驗證替代流程使 Ally Source 離開 Effects Stack 時，結算不會將已付 Reserve 費用退回。
+// 輸入為已正式啟動的 Red Hare 與模擬 replacement 後的來源區；輸出為不入場且來源留在 replacement 目的區；副作用為完成該次 stack 結算。
+func TestAllyActivationSourceLeavingEffectsStackDoesNotRestoreCosts(t *testing.T) {
+	game := newActionGameWithSource(t, redHareCardID)
+	player := model.PlayerOne
+	view, err := game.PlayerView(player)
+	if err != nil {
+		t.Fatalf("PlayerView() error = %v", err)
+	}
+	action := actionByCardName(t, view, "Red Hare, Unrivaled Stallion")
+	source := game.getPlayerKnowledge(player).Activations[action.Handle].Card
+	if err := game.Submit(
+		player,
+		Input{
+			Revision: view.Revision,
+			Action:   action.Handle,
+			Reserve:  reserveHandles(action),
+		},
+	); err != nil {
+		t.Fatalf("Submit() activation error = %v", err)
+	}
+	paidMemory := append([]cardInstanceID(nil), game.state.Zones[player.UID].Memory...)
+	if !game.removeEffectSource(source) {
+		t.Fatal("removeEffectSource() = false, want queued Ally source")
+	}
+	zones := game.state.Zones[player.UID]
+	zones.Banishment = append(zones.Banishment, source)
+	game.state.Zones[player.UID] = zones
+
+	passOpportunityRound(t, game, player)
+	if _, exists := objectIDForCard(game, source); exists {
+		t.Fatal("Ally entered Field after its source left Effects Stack")
+	}
+	if !containsCard(game.state.Zones[player.UID].Banishment, source) {
+		t.Fatalf("Banishment = %#v, want replacement destination source %q", game.state.Zones[player.UID].Banishment, source)
+	}
+	if got := game.state.Zones[player.UID].Memory; len(got) != len(paidMemory) {
+		t.Fatalf("Memory = %#v, want paid costs retained %#v", got, paidMemory)
 	}
 }
 
@@ -250,6 +328,39 @@ func objectIDForCard(game *Game, card cardInstanceID) (objectID, bool) {
 		}
 	}
 	return "", false
+}
+
+// cardInstanceOccurrences 統計指定卡牌在所有權威區域、Effects Stack 來源區與場上 Object 的出現次數。
+// 輸入為測試單局與 CardInstance；輸出為該卡牌出現次數；副作用為零。
+func cardInstanceOccurrences(game *Game, card cardInstanceID) int {
+	count := 0
+	for _, zones := range game.state.Zones {
+		for _, cards := range [][]cardInstanceID{
+			zones.MainDeck,
+			zones.MaterialDeck,
+			zones.Hand,
+			zones.Memory,
+			zones.Graveyard,
+			zones.Banishment,
+		} {
+			for _, candidate := range cards {
+				if candidate == card {
+					count++
+				}
+			}
+		}
+	}
+	for _, candidate := range game.state.EffectSources {
+		if candidate == card {
+			count++
+		}
+	}
+	for _, object := range game.state.Objects {
+		if object.Card == card {
+			count++
+		}
+	}
+	return count
 }
 
 func newActionGame(t *testing.T) *Game {

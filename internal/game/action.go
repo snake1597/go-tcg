@@ -16,9 +16,14 @@ const (
 
 type declarationStage string
 
+type sourceCardOrigin string
+
 const (
 	declarationTarget declarationStage = "target"
 	declarationWeapon declarationStage = "weapon"
+
+	sourceCardOriginEffectsStack sourceCardOrigin = "effects_stack"
+	sourceCardOriginMemory       sourceCardOrigin = "memory"
 )
 
 type actionDeclaration struct {
@@ -463,13 +468,67 @@ func (g *Game) actionAbilityInstance(declaration *actionDeclaration) abilityInst
 	return instance
 }
 
-// removeEffectSource 從 Effects Stack 的來源區移除指定卡牌實例。
-// 輸入為 CardInstance ID；輸出為零值，副作用為來源存在時更新 EffectSources，不存在時保持狀態不變。
-func (g *Game) removeEffectSource(source cardInstanceID) {
+// removeEffectSource 從 Effects Stack 的來源區取走指定卡牌實例。
+// 輸入為 CardInstance ID；輸出為是否取走來源；副作用為來源存在時更新 EffectSources，不存在時保持狀態不變。
+func (g *Game) removeEffectSource(source cardInstanceID) bool {
 	index := cardIndex(g.state.EffectSources, source)
-	if index >= 0 {
-		g.state.EffectSources = removeCardAt(g.state.EffectSources, index)
+	if index < 0 {
+		return false
 	}
+	g.state.EffectSources = removeCardAt(g.state.EffectSources, index)
+	return true
+}
+
+// takeSourceCard 由指定來源區取出仍有效的 Source Card，供後續移入目的區或建立場上 Object。
+// 輸入為 CardInstance 與來源區；輸出為是否成功取出；副作用為成功時更新 Effects Stack 來源區或擁有者 Memory，失效來源不改變狀態。
+func (g *Game) takeSourceCard(source cardInstanceID, origin sourceCardOrigin) bool {
+	candidate, exists := g.state.Cards[source]
+	if !exists {
+		return false
+	}
+	switch origin {
+	case sourceCardOriginEffectsStack:
+		return g.removeEffectSource(source)
+	case sourceCardOriginMemory:
+		zones := g.state.Zones[candidate.Owner.UID]
+		index := cardIndex(zones.Memory, source)
+		if index < 0 {
+			return false
+		}
+		zones.Memory = removeCardAt(zones.Memory, index)
+		g.state.Zones[candidate.Owner.UID] = zones
+		return true
+	default:
+		return false
+	}
+}
+
+// resolveEffectSourceToGraveyard 結算仍在 Effects Stack 來源區的 Source Card 至其擁有者墓地。
+// 輸入為來源 CardInstance；輸出為是否完成移動；副作用為移除來源、更新墓地，且來源失效時不退回既付費用。
+func (g *Game) resolveEffectSourceToGraveyard(source cardInstanceID) bool {
+	if !g.takeSourceCard(source, sourceCardOriginEffectsStack) {
+		return false
+	}
+	g.putInGraveyard(source)
+	return true
+}
+
+// resolveAllyEffectSource 結算仍在 Effects Stack 來源區的 Ally，並以共通入場流程建立場上 Object。
+// 輸入為控制者與來源 CardInstance；輸出為是否成功入場；副作用為移除來源、無效 Ally 進墓地，或建立 Object、公開事件與入場觸發。
+func (g *Game) resolveAllyEffectSource(player *model.Player, source cardInstanceID) bool {
+	candidate, exists := g.state.Cards[source]
+	if !exists {
+		return false
+	}
+	if !g.takeSourceCard(source, sourceCardOriginEffectsStack) {
+		return false
+	}
+	if !samePlayer(candidate.Owner, player) || !containsString(candidate.Types, "ALLY") {
+		g.putInGraveyard(source)
+		return false
+	}
+	g.putAllyOnField(player, source)
+	return true
 }
 
 func (g *Game) putInGraveyard(card cardInstanceID) {
