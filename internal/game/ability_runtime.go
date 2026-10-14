@@ -38,7 +38,6 @@ const (
 	effectOperationCounter                effectOperationKind = "counter"
 	effectOperationDamage                 effectOperationKind = "damage"
 	effectOperationContinuousModifier     effectOperationKind = "continuous_modifier"
-	effectOperationChooseZoneCard         effectOperationKind = "choose_zone_card"
 	effectOperationDiscard                effectOperationKind = "discard"
 	effectOperationDeploy                 effectOperationKind = "deploy"
 	// effectOperationPutAllyOnField 以通用 ability runtime 結算被 play 的 Ally source。
@@ -58,6 +57,7 @@ type effectOperation struct {
 	Kind                    effectOperationKind `json:"kind"`
 	Target                  objectID            `json:"target,omitempty"`
 	TargetReference         abilityReference    `json:"target_reference,omitempty"`
+	TargetBinding           resolutionBinding   `json:"target_binding,omitempty"`
 	Source                  objectID            `json:"source,omitempty"`
 	Amount                  int                 `json:"amount,omitempty"`
 	Counter                 string              `json:"counter,omitempty"`
@@ -74,14 +74,16 @@ type effectOperation struct {
 }
 
 // resolutionFrame 保存能力在等待玩家選擇時的完整可序列化續行資料。
-// 它以具名 binding 保存所選 Card Instance，不保存 closure 或可變 definition pointer。
+// 它以具名 binding 保存所選 Card Instance 或 Object，不保存 closure 或可變 definition pointer。
 type resolutionFrame struct {
-	Instance   abilityInstance   `json:"instance"`
-	Operations []effectOperation `json:"operations"`
-	Binding    resolutionBinding `json:"binding,omitempty"`
-	Candidates []cardInstanceID  `json:"candidates,omitempty"`
-	CardZone   cardZone          `json:"card_zone,omitempty"`
-	CanPass    bool              `json:"can_pass,omitempty"`
+	Instance      abilityInstance   `json:"instance"`
+	Operations    []effectOperation `json:"operations"`
+	Binding       resolutionBinding `json:"binding,omitempty"`
+	Candidates    []entityID        `json:"candidates,omitempty"`
+	CardSelection cardSelectionSpec `json:"card_selection,omitempty"`
+	Selector      selectorKind      `json:"selector,omitempty"`
+	Options       []objectID        `json:"options,omitempty"`
+	CanPass       bool              `json:"can_pass,omitempty"`
 }
 
 func (g *Game) newAbilityInstance(controller *model.Player, source cardInstanceID, target objectID, operations []effectOperation) abilityInstance {
@@ -129,6 +131,13 @@ func (g *Game) resolveAbility(instance abilityInstance) {
 			target = instance.Target
 		} else if target == "" {
 			target = instance.Target
+		}
+		if operation.TargetBinding != "" {
+			bound, exists := instance.Bindings[operation.TargetBinding]
+			if !exists {
+				return
+			}
+			target = objectID(bound)
 		}
 		switch operation.Kind {
 		case effectOperationDamage:
@@ -207,29 +216,6 @@ func (g *Game) resolveAbility(instance abilityInstance) {
 			if g.addCounter(target, operation.Counter, operation.Amount) {
 				g.recordPublicEvent(instance.Controller, "ability", "counter", instance.SourceLKI)
 			}
-		case effectOperationChooseZoneCard:
-			selection := operation.CardSelection
-			if selection.Zone == "" {
-				selection.Zone = cardZoneHand
-			}
-			candidates := g.cardSelectionCandidates(
-				instance.Controller,
-				selection,
-				"",
-			)
-			g.beginAbilityCardChoice(
-				instance,
-				operationIndex,
-				instance.Controller,
-				candidates,
-				operation.CanPass,
-				operation.Binding,
-				selection.Zone,
-			)
-			if g.state.ResolutionFrame != nil {
-				g.advanceKnowledgeRevision()
-			}
-			return
 		case effectOperationCopyAction:
 			copied, err := g.copyAction(
 				instance.Controller,
@@ -304,34 +290,13 @@ func (g *Game) resolveAbility(instance abilityInstance) {
 		case effectOperationMoveSourceToGraveyard:
 			g.resolveEffectSourceToGraveyard(instance.Source)
 		case effectOperationChoose:
-			options := operation.Options
-			if operation.Selector == selectorControlledSuitedAlly {
-				options = g.controlledSuitedAllies(instance.Controller)
-			}
-			if operation.Selector == selectorAllAllies {
-				options = g.allAllies()
-			}
-			if operation.Selector == selectorUnits {
-				options = g.legalTargets()
-			}
-			if operation.Selector == selectorOtherControlledAllies {
-				options = g.otherControlledAllies(
-					instance.Controller,
-					operation.Source,
-				)
-			}
+			options := g.choiceCandidates(instance.Controller, operation)
 			if len(options) == 0 {
 				return
 			}
 			completed = false
 			canPass := operation.CanPass || instance.RuntimeCopy
-			g.state.ResolutionFrame = &resolutionFrame{
-				Instance:   instance,
-				Operations: append([]effectOperation(nil), instance.Operations[operationIndex+1:]...),
-				CanPass:    canPass,
-			}
-			g.setDeclarationChoice(instance.Controller, options)
-			g.state.Knowledge.Choice.CanPass = canPass
+			g.beginAbilityChoice(instance, operationIndex, operation, options, canPass)
 			g.advanceKnowledgeRevision()
 			return
 		default:
@@ -345,25 +310,70 @@ func (g *Game) destroyRuntimeCopy(source cardInstanceID) {
 	delete(g.state.Entities, entityID(source))
 }
 
-// beginAbilityCardChoice 保存選牌後要繼續執行的 operation，並建立玩家專屬選項。
-// 沒有可選牌時不建立選擇；呼叫此函式的結算分支仍會直接返回，不繼續後續操作。
-func (g *Game) beginAbilityCardChoice(instance abilityInstance, operationIndex int, player *model.Player, cards []cardInstanceID, canPass bool, binding resolutionBinding, zone cardZone) {
-	if len(cards) == 0 {
-		return
+// choiceCandidates 依 operation 的明示選項、Card selector 或 Object selector 建立當前合法候選。
+// 輸入為選擇玩家與可序列化 operation；輸出為可放入 PendingChoice 的 entity；副作用為零。
+func (g *Game) choiceCandidates(player *model.Player, operation effectOperation) []entityID {
+	if operation.CardSelection.Zone != "" {
+		cards := g.cardSelectionCandidates(player, operation.CardSelection, "")
+		candidates := make([]entityID, 0, len(cards))
+		for _, card := range cards {
+			candidates = append(candidates, entityID(card))
+		}
+		return candidates
 	}
-	options := make([]objectID, 0, len(cards))
-	for _, card := range cards {
-		options = append(options, objectID(card))
+	options := operation.Options
+	if operation.Selector == "" {
+		options = filterLegalTargets(g, options)
 	}
+	if operation.Selector == selectorControlledSuitedAlly {
+		options = g.controlledSuitedAllies(player)
+	}
+	if operation.Selector == selectorAllAllies {
+		options = g.allAllies()
+	}
+	if operation.Selector == selectorUnits {
+		options = g.legalTargets()
+	}
+	if operation.Selector == selectorOtherControlledAllies {
+		options = g.otherControlledAllies(player, operation.Source)
+	}
+	candidates := make([]entityID, 0, len(options))
+	for _, option := range options {
+		candidates = append(candidates, entityID(option))
+	}
+	return candidates
+}
+
+// filterLegalTargets 排除已離場或不再是合法 Unit 的明示 Object 選項。
+// 輸入為遊戲與原始 Object ID；輸出為目前合法的 Object ID；副作用為零。
+func filterLegalTargets(g *Game, options []objectID) []objectID {
+	legal := make([]objectID, 0, len(options))
+	for _, option := range options {
+		if g.isLegalTarget(option) {
+			legal = append(legal, option)
+		}
+	}
+	return legal
+}
+
+// beginAbilityChoice 保存 Card 或 Object 選擇的續行資料，並建立指定玩家專屬的 PendingChoice。
+// 輸入為能力、目前操作及候選 entity；輸出為零；副作用為寫入 Resolution Frame、Knowledge Choice 與可略過設定。
+func (g *Game) beginAbilityChoice(instance abilityInstance, operationIndex int, operation effectOperation, candidates []entityID, canPass bool) {
 	g.state.ResolutionFrame = &resolutionFrame{
-		Instance:   instance,
-		Operations: append([]effectOperation(nil), instance.Operations[operationIndex+1:]...),
-		Binding:    binding,
-		Candidates: append([]cardInstanceID(nil), cards...),
-		CardZone:   zone,
-		CanPass:    canPass,
+		Instance:      instance,
+		Operations:    append([]effectOperation(nil), instance.Operations[operationIndex+1:]...),
+		Binding:       operation.Binding,
+		Candidates:    append([]entityID(nil), candidates...),
+		CardSelection: operation.CardSelection,
+		Selector:      operation.Selector,
+		Options:       append([]objectID(nil), operation.Options...),
+		CanPass:       canPass,
 	}
-	g.setDeclarationChoice(player, options)
+	options := make([]objectID, 0, len(candidates))
+	for _, candidate := range candidates {
+		options = append(options, objectID(candidate))
+	}
+	g.setDeclarationChoice(instance.Controller, options)
 	g.state.Knowledge.Choice.CanPass = canPass
 }
 

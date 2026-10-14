@@ -162,7 +162,6 @@ func isSupportedOperation(operation effectOperationKind) bool {
 		effectOperationCounter,
 		effectOperationDamage,
 		effectOperationContinuousModifier,
-		effectOperationChooseZoneCard,
 		effectOperationDiscard,
 		effectOperationDeploy,
 		effectOperationPutAllyOnField,

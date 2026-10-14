@@ -138,6 +138,7 @@ type drawEffectDefinition struct {
 
 type chooseObjectEffectDefinition struct {
 	selector selectorKind
+	binding  resolutionBinding
 }
 
 type deployEffectDefinition struct {
@@ -145,8 +146,9 @@ type deployEffectDefinition struct {
 }
 
 type counterEffectDefinition struct {
-	counter string
-	amount  int
+	counter       string
+	amount        int
+	targetBinding resolutionBinding
 }
 
 type modifierEffectDefinition struct {
@@ -1568,6 +1570,7 @@ func compileAbilityDefinitions(definition CardDefinition, authored []authoredAbi
 			result.objectCondition = &condition
 		}
 		bindings := make(map[resolutionBinding]cardSelectionSpec)
+		objectBindings := make(map[resolutionBinding]struct{})
 		for index, effect := range ability.effects {
 			field := fmt.Sprintf("effects[%d]", index)
 			switch effect.kind {
@@ -1639,6 +1642,15 @@ func compileAbilityDefinitions(definition CardDefinition, authored []authoredAbi
 				if (ability.kind != abilityKindCardistry && ability.kind != abilityKindObject && !triggeredEnter) || !supportedSelector {
 					return nil, fmt.Errorf("%s: %s.choose_object requires a supported Ally selector", context, field)
 				}
+				if effect.chooseObject.binding != "" {
+					if _, exists := bindings[effect.chooseObject.binding]; exists {
+						return nil, fmt.Errorf("%s: %s.choose_object.binding %q is duplicated", context, field, effect.chooseObject.binding)
+					}
+					if _, exists := objectBindings[effect.chooseObject.binding]; exists {
+						return nil, fmt.Errorf("%s: %s.choose_object.binding %q is duplicated", context, field, effect.chooseObject.binding)
+					}
+					objectBindings[effect.chooseObject.binding] = struct{}{}
+				}
 				result.effects = append(result.effects, compiledEffect{
 					kind:         effectKindChooseObject,
 					chooseObject: *effect.chooseObject,
@@ -1672,6 +1684,11 @@ func compileAbilityDefinitions(definition CardDefinition, authored []authoredAbi
 			case effectKindCounter:
 				if ability.kind != abilityKindCardistry || effect.counter == nil || effect.counter.counter != "BUFF" || effect.counter.amount != 1 {
 					return nil, fmt.Errorf("%s: %s.counter requires exactly one BUFF counter", context, field)
+				}
+				if effect.counter.targetBinding != "" {
+					if _, exists := objectBindings[effect.counter.targetBinding]; !exists {
+						return nil, fmt.Errorf("%s: %s.counter.targetBinding %q has no preceding Object choice", context, field, effect.counter.targetBinding)
+					}
 				}
 				result.effects = append(result.effects, compiledEffect{
 					kind:    effectKindCounter,
@@ -2126,7 +2143,7 @@ func (ability compiledAbilityDefinition) operations() []effectOperation {
 			})
 		case effectKindChooseCard:
 			operations = append(operations, effectOperation{
-				Kind:          effectOperationChooseZoneCard,
+				Kind:          effectOperationChoose,
 				CardSelection: effect.chooseCard.selection,
 				Binding:       effect.chooseCard.binding,
 			})
@@ -2134,6 +2151,7 @@ func (ability compiledAbilityDefinition) operations() []effectOperation {
 			operations = append(operations, effectOperation{
 				Kind:     effectOperationChoose,
 				Selector: effect.chooseObject.selector,
+				Binding:  effect.chooseObject.binding,
 			})
 		case effectKindDiscard:
 			operations = append(operations, effectOperation{
@@ -2147,9 +2165,10 @@ func (ability compiledAbilityDefinition) operations() []effectOperation {
 			})
 		case effectKindCounter:
 			operations = append(operations, effectOperation{
-				Kind:    effectOperationCounter,
-				Counter: effect.counter.counter,
-				Amount:  effect.counter.amount,
+				Kind:          effectOperationCounter,
+				TargetBinding: effect.counter.targetBinding,
+				Counter:       effect.counter.counter,
+				Amount:        effect.counter.amount,
 			})
 		case effectKindModifier:
 			operations = append(operations, effectOperation{

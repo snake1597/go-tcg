@@ -260,7 +260,10 @@ func (g *Game) onAttackTriggers(player *model.Player, attacker objectID) []effec
 		"",
 		[]effectOperation{
 			{
-				Kind:    effectOperationChooseZoneCard,
+				Kind: effectOperationChoose,
+				CardSelection: cardSelectionSpec{
+					Zone: cardZoneHand,
+				},
 				CanPass: true,
 			},
 			{

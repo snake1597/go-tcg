@@ -757,11 +757,10 @@ func (g *Game) submitChoice(player *model.Player, input Input) error {
 	}
 	if g.state.ResolutionFrame != nil {
 		continuation := g.state.ResolutionFrame
+		if !g.resolutionChoiceIsCurrent(continuation, player, subject) {
+			return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, input.Choice)
+		}
 		if continuation.Binding != "" {
-			card := cardInstanceID(subject)
-			if !containsCard(continuation.Candidates, card) || cardIndex(cardsInZone(g.state.Zones[player.UID], continuation.CardZone), card) < 0 {
-				return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, input.Choice)
-			}
 			if continuation.Instance.Bindings == nil {
 				continuation.Instance.Bindings = make(map[resolutionBinding]entityID)
 			}
@@ -780,6 +779,35 @@ func (g *Game) submitChoice(player *model.Player, input Input) error {
 	g.state.Knowledge.Choice = nil
 	g.advanceKnowledgeRevision()
 	return nil
+}
+
+// resolutionChoiceIsCurrent 重新計算 Resolution Frame 的候選，拒絕已離開區域、失去資格或不屬於原始選項的 entity。
+// 輸入為暫停框架、提交玩家與選擇 subject；輸出為目前是否合法；副作用為零。
+func (g *Game) resolutionChoiceIsCurrent(frame *resolutionFrame, player *model.Player, subject entityID) bool {
+	if !containsEntity(frame.Candidates, subject) {
+		return false
+	}
+	operation := effectOperation{
+		CardSelection: frame.CardSelection,
+		Selector:      frame.Selector,
+		Options:       frame.Options,
+	}
+	currentCandidates := g.choiceCandidates(player, operation)
+	return containsEntity(
+		currentCandidates,
+		subject,
+	)
+}
+
+// containsEntity 判斷 candidates 是否包含指定 entity。
+// 輸入為 entity ID 清單與待找值；輸出為是否存在；副作用為零。
+func containsEntity(candidates []entityID, want entityID) bool {
+	for _, candidate := range candidates {
+		if candidate == want {
+			return true
+		}
+	}
+	return false
 }
 
 // advanceKnowledgeRevision 增加 revision 並重建合法行動，使舊視圖的輸入失效。

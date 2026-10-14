@@ -63,7 +63,7 @@ func TestCompileRemainingCardistryDefinitions(t *testing.T) {
 			timing: timingMainPhase,
 			operations: []effectOperationKind{
 				effectOperationDrawToMemory,
-				effectOperationChooseZoneCard,
+				effectOperationChoose,
 				effectOperationDeploy,
 			},
 		},
@@ -184,8 +184,45 @@ func TestCompileDuchessDefinition(t *testing.T) {
 		t.Fatalf("compileAbilityDefinitions() error = %v", err)
 	}
 	operations := abilities[0].operations()
-	if len(operations) != 2 || operations[0].Kind != effectOperationChooseZoneCard || operations[0].Binding != "copy-source" || operations[1].Kind != effectOperationCopyAction || operations[1].Binding != "copy-source" {
+	if len(operations) != 2 || operations[0].Kind != effectOperationChoose || operations[0].Binding != "copy-source" || operations[1].Kind != effectOperationCopyAction || operations[1].Binding != "copy-source" {
 		t.Fatalf("operations = %#v, want graveyard choice followed by bound copy action", operations)
+	}
+}
+
+// TestCompileObjectChoiceBinding 驗證正式能力定義可將 Object 選擇綁定為名稱，並由後續 counter operation 引用。
+// 輸入為含 Object 選擇與具名 counter 目標的 Cardistry 定義；輸出為保留 binding 的 typed operations；副作用為零。
+func TestCompileObjectChoiceBinding(t *testing.T) {
+	definition := CardDefinition{
+		id: threeOfHeartsCardID,
+		face: CardFace{
+			id: CardFaceID("face:1db8hz4prm:front"),
+		},
+	}
+	authored := threeOfHeartsAbilities()
+	authored[0].effects = []authoredEffectDefinition{
+		{
+			kind: effectKindChooseObject,
+			chooseObject: &chooseObjectEffectDefinition{
+				selector: selectorControlledSuitedAlly,
+				binding:  "chosen-object",
+			},
+		},
+		{
+			kind: effectKindCounter,
+			counter: &counterEffectDefinition{
+				counter:       "BUFF",
+				amount:        1,
+				targetBinding: "chosen-object",
+			},
+		},
+	}
+	abilities, err := compileAbilityDefinitions(definition, authored)
+	if err != nil {
+		t.Fatalf("compileAbilityDefinitions() error = %v", err)
+	}
+	operations := abilities[0].operations()
+	if len(operations) != 2 || operations[0].Binding != "chosen-object" || operations[1].TargetBinding != "chosen-object" {
+		t.Fatalf("operations = %#v, want Object binding and named counter target", operations)
 	}
 }
 

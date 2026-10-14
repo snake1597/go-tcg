@@ -44,6 +44,9 @@ func TestDiscardFromExpiredSourceFizzesRemainingAbility(t *testing.T) {
 		ID:    target,
 		Card:  source,
 		Owner: player,
+		Types: []string{
+			"ALLY",
+		},
 	}
 	beforeZones := game.state.Zones[player.UID]
 	instance := game.newAbilityInstance(
@@ -83,23 +86,25 @@ func TestAbilityChoiceUsesSpecifiedZone(t *testing.T) {
 	zones.Memory = append(zones.Memory, card)
 	game.state.Zones[player.UID] = zones
 	source := findCard(t, game, player, blazingThrowCardID)
-	game.pushAbility(game.newAbilityInstance(
-		player,
-		source,
-		"",
-		[]effectOperation{
-			{
-				Kind: effectOperationChooseZoneCard,
-				CardSelection: cardSelectionSpec{
-					Zone: cardZoneMemory,
+	game.pushAbility(
+		game.newAbilityInstance(
+			player,
+			source,
+			"",
+			[]effectOperation{
+				{
+					Kind: effectOperationChoose,
+					CardSelection: cardSelectionSpec{
+						Zone: cardZoneMemory,
+					},
+				},
+				{
+					Kind:     effectOperationDiscard,
+					CardZone: cardZoneMemory,
 				},
 			},
-			{
-				Kind:     effectOperationDiscard,
-				CardZone: cardZoneMemory,
-			},
-		},
-	))
+		),
+	)
 	game.resolveTopEffectStack()
 	view, err := game.PlayerView(player)
 	if err != nil {
@@ -113,6 +118,184 @@ func TestAbilityChoiceUsesSpecifiedZone(t *testing.T) {
 	zones = game.state.Zones[player.UID]
 	if cardIndex(zones.Memory, card) >= 0 || cardIndex(zones.Graveyard, card) < 0 {
 		t.Fatal("selected Memory card was not discarded to graveyard")
+	}
+}
+
+// TestAbilityChoiceUsesCommonOperationForZoneCards 驗證同一個 choose operation 可從 Memory 選牌、以具名結果續行，並在提交時重新檢查區域與條件。
+// 輸入為含 Memory 卡牌選擇與棄牌續行的能力；輸出為 PendingChoice 與已移至 Graveyard 的選中牌；副作用為透過 Game Module 推進能力結算。
+func TestAbilityChoiceUsesCommonOperationForZoneCards(t *testing.T) {
+	game := newActionGame(t)
+	player := model.PlayerOne
+	zones := game.state.Zones[player.UID]
+	card := zones.Hand[0]
+	zones.Hand = removeCardAt(zones.Hand, 0)
+	zones.Memory = append(zones.Memory, card)
+	game.state.Zones[player.UID] = zones
+	source := findCard(t, game, player, blazingThrowCardID)
+	game.pushAbility(
+		game.newAbilityInstance(
+			player,
+			source,
+			"",
+			[]effectOperation{
+				{
+					Kind: effectOperationChoose,
+					CardSelection: cardSelectionSpec{
+						Zone: cardZoneMemory,
+					},
+					Binding: "memory-card",
+				},
+				{
+					Kind:     effectOperationDiscard,
+					CardZone: cardZoneMemory,
+					Binding:  "memory-card",
+				},
+			},
+		),
+	)
+	game.resolveTopEffectStack()
+	view, err := game.PlayerView(player)
+	if err != nil {
+		t.Fatalf("PlayerView() error = %v", err)
+	}
+	if view.PendingChoice == nil || len(view.PendingChoice.Options) == 0 {
+		t.Fatalf("PendingChoice = %#v, want Memory card options", view.PendingChoice)
+	}
+	var selected ViewHandle
+	for _, handle := range view.PendingChoice.Options {
+		if game.state.Knowledge.Choice.Options[handle] == entityID(card) {
+			selected = handle
+			break
+		}
+	}
+	if selected == "" {
+		t.Fatalf("PendingChoice = %#v, want moved Memory card %q", view.PendingChoice, card)
+	}
+	if err := game.Submit(
+		player,
+		Input{
+			Revision: view.Revision,
+			Choice:   selected,
+		},
+	); err != nil {
+		t.Fatalf("Submit() choice error = %v", err)
+	}
+	game.resolveTopEffectStack()
+	zones = game.state.Zones[player.UID]
+	if cardIndex(zones.Memory, card) >= 0 || cardIndex(zones.Graveyard, card) < 0 {
+		t.Fatal("selected Memory card was not discarded to Graveyard")
+	}
+}
+
+// TestAbilityChoiceBindsObjectForLaterOperation 驗證共通 choose operation 可將 Object 綁定為具名結果，供後續 operation 使用。
+// 輸入為選擇場上 Ally 後加上 counter 的能力；輸出為目標新增 counter；副作用為透過 PlayerView handle 與 Submit 推進能力結算。
+func TestAbilityChoiceBindsObjectForLaterOperation(t *testing.T) {
+	game := newActionGame(t)
+	player := model.PlayerOne
+	target := objectID("bound-object")
+	source := findCard(t, game, player, blazingThrowCardID)
+	game.state.Objects[target] = fieldObject{
+		ID:    target,
+		Card:  source,
+		Owner: player,
+		Types: []string{
+			"ALLY",
+		},
+	}
+	game.pushAbility(
+		game.newAbilityInstance(
+			player,
+			source,
+			"",
+			[]effectOperation{
+				{
+					Kind: effectOperationChoose,
+					Options: []objectID{
+						target,
+					},
+					Binding: "chosen-object",
+				},
+				{
+					Kind:          effectOperationCounter,
+					TargetBinding: "chosen-object",
+					Counter:       "BUFF",
+					Amount:        1,
+				},
+			},
+		),
+	)
+	game.resolveTopEffectStack()
+	view, err := game.PlayerView(player)
+	if err != nil {
+		t.Fatalf("PlayerView() error = %v", err)
+	}
+	if view.PendingChoice == nil || len(view.PendingChoice.Options) != 1 {
+		t.Fatalf("PendingChoice = %#v, want one Object choice", view.PendingChoice)
+	}
+	if err := game.Submit(
+		player,
+		Input{
+			Revision: view.Revision,
+			Choice:   view.PendingChoice.Options[0],
+		},
+	); err != nil {
+		t.Fatalf("Submit() choice error = %v", err)
+	}
+	game.resolveTopEffectStack()
+	if got := game.state.Objects[target].Counters["BUFF"]; got != 1 {
+		t.Fatalf("BUFF counters = %d, want 1", got)
+	}
+}
+
+// TestAbilityChoiceRejectsExpiredObject 驗證 Object 選項在提交前離場時，既有 View Handle 會被拒絕且權威狀態不變。
+// 輸入為等待 Object 選擇的能力與已離場目標；輸出為提交錯誤；副作用為零。
+func TestAbilityChoiceRejectsExpiredObject(t *testing.T) {
+	game := newActionGame(t)
+	player := model.PlayerOne
+	target := objectID("expired-object")
+	source := findCard(t, game, player, blazingThrowCardID)
+	game.state.Objects[target] = fieldObject{
+		ID:    target,
+		Card:  source,
+		Owner: player,
+		Types: []string{
+			"ALLY",
+		},
+	}
+	game.pushAbility(game.newAbilityInstance(
+		player,
+		source,
+		"",
+		[]effectOperation{
+			{
+				Kind: effectOperationChoose,
+				Options: []objectID{
+					target,
+				},
+			},
+		},
+	))
+	game.resolveTopEffectStack()
+	view, err := game.PlayerView(player)
+	if err != nil {
+		t.Fatalf("PlayerView() error = %v", err)
+	}
+	if view.PendingChoice == nil || len(view.PendingChoice.Options) != 1 {
+		t.Fatalf("PendingChoice = %#v, want one Object choice", view.PendingChoice)
+	}
+	delete(game.state.Objects, target)
+	before := game.StateHash()
+	if err := game.Submit(
+		player,
+		Input{
+			Revision: view.Revision,
+			Choice:   view.PendingChoice.Options[0],
+		},
+	); err == nil {
+		t.Fatal("Submit() error = nil, want expired Object rejection")
+	}
+	if got := game.StateHash(); got != before {
+		t.Fatalf("StateHash() = %q, want unchanged %q", got, before)
 	}
 }
 
