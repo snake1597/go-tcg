@@ -236,6 +236,17 @@ func (g *Game) submitActionDeclarationChoice(player *model.Player, subject entit
 		if !containsObject(costTargets, weapon) {
 			return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, subject)
 		}
+		_, err := g.validateObjectSacrifice(
+			objectSacrificeRequest{
+				Controller:   player,
+				Object:       weapon,
+				RequiredType: "WEAPON",
+				Cause:        "cost:sacrifice",
+			},
+		)
+		if err != nil {
+			return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, subject)
+		}
 		declaration.Weapon = weapon
 		return g.commitActionDeclaration()
 	default:
@@ -301,6 +312,17 @@ func (g *Game) canCommitActionDeclaration(declaration *actionDeclaration) bool {
 		if !containsObject(costTargets, declaration.Weapon) {
 			return false
 		}
+		_, err := g.validateObjectSacrifice(
+			objectSacrificeRequest{
+				Controller:   declaration.Controller,
+				Object:       declaration.Weapon,
+				RequiredType: "WEAPON",
+				Cause:        "cost:sacrifice",
+			},
+		)
+		if err != nil {
+			return false
+		}
 	}
 	candidate, exists := g.state.Cards[declaration.Source]
 	if !exists || !samePlayer(candidate.Owner, declaration.Controller) || !containsString(candidate.Types, "ACTION") {
@@ -350,11 +372,17 @@ func (g *Game) payActionCost(player *model.Player, payment objectID, cost action
 	if !containsObject(costTargets, payment) {
 		return fmt.Errorf("invalid action cost payment %q", payment)
 	}
-	object := g.state.Objects[payment]
-	delete(g.state.Objects, payment)
-	zones := g.state.Zones[object.Owner.UID]
-	zones.Graveyard = append(zones.Graveyard, object.Card)
-	g.state.Zones[object.Owner.UID] = zones
+	_, err := g.commitObjectSacrifice(
+		objectSacrificeRequest{
+			Controller:   player,
+			Object:       payment,
+			RequiredType: "WEAPON",
+			Cause:        "cost:sacrifice",
+		},
+	)
+	if err != nil {
+		return fmt.Errorf("commit Weapon sacrifice: %w", err)
+	}
 	return nil
 }
 

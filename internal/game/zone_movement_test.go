@@ -69,6 +69,54 @@ func TestCommitObjectAbilityBanishmentRejectsForeignCard(t *testing.T) {
 	}
 }
 
+// TestCommitObjectSacrificeDispatchesSacrificeTrigger 驗證犧牲提交會以獨立 sacrifice event 派發已編譯 trigger，而不誤用 destroy 原因。
+// 輸入為帶有 sacrifice trigger 的受控 Ally；輸出為 sacrifice batch 與 LKI trigger stack 項目；副作用為移除 Object、移動卡牌並建立觸發。
+func TestCommitObjectSacrificeDispatchesSacrificeTrigger(t *testing.T) {
+	game := newActionGame(t)
+	player := model.PlayerOne
+	card := findCard(t, game, player, twoOfHeartsCardID)
+	definitionID := game.state.Cards[card].Definition
+	definition := game.definitions[definitionID]
+	definition.abilities = append(
+		definition.abilities,
+		compiledAbilityDefinition{
+			slot: "ability:e8ygl32jef:front:on-sacrifice",
+			kind: abilityKindTriggered,
+			trigger: &triggerDefinition{
+				event: eventKindSacrifice,
+			},
+		},
+	)
+	game.definitions[definitionID] = definition
+	object := objectID("ally:sacrifice-trigger")
+	game.state.Objects[object] = fieldObject{
+		ID:    object,
+		Card:  card,
+		Owner: player,
+		Types: []string{
+			"ALLY",
+		},
+	}
+	_, err := game.commitObjectSacrifice(
+		objectSacrificeRequest{
+			Controller:   player,
+			Object:       object,
+			RequiredType: "ALLY",
+			Cause:        "ability:sacrifice",
+		},
+	)
+	if err != nil {
+		t.Fatalf("commitObjectSacrifice() error = %v", err)
+	}
+	batch := game.state.Events[len(game.state.Events)-1]
+	if batch.Cause != "ability:sacrifice" || len(batch.Events) != 1 || batch.Events[0].Kind != string(eventKindSacrifice) {
+		t.Fatalf("sacrifice batch = %#v, want independent sacrifice event", batch)
+	}
+	if len(game.state.EffectsStack) != 1 || game.state.EffectsStack[0].Ability == nil || game.state.EffectsStack[0].Ability.Slot != "ability:e8ygl32jef:front:on-sacrifice" || game.state.EffectsStack[0].SourceLKI != card {
+		t.Fatalf("EffectsStack = %#v, want sacrifice trigger with source LKI", game.state.EffectsStack)
+	}
+}
+
 // TestCommitPlayerCardMovesMovesOwnedCardAndRejectsExpiredSource 驗證玩家卡牌移動保留同一張 Card Instance、記錄公開事件，且過期來源被拒絕時不改變權威狀態。
 // 輸入為正式單局中的手牌與後續失效移動請求；輸出為移至墓地的同一張牌與錯誤；副作用為成功時更新區域、追蹤權及事件。
 func TestCommitPlayerCardMovesMovesOwnedCardAndRejectsExpiredSource(t *testing.T) {

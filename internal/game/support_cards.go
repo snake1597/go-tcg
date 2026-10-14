@@ -276,33 +276,6 @@ func (g *Game) retargetAttack(player *model.Player, target objectID) error {
 	return fmt.Errorf("no active attack to retarget")
 }
 
-// sacrificeAllyAndIncreaseSourcePower 犧牲同控制者的另一個 Ally，並讓來源本回合 +2 Power。
-// 輸入為控制者、來源與犧牲目標；輸出為驗證錯誤，成功時移動目標並建立持續效果。
-func (g *Game) sacrificeAllyAndIncreaseSourcePower(player *model.Player, source, sacrifice objectID) error {
-	sourceObject, sourceExists := g.state.Objects[source]
-	sacrificed, sacrificeExists := g.state.Objects[sacrifice]
-	if !sourceExists || !sacrificeExists || source == sacrifice || !samePlayer(sourceObject.Owner, player) || !samePlayer(sacrificed.Owner, player) || !containsString(sourceObject.Types, "ALLY") || !containsString(sacrificed.Types, "ALLY") {
-		return fmt.Errorf("invalid Ally sacrifice")
-	}
-	delete(g.state.Objects, sacrifice)
-	zones := g.state.Zones[player.UID]
-	zones.Graveyard = append(zones.Graveyard, sacrificed.Card)
-	g.state.Zones[player.UID] = zones
-	g.addContinuousEffect(continuousEffect{
-		Source:        source,
-		Controller:    player,
-		Target:        source,
-		Scope:         effectScopeObject,
-		Layer:         effectLayerModifier,
-		PowerLife:     powerLifeModify,
-		ExpiresAtTurn: g.state.Scheduler.TurnNumber + 1,
-		Modifier: continuousModifier{
-			PowerDelta: 2,
-		},
-	})
-	return nil
-}
-
 // enqueueAllyDeath 依已編譯的死亡能力建立持續效果，讓卡牌不需透過 Card ID 分支結算。
 // 輸入為死亡 Ally 的控制者與卡牌實例；輸出為零值，副作用為建立 Ability Instance 並刷新 trigger stack。
 func (g *Game) enqueueAllyDeath(player *model.Player, card cardInstanceID) {

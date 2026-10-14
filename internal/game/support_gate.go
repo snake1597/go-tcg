@@ -106,7 +106,7 @@ func deriveAbilitySupport(definition CardDefinition, ability compiledAbilityDefi
 		}
 	}
 	operations := ability.operations()
-	if len(operations) != len(ability.effects) {
+	if len(operations) < len(ability.effects) {
 		return compiledSupportAbility{}, fmt.Errorf("compiled effects contain an unknown or unmapped primitive")
 	}
 	for _, operation := range operations {
@@ -169,7 +169,7 @@ func isSupportedOperation(operation effectOperationKind) bool {
 		effectOperationSuitedThresholdCounter,
 		effectOperationSuitedThresholdDamage,
 		effectOperationCopyAction,
-		effectOperationSacrificeAllyPower,
+		effectOperationSacrifice,
 		effectOperationRetargetAttack,
 		effectOperationGrantTaunt:
 		return true

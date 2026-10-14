@@ -22,6 +22,56 @@ type playerCardMoveRequest struct {
 	VisibleToAll bool
 }
 
+// objectSacrificeRequest 描述將受控場上 Object 作為規則犧牲的必要條件與可觀察原因。
+// 輸入為控制者、目標、型別限制、排除來源與原因；輸出供共通 sacrifice operation 驗證與提交使用；副作用為零。
+type objectSacrificeRequest struct {
+	Controller     *model.Player
+	Object         objectID
+	RequiredType   string
+	ExcludedObject objectID
+	Cause          string
+}
+
+// validateObjectSacrifice 驗證 Object 的控制權、型別、排除來源與 Card Instance 所有權，尚不改變遊戲狀態。
+// 輸入為犧牲請求；輸出為離場前 Object 或錯誤；副作用為零。
+func (g *Game) validateObjectSacrifice(request objectSacrificeRequest) (fieldObject, error) {
+	if !g.hasPlayer(request.Controller) || request.Object == "" || request.Cause == "" || request.Object == request.ExcludedObject {
+		return fieldObject{}, fmt.Errorf("invalid object sacrifice request")
+	}
+	object, exists := g.state.Objects[request.Object]
+	if !exists || !samePlayer(object.Owner, request.Controller) {
+		return fieldObject{}, fmt.Errorf("sacrifice object is not controlled by player")
+	}
+	if request.RequiredType != "" && !containsString(object.Types, request.RequiredType) {
+		return fieldObject{}, fmt.Errorf("sacrifice object does not have required type %q", request.RequiredType)
+	}
+	card, exists := g.state.Cards[object.Card]
+	if !exists || !samePlayer(card.Owner, object.Owner) {
+		return fieldObject{}, fmt.Errorf("sacrifice object card is not owned by object controller")
+	}
+	return object, nil
+}
+
+// commitObjectSacrifice 原子移除已驗證的 Object、將 Card Instance 放入 owner Graveyard，並記錄 sacrifice 規則原因。
+// 輸入為犧牲請求；輸出為離場前 Object 或錯誤；成功時更新 Field、Graveyard 與公開事件，失敗時不改變遊戲狀態。
+func (g *Game) commitObjectSacrifice(request objectSacrificeRequest) (fieldObject, error) {
+	object, err := g.validateObjectSacrifice(request)
+	if err != nil {
+		return fieldObject{}, fmt.Errorf("validate object sacrifice: %w", err)
+	}
+	zones := g.state.Zones[object.Owner.UID]
+	zones.Graveyard = append(zones.Graveyard, object.Card)
+	delete(g.state.Objects, request.Object)
+	g.state.Zones[object.Owner.UID] = zones
+	g.recordPublicEvent(request.Controller, request.Cause, "sacrifice", object.Card)
+	batch := g.state.Events[len(g.state.Events)-1]
+	triggers := g.triggeredAbilities(batch)
+	g.flushTriggers(
+		triggers,
+	)
+	return object, nil
+}
+
 // commitObjectAbilityBanishment 驗證控制者、場上來源與卡牌擁有者後，原子移除 Object 並將其 Card Instance 放入擁有者的 Banishment。
 // 輸入為啟動能力的控制者與場上來源；輸出為離場前 Object 或錯誤；成功時更新 Objects、Banishment 與公開事件，失敗時不改變遊戲狀態。
 func (g *Game) commitObjectAbilityBanishment(player *model.Player, source objectID) (fieldObject, error) {

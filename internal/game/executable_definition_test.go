@@ -252,6 +252,35 @@ func TestCompileImpactHammerTriggeredDefinition(t *testing.T) {
 	}
 }
 
+// TestCompileSacrificeTriggeredDefinition 驗證 sacrifice 可作為獨立的 triggered eventKind，與 destroy 保持不同語意。
+// 輸入為帶有 sacrifice trigger 的編寫定義；輸出為可被 runtime 派發的已編譯 trigger；副作用為零。
+func TestCompileSacrificeTriggeredDefinition(t *testing.T) {
+	definition := CardDefinition{
+		id: pepperedChefCardID,
+		face: CardFace{
+			id: CardFaceID("face:" + string(pepperedChefCardID) + ":front"),
+		},
+	}
+	abilities, err := compileAbilityDefinitions(
+		definition,
+		[]authoredAbilityDefinition{
+			{
+				slot: "ability:lcy0lw1veb:front:on-enter-sacrifice-power",
+				kind: abilityKindTriggered,
+				trigger: &triggerDefinition{
+					event: eventKindSacrifice,
+				},
+			},
+		},
+	)
+	if err != nil {
+		t.Fatalf("compileAbilityDefinitions() error = %v", err)
+	}
+	if len(abilities) != 1 || abilities[0].trigger == nil || abilities[0].trigger.event != eventKindSacrifice {
+		t.Fatalf("compiled abilities = %#v, want sacrifice trigger", abilities)
+	}
+}
+
 // TestCompileBulwarkSwordStaticDefinition 驗證 Bulwark Sword 的 class bonus 與 wield cost 由中央 static evaluator 消費。
 // 輸入為 Bulwark Sword 卡牌定義；輸出為 stable static slot 與 +1 Power/+2 Reserve modifier，副作用為零。
 func TestCompileBulwarkSwordStaticDefinition(t *testing.T) {

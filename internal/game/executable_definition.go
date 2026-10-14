@@ -83,6 +83,7 @@ type eventKind string
 const (
 	eventKindWield              eventKind = "wield"
 	eventKindDestroy            eventKind = "destroy"
+	eventKindSacrifice          eventKind = "sacrifice"
 	eventKindCardistryActivated eventKind = "cardistry-activated"
 	eventKindEnter              eventKind = "enter"
 	eventKindAttack             eventKind = "attack"
@@ -917,6 +918,7 @@ func pepperedChefAbilities() []authoredAbilityDefinition {
 					kind: effectKindChooseObject,
 					chooseObject: &chooseObjectEffectDefinition{
 						selector: selectorOtherControlledAllies,
+						binding:  "sacrifice-target",
 					},
 				},
 				{
@@ -1474,7 +1476,7 @@ func compileAbilityDefinitions(definition CardDefinition, authored []authoredAbi
 			if ability.timing != "" || ability.usage != "" || ability.reduction != "" || ability.baseCost != 0 || ability.classCostReduction != 0 || ability.target != nil || ability.cost != nil {
 				return nil, fmt.Errorf("%s: triggered declaration payload unsupported", context)
 			}
-			if ability.trigger == nil || (ability.trigger.event != eventKindWield && ability.trigger.event != eventKindDestroy && ability.trigger.event != eventKindCardistryActivated && ability.trigger.event != eventKindEnter && ability.trigger.event != eventKindAttack && ability.trigger.event != eventKindSetup) {
+			if ability.trigger == nil || (ability.trigger.event != eventKindWield && ability.trigger.event != eventKindDestroy && ability.trigger.event != eventKindSacrifice && ability.trigger.event != eventKindCardistryActivated && ability.trigger.event != eventKindEnter && ability.trigger.event != eventKindAttack && ability.trigger.event != eventKindSetup) {
 				return nil, fmt.Errorf("%s: trigger.event unsupported", context)
 			}
 			if ability.trigger.condition != "" && ability.trigger.condition != triggerConditionClassMatch {
@@ -1518,7 +1520,7 @@ func compileAbilityDefinitions(definition CardDefinition, authored []authoredAbi
 		default:
 			return nil, fmt.Errorf("%s: unknown kind %q", context, ability.kind)
 		}
-		if ability.kind != abilityKindStatic && ability.kind != abilityKindReplacement && ability.kind != abilityKindPermission && ability.kind != abilityKindKeyword && ability.kind != abilityKindAlly && !(ability.kind == abilityKindTriggered && ability.trigger != nil && ability.trigger.event == eventKindDestroy) && len(ability.effects) == 0 {
+		if ability.kind != abilityKindStatic && ability.kind != abilityKindReplacement && ability.kind != abilityKindPermission && ability.kind != abilityKindKeyword && ability.kind != abilityKindAlly && !(ability.kind == abilityKindTriggered && ability.trigger != nil && (ability.trigger.event == eventKindDestroy || ability.trigger.event == eventKindSacrifice)) && len(ability.effects) == 0 {
 			return nil, fmt.Errorf("%s: effects must not be empty", context)
 		}
 		result := compiledAbilityDefinition{
@@ -2227,7 +2229,22 @@ func (ability compiledAbilityDefinition) operations() []effectOperation {
 			})
 		case effectKindSacrificeAllyPower:
 			operations = append(operations, effectOperation{
-				Kind: effectOperationSacrificeAllyPower,
+				Kind:           effectOperationSacrifice,
+				TargetBinding:  "sacrifice-target",
+				RequiredType:   "ALLY",
+				ExcludedObject: "",
+			})
+			operations = append(operations, effectOperation{
+				Kind:     effectOperationContinuousModifier,
+				Duration: modifierDurationEndOfTurn,
+				ContinuousEffect: continuousEffect{
+					Scope:     effectScopeObject,
+					Layer:     effectLayerModifier,
+					PowerLife: powerLifeModify,
+					Modifier: continuousModifier{
+						PowerDelta: 2,
+					},
+				},
 			})
 		case effectKindGrantTaunt:
 			operations = append(operations, effectOperation{

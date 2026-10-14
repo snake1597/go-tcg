@@ -61,8 +61,27 @@ func TestActionCardsUsePlayerViewDeclarationAndResolveToGraveyard(t *testing.T) 
 	}); err != nil {
 		t.Fatalf("Submit() declaration error = %v", err)
 	}
-	selectPendingChoiceSubject(t, game, player, entityID("champion:"+model.PlayerTwo.UID))
+	championTarget := entityID(
+		"champion:" + model.PlayerTwo.UID,
+	)
+	selectPendingChoiceSubject(
+		t,
+		game,
+		player,
+		championTarget,
+	)
 	selectPendingChoice(t, game, player, 0)
+	if !hasGameEvent(game, "sacrifice") {
+		t.Fatalf("events = %#v, want Weapon sacrifice event", game.state.Events)
+	}
+	for _, batch := range game.state.Events {
+		if len(batch.Events) != 1 || batch.Events[0].Kind != "sacrifice" {
+			continue
+		}
+		if batch.Cause != "cost:sacrifice" {
+			t.Fatalf("sacrifice cause = %q, want cost:sacrifice", batch.Cause)
+		}
+	}
 	if len(game.state.EffectsStack) != 1 || game.state.EffectsStack[0].Ability == nil {
 		t.Fatalf("EffectsStack = %#v, want one Ability Instance", game.state.EffectsStack)
 	}
@@ -282,7 +301,15 @@ func TestStraightFlareCountsDistinctPrintedSuitedReserveCosts(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("Submit() declaration error = %v", err)
 	}
-	selectPendingChoiceSubject(t, game, player, entityID("champion:"+model.PlayerTwo.UID))
+	championTarget := entityID(
+		"champion:" + model.PlayerTwo.UID,
+	)
+	selectPendingChoiceSubject(
+		t,
+		game,
+		player,
+		championTarget,
+	)
 	passOpportunityRound(t, game, player)
 	if got := game.state.Champions[model.PlayerTwo.UID].Damage; got != 3 {
 		t.Fatalf("target damage = %d, want 3 from two distinct printed costs plus one", got)
@@ -307,7 +334,15 @@ func TestActionFizzleMovesSourceToGraveyardWithoutUndoingCosts(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("Submit() declaration error = %v", err)
 	}
-	selectPendingChoiceSubject(t, game, player, entityID("champion:"+model.PlayerTwo.UID))
+	championTarget := entityID(
+		"champion:" + model.PlayerTwo.UID,
+	)
+	selectPendingChoiceSubject(
+		t,
+		game,
+		player,
+		championTarget,
+	)
 	selectPendingChoice(t, game, player, 0)
 	delete(game.state.Champions, model.PlayerTwo.UID)
 	passOpportunityRound(t, game, player)
@@ -316,6 +351,64 @@ func TestActionFizzleMovesSourceToGraveyardWithoutUndoingCosts(t *testing.T) {
 	}
 	if got := len(game.state.EffectsStack); got != 0 {
 		t.Fatalf("EffectsStack after fizzle = %#v, want empty", game.state.EffectsStack)
+	}
+}
+
+// TestActionSacrificeCostRejectsInvalidWeaponWithoutMutation 驗證 Weapon 犧牲費用在最終提交前失效時，整個宣告不會留下來源或 Reserve 移動。
+// 輸入為已選目標、但 Card owner 被改變的 Weapon 費用選擇；輸出為拒絕錯誤與不變 state hash；副作用為零。
+func TestActionSacrificeCostRejectsInvalidWeaponWithoutMutation(t *testing.T) {
+	game := newActionGame(t)
+	player := model.PlayerOne
+	view, err := game.PlayerView(player)
+	if err != nil {
+		t.Fatalf("PlayerView() error = %v", err)
+	}
+	action := actionByCardName(t, view, "Blazing Throw")
+	if err := game.Submit(
+		player,
+		Input{
+			Revision: view.Revision,
+			Action:   action.Handle,
+			Reserve:  reserveHandles(action),
+		},
+	); err != nil {
+		t.Fatalf("Submit() declaration error = %v", err)
+	}
+	championTarget := entityID(
+		"champion:" + model.PlayerTwo.UID,
+	)
+	selectPendingChoiceSubject(
+		t,
+		game,
+		player,
+		championTarget,
+	)
+	weaponChoice := game.state.Knowledge.Choice
+	if weaponChoice == nil || len(weaponChoice.Options) != 1 {
+		t.Fatalf("Weapon choice = %#v, want one option", weaponChoice)
+	}
+	var weaponHandle ViewHandle
+	var weapon objectID
+	for handle, subject := range weaponChoice.Options {
+		weaponHandle = handle
+		weapon = objectID(subject)
+	}
+	weaponObject := game.state.Objects[weapon]
+	weaponCard := game.state.Cards[weaponObject.Card]
+	weaponCard.Owner = model.PlayerTwo
+	game.state.Cards[weaponObject.Card] = weaponCard
+	before := game.StateHash()
+	if err := game.Submit(
+		player,
+		Input{
+			Revision: game.state.Revision,
+			Choice:   weaponHandle,
+		},
+	); err == nil {
+		t.Fatal("Submit() error = nil, want invalid Weapon sacrifice rejection")
+	}
+	if got := game.StateHash(); got != before {
+		t.Fatalf("StateHash() = %q, want unchanged %q", got, before)
 	}
 }
 

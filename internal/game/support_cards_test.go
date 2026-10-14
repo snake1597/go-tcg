@@ -458,7 +458,13 @@ func TestSmokeBombsTrumpSetAndPepperedChefApplyTemporaryEffects(t *testing.T) {
 		t.Fatalf("Submit() Smoke Bombs error = %v", err)
 	}
 	game.resolveTopEffectStack()
-	selectPendingChoiceSubject(t, game, player, entityID(target))
+	targetSubject := entityID(target)
+	selectPendingChoiceSubject(
+		t,
+		game,
+		player,
+		targetSubject,
+	)
 	game.resolveTopEffectStack()
 	if !game.characteristicsFor(target).Stealth {
 		t.Fatal("Smoke Bombs did not grant stealth")
@@ -469,9 +475,16 @@ func TestSmokeBombsTrumpSetAndPepperedChefApplyTemporaryEffects(t *testing.T) {
 	game.state.Cards[chefCard] = chefDefinition
 	chef := objectID("ally:chef")
 	game.state.Objects[chef] = fieldObject{ID: chef, Card: chefCard, Owner: player, Types: []string{"ALLY"}}
-	if err := game.sacrificeAllyAndIncreaseSourcePower(player, chef, target); err != nil {
-		t.Fatalf("sacrificeAllyAndIncreaseSourcePower() error = %v", err)
-	}
+	game.enqueueEnterAbilities(player, chef, chefCard)
+	game.resolveTopEffectStack()
+	chefTarget := entityID(target)
+	selectPendingChoiceSubject(
+		t,
+		game,
+		player,
+		chefTarget,
+	)
+	game.resolveTopEffectStack()
 	if got := game.characteristicsFor(chef).Power; got != game.state.Cards[chefCard].Power+2 {
 		t.Fatalf("Peppered Chef power = %d, want +2", got)
 	}
@@ -540,6 +553,58 @@ func TestPepperedChefOffersOnlyOtherControlledAlliesAndCanBeSkipped(t *testing.T
 			t.Fatalf("Peppered Chef target = %q, want %q", target, legal)
 		}
 	}
+}
+
+// TestPepperedChefSacrificeMovesObjectAndAppliesPower 驗證 Peppered Chef 的選擇完成後透過共通 sacrifice operation 使其他 Ally 離場，並在成功後才套用力量加成。
+// 輸入為場上 Chef、另一受控 Ally 與其 PendingChoice；輸出為 Graveyard、sacrifice event 與 +2 Power；副作用為推進能力結算。
+func TestPepperedChefSacrificeMovesObjectAndAppliesPower(t *testing.T) {
+	game := newActionGame(t)
+	player := model.PlayerOne
+	chefCard := findCard(t, game, player, pepperedChefCardID)
+	chef := objectID("ally:chef-sacrifice")
+	targetCard := findCard(t, game, player, twoOfHeartsCardID)
+	target := objectID("ally:chef-sacrifice-target")
+	game.state.Objects[chef] = fieldObject{
+		ID:    chef,
+		Card:  chefCard,
+		Owner: player,
+		Types: []string{
+			"ALLY",
+		},
+	}
+	game.state.Objects[target] = fieldObject{
+		ID:    target,
+		Card:  targetCard,
+		Owner: player,
+		Types: []string{
+			"ALLY",
+		},
+	}
+	game.enqueueEnterAbilities(player, chef, chefCard)
+	game.resolveTopEffectStack()
+	targetSubject := entityID(target)
+	selectPendingChoiceSubject(
+		t,
+		game,
+		player,
+		targetSubject,
+	)
+	game.resolveTopEffectStack()
+	if _, exists := game.state.Objects[target]; exists {
+		t.Fatal("sacrificed Ally remained on the field")
+	}
+	if cardIndex(game.state.Zones[player.UID].Graveyard, targetCard) < 0 {
+		t.Fatalf("Graveyard = %#v, want sacrificed card %q", game.state.Zones[player.UID].Graveyard, targetCard)
+	}
+	if got := game.characteristicsFor(chef).Power; got != game.state.Cards[chefCard].Power+2 {
+		t.Fatalf("Peppered Chef Power = %d, want %d", got, game.state.Cards[chefCard].Power+2)
+	}
+	for _, batch := range game.state.Events {
+		if len(batch.Events) == 1 && batch.Events[0].Kind == "sacrifice" && batch.Cause == "ability:sacrifice" {
+			return
+		}
+	}
+	t.Fatalf("events = %#v, want ability:sacrifice event", game.state.Events)
 }
 
 // TestArthurEnterAbilityUsesCompiledTrigger 驗證 Arthur 進場能力由 compiled slot 建立並結算。

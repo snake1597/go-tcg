@@ -46,7 +46,7 @@ const (
 	effectOperationSuitedThresholdCounter effectOperationKind = "suited_threshold_counter"
 	effectOperationSuitedThresholdDamage  effectOperationKind = "suited_threshold_damage"
 	effectOperationCopyAction             effectOperationKind = "copy_action"
-	effectOperationSacrificeAllyPower     effectOperationKind = "sacrifice_ally_power"
+	effectOperationSacrifice              effectOperationKind = "sacrifice"
 	effectOperationRetargetAttack         effectOperationKind = "retarget_attack"
 	effectOperationGrantTaunt             effectOperationKind = "grant_taunt"
 )
@@ -66,6 +66,8 @@ type effectOperation struct {
 	CardZone                cardZone            `json:"card_zone,omitempty"`
 	CardSelection           cardSelectionSpec   `json:"card_selection,omitempty"`
 	Binding                 resolutionBinding   `json:"binding,omitempty"`
+	RequiredType            string              `json:"required_type,omitempty"`
+	ExcludedObject          objectID            `json:"excluded_object,omitempty"`
 	Selector                selectorKind        `json:"selector,omitempty"`
 	Duration                modifierDuration    `json:"duration,omitempty"`
 	RequiresRetargetSuccess bool                `json:"requires_retarget_success,omitempty"`
@@ -238,12 +240,21 @@ func (g *Game) resolveAbility(instance abilityInstance) {
 			)
 			g.pushAbility(copied)
 			return
-		case effectOperationSacrificeAllyPower:
-			if err := g.sacrificeAllyAndIncreaseSourcePower(
-				instance.Controller,
-				instance.Target,
-				target,
-			); err != nil {
+		case effectOperationSacrifice:
+			excludedObject := operation.ExcludedObject
+			if excludedObject == "" {
+				excludedObject = instance.Target
+			}
+			_, err := g.commitObjectSacrifice(
+				objectSacrificeRequest{
+					Controller:     instance.Controller,
+					Object:         target,
+					RequiredType:   operation.RequiredType,
+					ExcludedObject: excludedObject,
+					Cause:          "ability:sacrifice",
+				},
+			)
+			if err != nil {
 				return
 			}
 		case effectOperationRetargetAttack:
