@@ -687,7 +687,10 @@ func TestDuchessCopyCanBeDeclinedAndRuntimeCopyIsDestroyed(t *testing.T) {
 	player := model.PlayerOne
 	source := findCard(t, game, player, blazingThrowCardID)
 	moveCardToGraveyard(t, game, player, source)
-	game.grantCardTracking(player, entityID(source))
+	game.grantCardTracking(
+		player,
+		entityID(source),
+	)
 	fillMemory(t, game, player, 6, source)
 	game.advanceKnowledgeRevision()
 	game.captureReplayInitialState()
@@ -951,6 +954,64 @@ func TestDuchessCopiedActionFizzlesAfterTargetLeaves(t *testing.T) {
 	}
 	if err := replay.Verify(); err != nil {
 		t.Fatalf("Replay().Verify() error = %v", err)
+	}
+}
+
+// TestCopyActionUsesCopiedActionTargetSelector 驗證 runtime copy 只提供被複製 Action 當前允許的目標。
+// 輸入為墓地中需重導 attack 的 Trump Set；輸出驗證沒有 attack 時不產生目標選擇；副作用為結算一次 copy_action。
+func TestCopyActionUsesCopiedActionTargetSelector(t *testing.T) {
+	game := newActionGameWithSource(
+		t,
+		trumpSetCardID,
+	)
+	player := model.PlayerOne
+	source := cardInstanceID("")
+	for _, card := range game.state.Zones[player.UID].Hand {
+		if game.state.Cards[card].Definition == trumpSetCardID {
+			source = card
+			break
+		}
+	}
+	if source == "" {
+		t.Fatal("fixture has no Trump Set in hand")
+	}
+	moveCardToGraveyard(
+		t,
+		game,
+		player,
+		source,
+	)
+	selection := cardSelectionSpec{
+		Zone:         cardZoneGraveyard,
+		RequiredType: "ACTION",
+	}
+	instance := abilityInstance{
+		Controller: player,
+		Bindings: map[resolutionBinding]entityID{
+			"copy-source": entityID(source),
+		},
+		Operations: []effectOperation{
+			{
+				Kind:          effectOperationCopyAction,
+				Binding:       "copy-source",
+				CardSelection: selection,
+			},
+		},
+	}
+
+	game.resolveAbility(instance)
+	if len(game.state.EffectsStack) != 1 {
+		t.Fatalf("EffectsStack = %#v, want copied Action", game.state.EffectsStack)
+	}
+	game.resolveTopEffectStack()
+
+	if game.state.ResolutionFrame != nil || len(game.state.EffectsStack) != 0 {
+		t.Fatalf("copy state = frame %#v, stack %#v; want no target choice without an attack", game.state.ResolutionFrame, game.state.EffectsStack)
+	}
+	for card := range game.state.Cards {
+		if len(card) >= 5 && card[:5] == "copy:" {
+			t.Fatalf("runtime copy %q remains after unavailable target selector", card)
+		}
 	}
 }
 

@@ -230,9 +230,17 @@ func (g *Game) resolveAbility(instance abilityInstance) {
 			if err != nil {
 				return
 			}
+			copiedDefinition, exists := g.compiledAction(copied.Source)
+			if !exists {
+				g.destroyRuntimeCopy(copied.Source)
+				return
+			}
 			chooseTarget := effectOperation{
-				Kind:    effectOperationChoose,
-				Options: g.legalTargets(),
+				Kind: effectOperationChoose,
+				Options: g.actionTargets(
+					instance.Controller,
+					copiedDefinition,
+				),
 			}
 			copied.Operations = append(
 				[]effectOperation{
