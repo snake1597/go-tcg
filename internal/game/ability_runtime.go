@@ -41,14 +41,12 @@ const (
 	effectOperationDiscard                effectOperationKind = "discard"
 	effectOperationDeploy                 effectOperationKind = "deploy"
 	// effectOperationPutAllyOnField 以通用 ability runtime 結算被 play 的 Ally source。
-	effectOperationPutAllyOnField         effectOperationKind = "put_ally_on_field"
-	effectOperationRestGrantImmortality   effectOperationKind = "rest_grant_immortality"
-	effectOperationSuitedThresholdCounter effectOperationKind = "suited_threshold_counter"
-	effectOperationSuitedThresholdDamage  effectOperationKind = "suited_threshold_damage"
-	effectOperationCopyAction             effectOperationKind = "copy_action"
-	effectOperationSacrifice              effectOperationKind = "sacrifice"
-	effectOperationRetargetAttack         effectOperationKind = "retarget_attack"
-	effectOperationGrantTaunt             effectOperationKind = "grant_taunt"
+	effectOperationPutAllyOnField       effectOperationKind = "put_ally_on_field"
+	effectOperationRestGrantImmortality effectOperationKind = "rest_grant_immortality"
+	effectOperationCopyAction           effectOperationKind = "copy_action"
+	effectOperationSacrifice            effectOperationKind = "sacrifice"
+	effectOperationRetargetAttack       effectOperationKind = "retarget_attack"
+	effectOperationGrantTaunt           effectOperationKind = "grant_taunt"
 )
 
 // effectOperation 只保存可序列化的操作資料，讓能力與待選狀態可以重播。
@@ -215,7 +213,11 @@ func (g *Game) resolveAbility(instance abilityInstance) {
 				"draw-to-memory",
 			)
 		case effectOperationCounter:
-			if g.addCounter(target, operation.Counter, operation.Amount) {
+			amount := operation.Amount
+			if operation.Value != nil {
+				amount = g.evaluateValue(*operation.Value, instance.Controller)
+			}
+			if amount > 0 && g.addCounter(target, operation.Counter, amount) {
 				g.recordPublicEvent(instance.Controller, "ability", "counter", instance.SourceLKI)
 			}
 		case effectOperationCopyAction:
@@ -278,24 +280,6 @@ func (g *Game) resolveAbility(instance abilityInstance) {
 			g.resolveAllyEffectSource(instance.Controller, instance.Source)
 		case effectOperationRestGrantImmortality:
 			g.restAndGrantTemporaryImmortality(target)
-		case effectOperationSuitedThresholdCounter:
-			amount := suitedThresholdAmount(g.suitedReserveTotal(instance.Controller))
-			if amount > 0 && g.addCounter(target, "BUFF", amount) {
-				g.recordPublicEvent(instance.Controller, "ability", "counter", instance.SourceLKI)
-			}
-		case effectOperationSuitedThresholdDamage:
-			amount := suitedThresholdAmount(g.suitedReserveTotal(instance.Controller)) * 2
-			if amount > 0 && g.isLegalTarget(target) {
-				continuation := instance
-				continuation.Operations = append(
-					[]effectOperation(nil),
-					instance.Operations[operationIndex+1:]...,
-				)
-				if !g.damageNonCombat(target, amount, instance.SourceLKI, &continuation) {
-					completed = false
-					return
-				}
-			}
 		case effectOperationGrantTaunt:
 			g.grantTemporaryTaunt(instance.Controller, instance.Source)
 		case effectOperationMoveSourceToGraveyard:

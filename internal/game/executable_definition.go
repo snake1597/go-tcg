@@ -64,8 +64,6 @@ const (
 	effectKindCardistryDiscount      authoredEffectKind = "cardistry-discount"
 	effectKindPreventNonCombatDamage authoredEffectKind = "prevent-non-combat-damage"
 	effectKindRestGrantImmortality   authoredEffectKind = "rest-grant-immortality"
-	effectKindSuitedThresholdCounter authoredEffectKind = "suited-threshold-counter"
-	effectKindSuitedThresholdDamage  authoredEffectKind = "suited-threshold-damage"
 	effectKindSacrificeAllyPower     authoredEffectKind = "sacrifice-ally-power"
 	effectKindGrantTaunt             authoredEffectKind = "grant-taunt"
 )
@@ -117,19 +115,23 @@ type targetSelector struct {
 type valueKind string
 
 const (
-	valueConstant             valueKind = "constant"
-	valueAdd                  valueKind = "add"
-	valueDistinctPrintedCosts valueKind = "distinct-printed-costs"
+	valueConstant               valueKind = "constant"
+	valueAdd                    valueKind = "add"
+	valueCount                  valueKind = "count"
+	valueSumPrintedReserveCosts valueKind = "sum-printed-reserve-costs"
+	valueThreshold              valueKind = "threshold"
+	valueDistinctPrintedCosts   valueKind = "distinct-printed-costs"
 )
 
 // valueExpression 是可序列化的整數運算樹；左右運算元僅用於加法。
 type valueExpression struct {
-	Kind     valueKind        `json:"kind"`
-	Constant int              `json:"constant,omitempty"`
-	Left     *valueExpression `json:"left,omitempty"`
-	Right    *valueExpression `json:"right,omitempty"`
-	Selector selectorKind     `json:"selector,omitempty"`
-	Player   abilityReference `json:"player,omitempty"`
+	Kind       valueKind        `json:"kind"`
+	Constant   int              `json:"constant,omitempty"`
+	Left       *valueExpression `json:"left,omitempty"`
+	Right      *valueExpression `json:"right,omitempty"`
+	Selector   selectorKind     `json:"selector,omitempty"`
+	Player     abilityReference `json:"player,omitempty"`
+	Multiplier int              `json:"multiplier,omitempty"`
 }
 
 type drawEffectDefinition struct {
@@ -148,7 +150,7 @@ type deployEffectDefinition struct {
 
 type counterEffectDefinition struct {
 	counter       string
-	amount        int
+	amount        valueExpression
 	targetBinding resolutionBinding
 }
 
@@ -159,8 +161,9 @@ type modifierEffectDefinition struct {
 }
 
 type damageEffectDefinition struct {
-	target abilityReference
-	amount valueExpression
+	target        abilityReference
+	targetBinding resolutionBinding
+	amount        valueExpression
 }
 
 type actionCostKind string
@@ -605,7 +608,10 @@ func twoOfSpadesAbilities() []authoredAbilityDefinition {
 					kind: effectKindCounter,
 					counter: &counterEffectDefinition{
 						counter: "BUFF",
-						amount:  1,
+						amount: valueExpression{
+							Kind:     valueConstant,
+							Constant: 1,
+						},
 					},
 				},
 			},
@@ -839,7 +845,19 @@ func noireAbilities() []authoredAbilityDefinition {
 			},
 			effects: []authoredEffectDefinition{
 				{
-					kind: effectKindSuitedThresholdCounter,
+					kind: effectKindCounter,
+					counter: &counterEffectDefinition{
+						counter: "BUFF",
+						amount: valueExpression{
+							Kind: valueThreshold,
+							Left: &valueExpression{
+								Kind:     valueSumPrintedReserveCosts,
+								Selector: selectorControlledSuited,
+								Player:   referenceController,
+							},
+							Multiplier: 1,
+						},
+					},
 				},
 			},
 		},
@@ -944,10 +962,23 @@ func rougeAbilities() []authoredAbilityDefinition {
 					kind: effectKindChooseObject,
 					chooseObject: &chooseObjectEffectDefinition{
 						selector: selectorUnits,
+						binding:  "damage-target",
 					},
 				},
 				{
-					kind: effectKindSuitedThresholdDamage,
+					kind: effectKindDamage,
+					damage: &damageEffectDefinition{
+						targetBinding: "damage-target",
+						amount: valueExpression{
+							Kind: valueThreshold,
+							Left: &valueExpression{
+								Kind:     valueSumPrintedReserveCosts,
+								Selector: selectorControlledSuited,
+								Player:   referenceController,
+							},
+							Multiplier: 2,
+						},
+					},
 				},
 			},
 		},
@@ -1610,8 +1641,19 @@ func compileAbilityDefinitions(definition CardDefinition, authored []authoredAbi
 				if ability.kind == abilityKindTriggered {
 					expectedTarget = referenceEventTarget
 				}
-				if effect.damage.target != expectedTarget {
+				if effect.damage.targetBinding == "" && effect.damage.target != expectedTarget {
 					return nil, fmt.Errorf("%s: %s.damage.target has wrong reference %q", context, field, effect.damage.target)
+				}
+				if effect.damage.targetBinding != "" {
+					if ability.kind != abilityKindTriggered {
+						return nil, fmt.Errorf("%s: %s.damage.targetBinding requires a triggered ability", context, field)
+					}
+					if effect.damage.target != "" {
+						return nil, fmt.Errorf("%s: %s.damage target and targetBinding are mutually exclusive", context, field)
+					}
+					if _, exists := objectBindings[effect.damage.targetBinding]; !exists {
+						return nil, fmt.Errorf("%s: %s.damage.targetBinding %q has no preceding Object choice", context, field, effect.damage.targetBinding)
+					}
 				}
 				if err := validateValueExpression(effect.damage.amount); err != nil {
 					return nil, fmt.Errorf("%s: %s.damage.amount: %w", context, field, err)
@@ -1619,8 +1661,9 @@ func compileAbilityDefinitions(definition CardDefinition, authored []authoredAbi
 				result.effects = append(result.effects, compiledEffect{
 					kind: effectKindDamage,
 					damage: damageEffectDefinition{
-						target: effect.damage.target,
-						amount: cloneValueExpression(effect.damage.amount),
+						target:        effect.damage.target,
+						targetBinding: effect.damage.targetBinding,
+						amount:        cloneValueExpression(effect.damage.amount),
 					},
 				})
 			case effectKindChooseCard:
@@ -1684,8 +1727,11 @@ func compileAbilityDefinitions(definition CardDefinition, authored []authoredAbi
 					deploy: *effect.deploy,
 				})
 			case effectKindCounter:
-				if ability.kind != abilityKindCardistry || effect.counter == nil || effect.counter.counter != "BUFF" || effect.counter.amount != 1 {
-					return nil, fmt.Errorf("%s: %s.counter requires exactly one BUFF counter", context, field)
+				if (ability.kind != abilityKindCardistry && ability.kind != abilityKindTriggered) || effect.counter == nil || effect.counter.counter != "BUFF" {
+					return nil, fmt.Errorf("%s: %s.counter requires a BUFF counter for Cardistry or triggered", context, field)
+				}
+				if err := validateValueExpression(effect.counter.amount); err != nil {
+					return nil, fmt.Errorf("%s: %s.counter.amount: %w", context, field, err)
 				}
 				if effect.counter.targetBinding != "" {
 					if _, exists := objectBindings[effect.counter.targetBinding]; !exists {
@@ -1761,7 +1807,7 @@ func compileAbilityDefinitions(definition CardDefinition, authored []authoredAbi
 				result.effects = append(result.effects, compiledEffect{
 					kind: effectKindPreventNonCombatDamage,
 				})
-			case effectKindRestGrantImmortality, effectKindSuitedThresholdCounter, effectKindSuitedThresholdDamage, effectKindSacrificeAllyPower, effectKindGrantTaunt:
+			case effectKindRestGrantImmortality, effectKindSacrificeAllyPower, effectKindGrantTaunt:
 				if ability.kind != abilityKindTriggered || ability.trigger == nil || ability.trigger.event != eventKindEnter {
 					return nil, fmt.Errorf("%s: %s.kind requires enter trigger", context, field)
 				}
@@ -2082,11 +2128,11 @@ func validateValueNode(value *valueExpression, path map[*valueExpression]bool, d
 	defer delete(path, value)
 	switch value.Kind {
 	case valueConstant:
-		if value.Constant < 0 || value.Left != nil || value.Right != nil || value.Selector != "" || value.Player != "" {
+		if value.Constant < 0 || value.Left != nil || value.Right != nil || value.Selector != "" || value.Player != "" || value.Multiplier != 0 {
 			return fmt.Errorf("invalid constant payload")
 		}
 	case valueAdd:
-		if value.Left == nil || value.Right == nil || value.Constant != 0 || value.Selector != "" || value.Player != "" {
+		if value.Left == nil || value.Right == nil || value.Constant != 0 || value.Selector != "" || value.Player != "" || value.Multiplier != 0 {
 			return fmt.Errorf("add requires exactly two operands")
 		}
 		if err := validateValueNode(value.Left, path, depth+1); err != nil {
@@ -2095,9 +2141,16 @@ func validateValueNode(value *valueExpression, path map[*valueExpression]bool, d
 		if err := validateValueNode(value.Right, path, depth+1); err != nil {
 			return fmt.Errorf("right: %w", err)
 		}
-	case valueDistinctPrintedCosts:
-		if value.Selector != selectorControlledSuited || value.Player != referenceController || value.Constant != 0 || value.Left != nil || value.Right != nil {
-			return fmt.Errorf("distinct printed costs requires controlled-suited selector and controller reference")
+	case valueCount, valueSumPrintedReserveCosts, valueDistinctPrintedCosts:
+		if value.Selector != selectorControlledSuited || value.Player != referenceController || value.Constant != 0 || value.Left != nil || value.Right != nil || value.Multiplier != 0 {
+			return fmt.Errorf("%s requires controlled-suited selector and controller reference", value.Kind)
+		}
+	case valueThreshold:
+		if value.Left == nil || value.Right != nil || value.Constant != 0 || value.Selector != "" || value.Player != "" || value.Multiplier <= 0 {
+			return fmt.Errorf("threshold requires one operand and positive multiplier")
+		}
+		if err := validateValueNode(value.Left, path, depth+1); err != nil {
+			return fmt.Errorf("threshold input: %w", err)
 		}
 	default:
 		return fmt.Errorf("unknown value kind %q", value.Kind)
@@ -2141,6 +2194,7 @@ func (ability compiledAbilityDefinition) operations() []effectOperation {
 			operations = append(operations, effectOperation{
 				Kind:            effectOperationDamage,
 				TargetReference: effect.damage.target,
+				TargetBinding:   effect.damage.targetBinding,
 				Value:           &amount,
 			})
 		case effectKindChooseCard:
@@ -2166,11 +2220,12 @@ func (ability compiledAbilityDefinition) operations() []effectOperation {
 				Binding: effect.deploy.binding,
 			})
 		case effectKindCounter:
+			amount := cloneValueExpression(effect.counter.amount)
 			operations = append(operations, effectOperation{
 				Kind:          effectOperationCounter,
 				TargetBinding: effect.counter.targetBinding,
 				Counter:       effect.counter.counter,
-				Amount:        effect.counter.amount,
+				Value:         &amount,
 			})
 		case effectKindModifier:
 			operations = append(operations, effectOperation{
@@ -2218,14 +2273,6 @@ func (ability compiledAbilityDefinition) operations() []effectOperation {
 		case effectKindRestGrantImmortality:
 			operations = append(operations, effectOperation{
 				Kind: effectOperationRestGrantImmortality,
-			})
-		case effectKindSuitedThresholdCounter:
-			operations = append(operations, effectOperation{
-				Kind: effectOperationSuitedThresholdCounter,
-			})
-		case effectKindSuitedThresholdDamage:
-			operations = append(operations, effectOperation{
-				Kind: effectOperationSuitedThresholdDamage,
 			})
 		case effectKindSacrificeAllyPower:
 			operations = append(operations, effectOperation{

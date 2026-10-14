@@ -287,29 +287,6 @@ func (g *Game) hasHindered(card cardInstanceID) bool {
 	return false
 }
 
-func (g *Game) suitedReserveTotal(player *model.Player) int {
-	total := 0
-	for _, object := range g.state.Objects {
-		if samePlayer(object.Owner, player) && g.cardHasSubtype(object.Card, "SUITED") {
-			total += g.printedReserveCost(object.Card)
-		}
-	}
-	return total
-}
-
-func suitedThresholdAmount(total int) int {
-	switch {
-	case total >= 21:
-		return 4
-	case total >= 10:
-		return 2
-	case total >= 6:
-		return 1
-	default:
-		return 0
-	}
-}
-
 // enqueueEnterAbilities 從來源卡已編譯的 enter triggers 建立 Ability Instances。
 // 輸入為控制者、場上來源與卡牌實例；無輸出；副作用為依定義順序把可執行能力加入 stack。
 func (g *Game) enqueueEnterAbilities(player *model.Player, source objectID, card cardInstanceID) {
@@ -342,8 +319,8 @@ func (g *Game) enqueueEnterAbilities(player *model.Player, source objectID, card
 func (g *Game) canEnqueueEnterOperations(player *model.Player, source objectID, operations []effectOperation) bool {
 	for _, operation := range operations {
 		switch operation.Kind {
-		case effectOperationSuitedThresholdCounter, effectOperationSuitedThresholdDamage:
-			if suitedThresholdAmount(g.suitedReserveTotal(player)) == 0 {
+		case effectOperationCounter, effectOperationDamage:
+			if operation.Value != nil && g.evaluateValue(*operation.Value, player) == 0 {
 				return false
 			}
 		case effectOperationChoose:

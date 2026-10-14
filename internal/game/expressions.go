@@ -54,6 +54,20 @@ func (g *Game) evaluateValue(value valueExpression, controller *model.Player) in
 		return value.Constant
 	case valueAdd:
 		return g.evaluateValue(*value.Left, controller) + g.evaluateValue(*value.Right, controller)
+	case valueCount:
+		return len(g.selectObjects(value.Selector, controller))
+	case valueSumPrintedReserveCosts:
+		total := 0
+		for _, id := range g.selectObjects(value.Selector, controller) {
+			total += g.printedReserveCost(g.state.Objects[id].Card)
+		}
+		return total
+	case valueThreshold:
+		input := g.evaluateValue(
+			*value.Left,
+			controller,
+		)
+		return thresholdValue(input) * value.Multiplier
 	case valueDistinctPrintedCosts:
 		costs := make(map[int]struct{})
 		for _, id := range g.selectObjects(value.Selector, controller) {
@@ -62,5 +76,20 @@ func (g *Game) evaluateValue(value valueExpression, controller *model.Player) in
 		return len(costs)
 	default:
 		panic("uncompiled value expression")
+	}
+}
+
+// thresholdValue 將規則定義的 Suited Reserve Cost 門檻轉成基礎數值。
+// 輸入為非負整數總和；輸出為對應的 0、1、2 或 4，副作用為零。
+func thresholdValue(total int) int {
+	switch {
+	case total >= 21:
+		return 4
+	case total >= 10:
+		return 2
+	case total >= 6:
+		return 1
+	default:
+		return 0
 	}
 }

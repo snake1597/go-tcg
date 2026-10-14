@@ -210,8 +210,11 @@ func TestCompileObjectChoiceBinding(t *testing.T) {
 		{
 			kind: effectKindCounter,
 			counter: &counterEffectDefinition{
-				counter:       "BUFF",
-				amount:        1,
+				counter: "BUFF",
+				amount: valueExpression{
+					Kind:     valueConstant,
+					Constant: 1,
+				},
 				targetBinding: "chosen-object",
 			},
 		},
@@ -223,6 +226,78 @@ func TestCompileObjectChoiceBinding(t *testing.T) {
 	operations := abilities[0].operations()
 	if len(operations) != 2 || operations[0].Binding != "chosen-object" || operations[1].TargetBinding != "chosen-object" {
 		t.Fatalf("operations = %#v, want Object binding and named counter target", operations)
+	}
+}
+
+// TestCompileRougeAndNoireUseValueExpressions 驗證 Suited Reserve 門檻在編譯時轉為共通 counter 與 damage 操作。
+// 輸入為 Rouge 與 Noire 的正式卡牌定義；輸出為含 sum 與 threshold 數值表達式的 operations，副作用為零。
+func TestCompileRougeAndNoireUseValueExpressions(t *testing.T) {
+	tests := []struct {
+		name            string
+		definition      CardDefinition
+		authored        []authoredAbilityDefinition
+		operationKinds  []effectOperationKind
+		valueMultiplier int
+	}{
+		{
+			name: "Rouge damage",
+			definition: CardDefinition{
+				id: rougeCardID,
+				face: CardFace{
+					id: "face:h68dr63eo5:front",
+				},
+			},
+			authored: rougeAbilities(),
+			operationKinds: []effectOperationKind{
+				effectOperationChoose,
+				effectOperationDamage,
+			},
+			valueMultiplier: 2,
+		},
+		{
+			name: "Noire counter",
+			definition: CardDefinition{
+				id: noireCardID,
+				face: CardFace{
+					id: "face:wbjc9t8ycp:front",
+				},
+			},
+			authored: noireAbilities(),
+			operationKinds: []effectOperationKind{
+				effectOperationCounter,
+			},
+			valueMultiplier: 1,
+		},
+	}
+	for _, testCase := range tests {
+		t.Run(
+			testCase.name,
+			func(t *testing.T) {
+				abilities, err := compileAbilityDefinitions(
+					testCase.definition,
+					testCase.authored,
+				)
+				if err != nil {
+					t.Fatalf("compileAbilityDefinitions() error = %v", err)
+				}
+				operations := abilities[0].operations()
+				if len(operations) != len(testCase.operationKinds) {
+					t.Fatalf("operations = %#v, want %d operations", operations, len(testCase.operationKinds))
+				}
+				for index, operation := range operations {
+					if operation.Kind != testCase.operationKinds[index] {
+						t.Fatalf("operations[%d].Kind = %q, want %q", index, operation.Kind, testCase.operationKinds[index])
+					}
+				}
+				value := operations[len(operations)-1].Value
+				if value == nil || value.Kind != valueThreshold || value.Left == nil || value.Left.Kind != valueSumPrintedReserveCosts || value.Multiplier != testCase.valueMultiplier {
+					t.Fatalf("operation value = %#v, want threshold of controlled Suited printed Reserve Cost sum", value)
+				}
+				if testCase.name == "Rouge damage" && operations[1].TargetBinding != "damage-target" {
+					t.Fatalf("Rouge damage target binding = %q, want damage-target", operations[1].TargetBinding)
+				}
+			},
+		)
 	}
 }
 

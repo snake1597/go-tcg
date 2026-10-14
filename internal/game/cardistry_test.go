@@ -1070,8 +1070,8 @@ func TestSuitedThresholdsHandleBoundariesAndSourceChanges(t *testing.T) {
 		t.Run(
 			testCase.name,
 			func(t *testing.T) {
-				if got := suitedThresholdAmount(testCase.total); got != testCase.want {
-					t.Fatalf("suitedThresholdAmount(%d) = %d, want %d", testCase.total, got, testCase.want)
+				if got := thresholdValue(testCase.total); got != testCase.want {
+					t.Fatalf("thresholdValue(%d) = %d, want %d", testCase.total, got, testCase.want)
 				}
 			},
 		)
