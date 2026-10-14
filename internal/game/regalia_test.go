@@ -21,6 +21,7 @@ func TestGrandCrusadersRingBanishesThenDrawsThroughAbilityStack(t *testing.T) {
 	}
 	beforeHand := len(game.state.Zones[player.UID].Hand)
 	game.advanceKnowledgeRevision()
+	game.captureReplayInitialState()
 	view, err := game.PlayerView(player)
 	if err != nil {
 		t.Fatalf("PlayerView() error = %v", err)
@@ -47,9 +48,20 @@ func TestGrandCrusadersRingBanishesThenDrawsThroughAbilityStack(t *testing.T) {
 	if got := len(game.state.EffectsStack); got != 1 {
 		t.Fatalf("EffectsStack = %d, want 1", got)
 	}
+	ability := game.state.EffectsStack[0].Ability
+	if ability == nil || ability.Source != card || ability.SourceLKI != card {
+		t.Fatalf("ability = %#v, want source and LKI %q", ability, card)
+	}
+	if !hasGameEvent(game, "banish") {
+		t.Fatalf("events = %#v, want public banish event", game.state.Events)
+	}
 	passOpportunityRound(t, game, player)
 	if got := len(game.state.Zones[player.UID].Hand); got != beforeHand+1 {
 		t.Fatalf("hand size = %d, want %d after draw", got, beforeHand+1)
+	}
+	replay := game.Replay()
+	if err := replay.Verify(); err != nil {
+		t.Fatalf("Replay().Verify() error = %v", err)
 	}
 }
 

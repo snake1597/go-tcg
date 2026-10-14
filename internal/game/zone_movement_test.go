@@ -42,6 +42,33 @@ func TestBanishCardsFromGraveyardDoesNotDependOnSelection(t *testing.T) {
 	}
 }
 
+// TestCommitObjectAbilityBanishmentRejectsForeignCard 驗證場上來源的卡牌不屬於控制者時，放逐提交不會留下部分狀態變更。
+// 輸入為 Player One 控制但 Card Instance 屬於 Player Two 的 Object；輸出為錯誤，副作用為零且 StateHash 保持不變。
+func TestCommitObjectAbilityBanishmentRejectsForeignCard(t *testing.T) {
+	game := newActionGame(t)
+	player := model.PlayerOne
+	card := findCard(t, game, player, grandCrusadersRingCardID)
+	source := objectID("regalia:foreign-card")
+	game.state.Objects[source] = fieldObject{
+		ID:    source,
+		Card:  card,
+		Owner: player,
+		Types: []string{
+			"ITEM",
+		},
+	}
+	instance := game.state.Cards[card]
+	instance.Owner = model.PlayerTwo
+	game.state.Cards[card] = instance
+	wantStateHash := game.StateHash()
+	if _, err := game.commitObjectAbilityBanishment(player, source); err == nil {
+		t.Fatal("commitObjectAbilityBanishment() error = nil, want foreign card rejection")
+	}
+	if got := game.StateHash(); got != wantStateHash {
+		t.Fatalf("StateHash() = %q, want unchanged %q", got, wantStateHash)
+	}
+}
+
 // TestCommitPlayerCardMovesMovesOwnedCardAndRejectsExpiredSource 驗證玩家卡牌移動保留同一張 Card Instance、記錄公開事件，且過期來源被拒絕時不改變權威狀態。
 // 輸入為正式單局中的手牌與後續失效移動請求；輸出為移至墓地的同一張牌與錯誤；副作用為成功時更新區域、追蹤權及事件。
 func TestCommitPlayerCardMovesMovesOwnedCardAndRejectsExpiredSource(t *testing.T) {

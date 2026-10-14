@@ -110,44 +110,27 @@ func (g *Game) opponentControlsElementChampion(player *model.Player, element str
 	return false
 }
 
-// banishObjectForAbility 驗證並一次提交場上物件移除與其卡牌放逐。
-// 輸入為控制者與物件來源；輸出為移除前物件或錯誤，成功時更新 Objects、Banishment 與公開事件。
-func (g *Game) banishObjectForAbility(player *model.Player, source objectID) (fieldObject, error) {
-	object, exists := g.state.Objects[source]
-	if !exists || !samePlayer(object.Owner, player) {
-		return fieldObject{}, fmt.Errorf("invalid object ability")
-	}
-	delete(g.state.Objects, source)
-	zones := g.state.Zones[player.UID]
-	zones.Banishment = append(zones.Banishment, object.Card)
-	g.state.Zones[player.UID] = zones
-	g.recordPublicEvent(player, "ability", "banish", object.Card)
-	return object, nil
-}
-
-// payObjectAbilityCosts 依定義順序原子支付 Object 的可選 rest 與必要 banish 費用。
-// 輸入為控制者、場上來源與完整 operations；輸出為第一個結算 operation 索引或錯誤，成功時會休息並放逐來源。
+// payObjectAbilityCosts 先完整驗證 Object 的可選 rest 與必要 banish 費用，再原子支付放逐費用。
+// 輸入為控制者、場上來源與完整 operations；輸出為第一個結算 operation 索引或錯誤，成功時移除並放逐來源，失敗時不改變狀態。
 func (g *Game) payObjectAbilityCosts(player *model.Player, source objectID, operations []effectOperation) (int, error) {
 	object, exists := g.state.Objects[source]
 	if !exists || !samePlayer(object.Owner, player) {
 		return 0, fmt.Errorf("invalid object ability")
 	}
-	operationIndex := 0
+	resolutionStart := 0
 	if len(operations) > 0 && operations[0].Kind == effectOperationRestSource {
 		if object.Rested {
 			return 0, fmt.Errorf("object source is already rested")
 		}
-		object.Rested = true
-		g.state.Objects[source] = object
-		operationIndex++
+		resolutionStart++
 	}
-	if operationIndex >= len(operations)-1 || operations[operationIndex].Kind != effectOperationBanishSource {
+	if resolutionStart >= len(operations)-1 || operations[resolutionStart].Kind != effectOperationBanishSource {
 		return 0, fmt.Errorf("object source banish cost is missing")
 	}
-	if _, err := g.banishObjectForAbility(player, source); err != nil {
+	if _, err := g.commitObjectAbilityBanishment(player, source); err != nil {
 		return 0, err
 	}
-	return operationIndex + 1, nil
+	return resolutionStart + 1, nil
 }
 
 // cardistryObserverTriggers 由場上來源的 triggered definitions 建立 Ally Cardistry 觀察者能力。

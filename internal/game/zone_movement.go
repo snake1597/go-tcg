@@ -22,6 +22,25 @@ type playerCardMoveRequest struct {
 	VisibleToAll bool
 }
 
+// commitObjectAbilityBanishment 驗證控制者、場上來源與卡牌擁有者後，原子移除 Object 並將其 Card Instance 放入擁有者的 Banishment。
+// 輸入為啟動能力的控制者與場上來源；輸出為離場前 Object 或錯誤；成功時更新 Objects、Banishment 與公開事件，失敗時不改變遊戲狀態。
+func (g *Game) commitObjectAbilityBanishment(player *model.Player, source objectID) (fieldObject, error) {
+	object, exists := g.state.Objects[source]
+	if !exists || !samePlayer(object.Owner, player) {
+		return fieldObject{}, fmt.Errorf("invalid object ability")
+	}
+	card, exists := g.state.Cards[object.Card]
+	if !exists || !samePlayer(card.Owner, object.Owner) {
+		return fieldObject{}, fmt.Errorf("object source card is not owned by object controller")
+	}
+	zones := g.state.Zones[object.Owner.UID]
+	zones.Banishment = append(zones.Banishment, object.Card)
+	delete(g.state.Objects, source)
+	g.state.Zones[object.Owner.UID] = zones
+	g.recordPublicEvent(player, "ability", "banish", object.Card)
+	return object, nil
+}
+
 type cardZone string
 
 const (
