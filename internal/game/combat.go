@@ -14,8 +14,9 @@ type attackDeclaration struct {
 }
 
 type wieldDeclaration struct {
-	Controller *model.Player `json:"controller"`
-	Weapon     objectID      `json:"weapon"`
+	Controller    *model.Player `json:"controller"`
+	Weapon        objectID      `json:"weapon"`
+	MemoryPayment []ViewHandle  `json:"memory_payment"`
 }
 
 // legalAttackers 分別評估回合玩家目前可宣告攻擊的 Champion 與支援攻擊的 Ally。
@@ -152,23 +153,32 @@ func (g *Game) canWield(player *model.Player, weapon objectID) bool {
 	if len(legalTargets) == 0 {
 		return false
 	}
-	reserveCost := g.wieldReserveCost(weapon)
-	return len(g.state.Zones[player.UID].Memory) >= reserveCost
+	return g.canPayMemoryCost(
+		player,
+		g.wieldReserveCost(weapon),
+	)
 }
 
 func (g *Game) wieldReserveCost(weapon objectID) int {
 	return g.characteristicsFor(weapon).ReserveCost
 }
 
-func (g *Game) beginWield(player *model.Player, weapon objectID) error {
+// beginWield 建立可取消的 Wield 宣告並保留玩家指定的 Floating Memory 付款。
+// 輸入為控制者、Weapon 與公開的 Floating Memory handles；輸出為驗證錯誤或 nil；成功時建立目標選擇，不移動來源或付款卡。
+func (g *Game) beginWield(player *model.Player, weapon objectID, memoryPayment []ViewHandle) error {
 	if !g.canWield(player, weapon) {
 		return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, weapon)
 	}
+	if _, err := g.memoryPaymentCardsForHandles(player, g.wieldReserveCost(weapon), memoryPayment); err != nil {
+		return fmt.Errorf("validate Wield Memory payment: %w", err)
+	}
 	g.state.Knowledge.Wield = &wieldDeclaration{
-		Controller: player,
-		Weapon:     weapon,
+		Controller:    player,
+		Weapon:        weapon,
+		MemoryPayment: append([]ViewHandle(nil), memoryPayment...),
 	}
 	g.setDeclarationChoice(player, g.legalTargets())
+	g.state.Knowledge.Choice.CanPass = true
 	return nil
 }
 
@@ -286,29 +296,48 @@ func (g *Game) onAttackTriggers(player *model.Player, attacker objectID) []effec
 	}
 }
 
+// submitWieldChoice 以宣告交易提交已選擇的 Wield 目標與 Memory 付款。
+// 輸入為選擇者與 Player View 指向的目標；輸出為提交錯誤或 nil；成功時放逐付款、建立 Wield 觸發並清除宣告，失敗時還原所有權威狀態。
 func (g *Game) submitWieldChoice(player *model.Player, subject entityID) error {
+	return g.commitDeclarationTransaction(
+		func() error {
+			return g.commitWieldDeclarationTransaction(
+				player,
+				subject,
+			)
+		},
+	)
+}
+
+// commitWieldDeclarationTransaction 在候選狀態中驗證 Wield 宣告、支付 Memory 費用並建立 Wield 觸發。
+// 輸入為選擇者與 Player View 指向的目標；輸出為驗證或提交錯誤；成功時只修改目前的候選權威狀態。
+func (g *Game) commitWieldDeclarationTransaction(player *model.Player, subject entityID) error {
 	declaration := g.state.Knowledge.Wield
 	target := objectID(subject)
 	if declaration == nil || !samePlayer(declaration.Controller, player) || !g.canWield(player, declaration.Weapon) || !g.isLegalTarget(target) {
 		return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, subject)
 	}
-	g.payWieldReserve(player, declaration.Weapon)
+	if err := g.payWieldReserve(player, declaration.Weapon, declaration.MemoryPayment); err != nil {
+		return fmt.Errorf("pay Wield Reserve: %w", err)
+	}
 	if err := g.wieldWeapon(player, target, declaration.Weapon); err != nil {
-		return err
+		return fmt.Errorf("Wield weapon: %w", err)
 	}
 	g.state.Knowledge.Wield = nil
 	g.state.Knowledge.Choice = nil
 	return nil
 }
 
-func (g *Game) payWieldReserve(player *model.Player, weapon objectID) {
-	zones := g.state.Zones[player.UID]
-	for payment := 0; payment < g.wieldReserveCost(weapon); payment++ {
-		lastIndex := len(zones.Memory) - 1
-		zones.Banishment = append(zones.Banishment, zones.Memory[lastIndex])
-		zones.Memory = zones.Memory[:lastIndex]
-	}
-	g.state.Zones[player.UID] = zones
+// payWieldReserve 使用共通 Memory 付款規則支付 Wield 的 Reserve 費用。
+// 輸入為付款玩家、Weapon 與可選的 Floating Memory handles；輸出為付款錯誤或 nil；成功時放逐所需 Memory、推進 PRNG 並記錄付款事件。
+func (g *Game) payWieldReserve(player *model.Player, weapon objectID, memoryPayment []ViewHandle) error {
+	return g.payMemoryCost(
+		player,
+		g.wieldReserveCost(weapon),
+		memoryPayment,
+		"",
+		"banish-wield-reserve",
+	)
 }
 
 // resolveCombat 先取得雙方目前攻擊力，再施加雙向傷害並記錄同時發生的戰鬥事件。

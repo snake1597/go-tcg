@@ -169,21 +169,11 @@ func (g *Game) memoryPaymentCards(player *model.Player) []cardInstanceID {
 // 輸入包含付款事件名稱；指定牌超過費用或總額不足時回傳 ErrInvalidViewHandle，尚不付款或推進亂數。
 func (g *Game) payMemoryCost(player *model.Player, cost int, memoryPayment []ViewHandle, floatingEvent string, randomEvent string) error {
 	zones := g.state.Zones[player.UID]
-	floatingCards := make(map[cardInstanceID]struct{}, len(memoryPayment))
-	for _, handle := range memoryPayment {
-		card, err := g.memoryPaymentCardForHandle(player, handle)
-		if err != nil {
-			return err
-		}
-		if _, exists := floatingCards[card]; exists {
-			return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, handle)
-		}
-		floatingCards[card] = struct{}{}
+	floatingCards, err := g.memoryPaymentCardsForHandles(player, cost, memoryPayment)
+	if err != nil {
+		return fmt.Errorf("validate Memory payment: %w", err)
 	}
-	if len(floatingCards) > cost || len(zones.Memory)+len(floatingCards) < cost {
-		return fmt.Errorf("%w", tcgErrors.ErrInvalidViewHandle)
-	}
-	for card := range floatingCards {
+	for _, card := range floatingCards {
 		index := cardIndex(zones.Graveyard, card)
 		zones.Graveyard = removeCardAt(zones.Graveyard, index)
 		zones.Banishment = append(zones.Banishment, card)
@@ -198,6 +188,29 @@ func (g *Game) payMemoryCost(player *model.Player, cost int, memoryPayment []Vie
 	}
 	g.state.Zones[player.UID] = zones
 	return nil
+}
+
+// memoryPaymentCardsForHandles 驗證 Floating Memory handles 並以輸入順序回傳付款卡。
+// 輸入為付款玩家、費用與公開 handles；輸出為不重複且足額的付款卡或驗證錯誤，無副作用。
+func (g *Game) memoryPaymentCardsForHandles(player *model.Player, cost int, memoryPayment []ViewHandle) ([]cardInstanceID, error) {
+	zones := g.state.Zones[player.UID]
+	floatingCards := make([]cardInstanceID, 0, len(memoryPayment))
+	seen := make(map[cardInstanceID]struct{}, len(memoryPayment))
+	for _, handle := range memoryPayment {
+		card, err := g.memoryPaymentCardForHandle(player, handle)
+		if err != nil {
+			return nil, fmt.Errorf("resolve Floating Memory payment handle: %w", err)
+		}
+		if _, exists := seen[card]; exists {
+			return nil, fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, handle)
+		}
+		seen[card] = struct{}{}
+		floatingCards = append(floatingCards, card)
+	}
+	if len(floatingCards) > cost || len(zones.Memory)+len(floatingCards) < cost {
+		return nil, fmt.Errorf("%w", tcgErrors.ErrInvalidViewHandle)
+	}
+	return floatingCards, nil
 }
 
 // memoryPaymentCardForHandle 反查玩家指定的非隨機 Memory 付款來源。

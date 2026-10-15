@@ -280,6 +280,196 @@ func TestWieldUsesPlayerViewLegalActionAndTargetChoice(t *testing.T) {
 	}
 }
 
+// TestWieldMemoryPaymentIsRecordedAndReplayed 驗證 Wield 以 Memory 支付時會原子地放逐付款卡並留下可重播事件。
+// 輸入為具兩點 Wield 費用的 Bulwark Sword 與兩張 Memory；輸出為兩張付款卡位於 Banishment、兩筆付款事件與可驗證 replay，副作用為提交 Wield 宣告與其觸發。
+func TestWieldMemoryPaymentIsRecordedAndReplayed(t *testing.T) {
+	game := newActionGame(t)
+	player := model.PlayerOne
+	weaponCard := findCard(t, game, player, CardID("rufki4o41y"))
+	weapon := game.state.Cards[weaponCard]
+	weapon.Definition = bulwarkSwordCardID
+	game.state.Cards[weaponCard] = weapon
+	weaponID := objectID("weapon:bulwark")
+	game.state.Objects[weaponID] = fieldObject{
+		ID:    weaponID,
+		Card:  weaponCard,
+		Owner: player,
+		Types: []string{
+			"WEAPON",
+		},
+	}
+	zones := game.state.Zones[player.UID]
+	zones.Memory = []cardInstanceID{
+		zones.Hand[0],
+		zones.Hand[1],
+	}
+	game.state.Zones[player.UID] = zones
+	game.advanceKnowledgeRevision()
+	game.captureReplayInitialState()
+
+	view, err := game.PlayerView(player)
+	if err != nil {
+		t.Fatalf("PlayerView() error = %v", err)
+	}
+	if err := game.Submit(
+		player,
+		Input{
+			Revision: view.Revision,
+			Action:   actionByKind(t, view, constants.ActionWield).Handle,
+		},
+	); err != nil {
+		t.Fatalf("Submit() Wield declaration error = %v", err)
+	}
+	choiceView, err := game.PlayerView(player)
+	if err != nil {
+		t.Fatalf("PlayerView() Wield choice error = %v", err)
+	}
+	if choiceView.PendingChoice == nil || len(choiceView.PendingChoice.Options) == 0 {
+		t.Fatalf("PlayerView().PendingChoice = %#v, want Wield target", choiceView.PendingChoice)
+	}
+	beforeHash := game.StateHash()
+	beforeReplaySteps := len(game.Replay().Steps)
+	if err := game.Submit(
+		player,
+		Input{
+			Revision: view.Revision,
+			Choice:   choiceView.PendingChoice.Options[0],
+		},
+	); err == nil {
+		t.Fatal("Submit() stale Wield choice error = nil")
+	}
+	if game.StateHash() != beforeHash || len(game.Replay().Steps) != beforeReplaySteps {
+		t.Fatal("stale Wield choice changed state or replay")
+	}
+	target := game.state.Champions[model.PlayerTwo.UID]
+	selectPendingChoiceSubject(t, game, player, entityID(target.ID))
+
+	zones = game.state.Zones[player.UID]
+	if len(zones.Memory) != 0 || len(zones.Banishment) < 2 {
+		t.Fatalf("Wield payment zones = %#v, want two Memory cards banished", zones)
+	}
+	if !hasGameEvent(game, "banish-wield-reserve") {
+		t.Fatalf("events = %#v, want Wield Memory payment event", game.state.Events)
+	}
+	if err := game.Replay().Verify(); err != nil {
+		t.Fatalf("Replay().Verify() error = %v", err)
+	}
+}
+
+// TestWieldAcceptsFloatingMemoryPaymentAndCanCancel 驗證 Wield 可明確使用 Floating Memory，且取消不會支付費用。
+// 輸入為 Bulwark Sword、一張 Memory 與一張公開 Floating Memory；輸出為付款選項、可取消宣告與成功後兩張付款卡進入 Banishment，副作用為完成一段可驗證 replay。
+func TestWieldAcceptsFloatingMemoryPaymentAndCanCancel(t *testing.T) {
+	game := newActionGame(t)
+	player := model.PlayerOne
+	weaponCard := findCard(t, game, player, CardID("rufki4o41y"))
+	weapon := game.state.Cards[weaponCard]
+	weapon.Definition = bulwarkSwordCardID
+	game.state.Cards[weaponCard] = weapon
+	game.state.Objects[objectID("weapon:floating-memory")] = fieldObject{
+		ID:    objectID("weapon:floating-memory"),
+		Card:  weaponCard,
+		Owner: player,
+		Types: []string{
+			"WEAPON",
+		},
+	}
+	floating := findCard(t, game, player, fiveOfSpadesCardID)
+	moveCardToGraveyard(t, game, player, floating)
+	game.grantCardTracking(player, entityID(floating))
+	zones := game.state.Zones[player.UID]
+	zones.Memory = []cardInstanceID{
+		zones.Hand[0],
+	}
+	game.state.Zones[player.UID] = zones
+	game.advanceKnowledgeRevision()
+	game.captureReplayInitialState()
+
+	view, err := game.PlayerView(player)
+	if err != nil {
+		t.Fatalf("PlayerView() error = %v", err)
+	}
+	weaponHandle := game.getPlayerKnowledge(player).Cards[entityID(weaponCard)]
+	wield := LegalAction{}
+	for _, action := range view.LegalActions {
+		if action.Kind == constants.ActionWield && action.Source == weaponHandle {
+			wield = action
+			break
+		}
+	}
+	if wield.Handle == "" {
+		t.Fatalf("PlayerView().LegalActions = %#v, want Bulwark Wield", view.LegalActions)
+	}
+	if wield.MemoryPaymentRequired != 1 || len(wield.MemoryPaymentOptions) != 1 {
+		t.Fatalf("Wield action = %#v, want one Floating Memory payment option", wield)
+	}
+	payment := wield.MemoryPaymentOptions[0].Handle
+	if err := game.Submit(
+		player,
+		Input{
+			Revision: view.Revision,
+			Action:   wield.Handle,
+			MemoryPayment: []ViewHandle{
+				payment,
+			},
+		},
+	); err != nil {
+		t.Fatalf("Submit() Wield declaration error = %v", err)
+	}
+	cancelView, err := game.PlayerView(player)
+	if err != nil {
+		t.Fatalf("PlayerView() Wield cancellation error = %v", err)
+	}
+	if err := game.Submit(
+		player,
+		Input{
+			Revision: cancelView.Revision,
+			Action:   actionByKind(t, cancelView, constants.ActionPass).Handle,
+		},
+	); err != nil {
+		t.Fatalf("Submit() cancel Wield error = %v", err)
+	}
+	zones = game.state.Zones[player.UID]
+	if len(zones.Memory) != 1 || cardIndex(zones.Graveyard, floating) < 0 || hasGameEvent(game, "banish-wield-reserve") {
+		t.Fatalf("cancelled Wield zones/events = %#v/%#v, want no payment", zones, game.state.Events)
+	}
+
+	view, err = game.PlayerView(player)
+	if err != nil {
+		t.Fatalf("PlayerView() after cancellation error = %v", err)
+	}
+	wield = LegalAction{}
+	for _, action := range view.LegalActions {
+		if action.Kind == constants.ActionWield && action.Source == weaponHandle {
+			wield = action
+			break
+		}
+	}
+	if wield.Handle == "" {
+		t.Fatalf("PlayerView().LegalActions = %#v, want Bulwark Wield after cancellation", view.LegalActions)
+	}
+	if err := game.Submit(
+		player,
+		Input{
+			Revision: view.Revision,
+			Action:   wield.Handle,
+			MemoryPayment: []ViewHandle{
+				payment,
+			},
+		},
+	); err != nil {
+		t.Fatalf("Submit() Wield declaration after cancellation error = %v", err)
+	}
+	target := game.state.Champions[model.PlayerTwo.UID]
+	selectPendingChoiceSubject(t, game, player, entityID(target.ID))
+	zones = game.state.Zones[player.UID]
+	if len(zones.Memory) != 0 || cardIndex(zones.Graveyard, floating) >= 0 || cardIndex(zones.Banishment, floating) < 0 {
+		t.Fatalf("Wield payment zones = %#v, want Memory and Floating Memory banished", zones)
+	}
+	if err := game.Replay().Verify(); err != nil {
+		t.Fatalf("Replay().Verify() error = %v", err)
+	}
+}
+
 // TestWieldIsUnavailableOutsideMainPhase 驗證以武器宣告攻擊遵守 slow action timing。
 // 輸入為 End Phase 且持有 Opportunity 的玩家與可用武器；輸出為 PlayerView 不含 Wield，副作用僅為建立測試用場上武器並重建 handles。
 func TestWieldIsUnavailableOutsideMainPhase(t *testing.T) {

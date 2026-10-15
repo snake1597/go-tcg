@@ -266,13 +266,13 @@ func TestSubmitRejectsUnusedPayloadByActionKind(t *testing.T) {
 			},
 		},
 		{
-			name: "wield rejects memory payment",
+			name: "wield rejects reserve",
 			setup: func(game *Game) Input {
 				game.getPlayerKnowledge(model.PlayerOne).Wields["wield"] = "weapon"
 				return Input{
 					Revision: game.state.Revision,
 					Action:   "wield",
-					MemoryPayment: []ViewHandle{
+					Reserve: []ViewHandle{
 						"unused",
 					},
 				}

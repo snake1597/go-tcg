@@ -254,7 +254,9 @@ func TestPlayerViewUsesDerivedChampionCharacteristics(t *testing.T) {
 	t.Fatal("player one's Champion was not visible")
 }
 
-func TestBulwarkWieldRequiresAndPaysTwoReserve(t *testing.T) {
+// TestBulwarkWieldRequiresTwoReserve 驗證 Bulwark Sword 的 derived Wield 費用需要兩張可用 Reserve。
+// 輸入為 Bulwark Sword 與先後具有一張、兩張 Memory 的玩家；輸出為前者非法、後者合法，副作用為建立測試用的場上 Weapon 與調整 Memory。
+func TestBulwarkWieldRequiresTwoReserve(t *testing.T) {
 	game := newActionGame(t)
 	weaponCard := findCard(t, game, model.PlayerOne, CardID("rufki4o41y"))
 	weapon := game.state.Cards[weaponCard]
@@ -277,10 +279,5 @@ func TestBulwarkWieldRequiresAndPaysTwoReserve(t *testing.T) {
 	game.state.Zones[model.PlayerOne.UID] = zones
 	if !game.canWield(model.PlayerOne, weaponID) {
 		t.Fatal("Bulwark was not legal with two reserve")
-	}
-	game.payWieldReserve(model.PlayerOne, weaponID)
-	zones = game.state.Zones[model.PlayerOne.UID]
-	if len(zones.Memory) != 0 || len(zones.Banishment) < 2 {
-		t.Fatalf("wield payment zones = %#v, want two banished reserve", zones)
 	}
 }

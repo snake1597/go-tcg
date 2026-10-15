@@ -110,6 +110,13 @@ func (g *Game) Submit(player *model.Player, input Input) error {
 		g.recordReplayStep(player, input)
 		return nil
 	}
+	if g.state.Knowledge.Wield != nil && g.state.Knowledge.Choice != nil && g.state.Knowledge.Choice.CanPass && exists && kind == constants.ActionPass {
+		g.state.Knowledge.Wield = nil
+		g.state.Knowledge.Choice = nil
+		g.advanceKnowledgeRevision()
+		g.recordReplayStep(player, input)
+		return nil
+	}
 	if g.state.ResolutionFrame != nil && g.state.ResolutionFrame.CanPass && exists && kind == constants.ActionPass {
 		if g.state.ResolutionFrame.Instance.RuntimeCopy {
 			g.destroyRuntimeCopy(g.state.ResolutionFrame.Instance.Source)
@@ -123,7 +130,8 @@ func (g *Game) Submit(player *model.Player, input Input) error {
 	if len(input.MemoryPayment) > 0 {
 		ability, abilityExists := playKnowledge.Abilities[input.Action]
 		_, materializationExists := playKnowledge.Materializations[input.Action]
-		if (!abilityExists || ability.Kind != activatedAbilityCardistry) && !materializationExists {
+		_, wieldExists := playKnowledge.Wields[input.Action]
+		if (!abilityExists || ability.Kind != activatedAbilityCardistry) && !materializationExists && !wieldExists {
 			return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, input.Action)
 		}
 	}
@@ -180,7 +188,7 @@ func (g *Game) Submit(player *model.Player, input Input) error {
 						if !wieldExists {
 							return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, input.Action)
 						}
-						if err := g.beginWield(player, weapon); err != nil {
+						if err := g.beginWield(player, weapon, input.MemoryPayment); err != nil {
 							return fmt.Errorf("begin wield: %w", err)
 						}
 					}
@@ -258,10 +266,13 @@ func (g *Game) validateInputPayload(player *model.Player, input Input) error {
 		}
 		return nil
 	}
-	if actionExists || attackExists || wieldExists {
+	if actionExists || attackExists {
 		if len(input.Reserve) > 0 || len(input.MemoryPayment) > 0 {
 			return fmt.Errorf("%w: unused input payload for action", tcgErrors.ErrInvalidViewHandle)
 		}
+	}
+	if wieldExists && len(input.Reserve) > 0 {
+		return fmt.Errorf("%w: unused input payload for Wield", tcgErrors.ErrInvalidViewHandle)
 	}
 	return nil
 }

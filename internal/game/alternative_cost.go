@@ -103,8 +103,21 @@ func (g *Game) alternativeCostChoiceCards(declaration *alternativeCostDeclaratio
 	return g.nextCardSelectionOptions(declaration.Controller, spec.Selection, declaration.Source, declaration.Selected)
 }
 
-// commitAlternativeCost 重新驗證所有來源與付款卡，成功時一次移動付款並建立 Ally activation。
+// commitAlternativeCost 以宣告交易重新驗證所有來源與付款卡，成功時一次移動付款並建立 Ally activation。
+// 輸入為完成選牌的替代費用宣告；輸出為提交錯誤或 nil；失敗時還原區域、事件、PRNG 與所有其他權威欄位。
 func (g *Game) commitAlternativeCost(declaration *alternativeCostDeclaration) error {
+	return g.commitDeclarationTransaction(
+		func() error {
+			return g.commitAlternativeCostTransaction(
+				declaration,
+			)
+		},
+	)
+}
+
+// commitAlternativeCostTransaction 在候選狀態中驗證替代費用並建立 Ally activation。
+// 輸入為完成選牌的替代費用宣告；輸出為驗證或提交錯誤；成功時只修改目前的候選權威狀態。
+func (g *Game) commitAlternativeCostTransaction(declaration *alternativeCostDeclaration) error {
 	spec, exists := g.alternativeCostFor(declaration.Source)
 	if !exists || !g.validCardSelection(declaration.Controller, spec.Selection, declaration.Source, declaration.Selected) {
 		return fmt.Errorf("invalid alternative cost")

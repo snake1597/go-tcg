@@ -94,7 +94,7 @@ func (g *Game) initializeKnowledgeState() {
 }
 
 // refreshLegalActions 清空並重建各玩家的行動 handle，反映目前行動機會、階段與待選狀態。
-// 等待選擇時不提供一般行動；投降與可略過能力的 pass 另行處理。
+// 等待選擇時不提供一般行動；投降與可取消宣告或可略過能力的 pass 另行處理。
 // 遊戲結束時清空所有行動，但既有卡牌追蹤 handle 不由此函式重建。
 func (g *Game) refreshLegalActions() {
 	for _, player := range g.players {
@@ -200,7 +200,7 @@ func (g *Game) refreshLegalActions() {
 				actions[handle] = constants.ActionSkipMaterialize
 			}
 		}
-		if g.state.Knowledge.Choice != nil && ((g.state.ResolutionFrame != nil && g.state.ResolutionFrame.CanPass && samePlayer(g.state.ResolutionFrame.Instance.Controller, player)) || (g.state.Knowledge.AlternativeCost != nil && g.state.Knowledge.Choice.CanPass && samePlayer(g.state.Knowledge.AlternativeCost.Controller, player)) || (g.state.Knowledge.Declaration != nil && g.state.Knowledge.Choice.CanPass && samePlayer(g.state.Knowledge.Declaration.Controller, player))) {
+		if g.state.Knowledge.Choice != nil && ((g.state.ResolutionFrame != nil && g.state.ResolutionFrame.CanPass && samePlayer(g.state.ResolutionFrame.Instance.Controller, player)) || (g.state.Knowledge.AlternativeCost != nil && g.state.Knowledge.Choice.CanPass && samePlayer(g.state.Knowledge.AlternativeCost.Controller, player)) || (g.state.Knowledge.Declaration != nil && g.state.Knowledge.Choice.CanPass && samePlayer(g.state.Knowledge.Declaration.Controller, player)) || (g.state.Knowledge.Wield != nil && g.state.Knowledge.Choice.CanPass && samePlayer(g.state.Knowledge.Wield.Controller, player))) {
 			handle := g.newViewHandle(
 				player,
 				constants.ViewHandleSubjectActionPass,
@@ -312,6 +312,11 @@ func (g *Game) legalActions(player *model.Player) []LegalAction {
 				Source:                playKnowledge.Cards[entityID(card)],
 				CardName:              g.state.Entities[entityID(card)].Name,
 				TriggeredAbilitySlots: triggeredSlots,
+				MemoryPaymentRequired: max(
+					g.wieldReserveCost(weapon)-len(g.state.Zones[player.UID].Memory),
+					0,
+				),
+				MemoryPaymentOptions: g.visibleMemoryPaymentSources(player),
 			},
 		)
 	}
