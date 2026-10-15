@@ -28,28 +28,6 @@ func (g *Game) isImmortal(id objectID) bool {
 	return g.characteristicsFor(id).Immortal
 }
 
-// restAndGrantTemporaryImmortality 休息場上來源，並授予到控制者下回合開始前的 Immortality。
-// 輸入為場上來源；無輸出；來源不存在時不改變狀態。
-func (g *Game) restAndGrantTemporaryImmortality(id objectID) {
-	object, exists := g.state.Objects[id]
-	if !exists {
-		return
-	}
-	object.Rested = true
-	g.state.Objects[id] = object
-	g.addContinuousEffect(continuousEffect{
-		Source:        id,
-		Controller:    object.Owner,
-		Target:        id,
-		Scope:         effectScopeObject,
-		Layer:         effectLayerAbility,
-		ExpiresAtTurn: g.state.Scheduler.TurnNumber + uint64(len(g.players)),
-		Modifier: continuousModifier{
-			GrantImmortality: true,
-		},
-	})
-}
-
 func (g *Game) cardForObject(id objectID) (cardInstance, bool) {
 	for _, champion := range g.state.Champions {
 		if champion.ID == id {

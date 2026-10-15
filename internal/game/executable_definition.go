@@ -63,7 +63,7 @@ const (
 	effectKindBanishSource           authoredEffectKind = "banish-source"
 	effectKindCardistryDiscount      authoredEffectKind = "cardistry-discount"
 	effectKindPreventNonCombatDamage authoredEffectKind = "prevent-non-combat-damage"
-	effectKindRestGrantImmortality   authoredEffectKind = "rest-grant-immortality"
+	effectKindRestObject             authoredEffectKind = "rest-object"
 	effectKindSacrificeAllyPower     authoredEffectKind = "sacrifice-ally-power"
 	effectKindGrantTaunt             authoredEffectKind = "grant-taunt"
 )
@@ -91,7 +91,10 @@ const (
 // triggerCondition 限制 triggered ability 可使用的可編譯條件原語。
 type triggerCondition string
 
-const triggerConditionClassMatch triggerCondition = "class-match"
+const (
+	triggerConditionClassMatch         triggerCondition = "class-match"
+	triggerConditionQualifiedHumanAlly triggerCondition = "qualified-human-ally"
+)
 
 type keywordDefinition string
 
@@ -179,6 +182,7 @@ type actionCostDefinition struct {
 type chooseCardEffectDefinition struct {
 	selection cardSelectionSpec
 	binding   resolutionBinding
+	canPass   bool
 }
 
 type discardEffectDefinition struct {
@@ -812,7 +816,16 @@ func arthurYoungHeirAbilities() []authoredAbilityDefinition {
 			},
 			effects: []authoredEffectDefinition{
 				{
-					kind: effectKindRestGrantImmortality,
+					kind: effectKindRestObject,
+				},
+				{
+					kind: effectKindModifier,
+					modifier: &modifierEffectDefinition{
+						duration: modifierDurationEndOfNextTurn,
+						modifier: continuousModifier{
+							GrantImmortality: true,
+						},
+					},
 				},
 			},
 		},
@@ -1076,11 +1089,43 @@ func redHareAbilities() []authoredAbilityDefinition {
 				layer:     effectLayerAbility,
 				sublayer:  effectSubLayerNone,
 				modifier: continuousModifier{
-					RemovePride:          true,
-					GrantRedHareOnAttack: true,
+					RemovePride: true,
 				},
 				duration:       staticDurationWhilePredicate,
 				sourcePresence: sourcePresenceRequired,
+			},
+		},
+		{
+			slot: "ability:5du8f077ua:front:qualified-human-on-attack",
+			kind: abilityKindTriggered,
+			trigger: &triggerDefinition{
+				event:     eventKindAttack,
+				condition: triggerConditionQualifiedHumanAlly,
+			},
+			effects: []authoredEffectDefinition{
+				{
+					kind: effectKindChooseCard,
+					chooseCard: &chooseCardEffectDefinition{
+						selection: cardSelectionSpec{
+							Zone: cardZoneHand,
+						},
+						binding: "discard-card",
+						canPass: true,
+					},
+				},
+				{
+					kind: effectKindDiscard,
+					discard: &discardEffectDefinition{
+						binding: "discard-card",
+					},
+				},
+				{
+					kind: effectKindDraw,
+					draw: &drawEffectDefinition{
+						amount:    1,
+						recipient: referenceController,
+					},
+				},
 			},
 		},
 	}
@@ -1510,11 +1555,11 @@ func compileAbilityDefinitions(definition CardDefinition, authored []authoredAbi
 			if ability.trigger == nil || (ability.trigger.event != eventKindWield && ability.trigger.event != eventKindDestroy && ability.trigger.event != eventKindSacrifice && ability.trigger.event != eventKindCardistryActivated && ability.trigger.event != eventKindEnter && ability.trigger.event != eventKindAttack && ability.trigger.event != eventKindSetup) {
 				return nil, fmt.Errorf("%s: trigger.event unsupported", context)
 			}
-			if ability.trigger.condition != "" && ability.trigger.condition != triggerConditionClassMatch {
+			if ability.trigger.condition != "" && ability.trigger.condition != triggerConditionClassMatch && ability.trigger.condition != triggerConditionQualifiedHumanAlly {
 				return nil, fmt.Errorf("%s: trigger.condition unsupported %q", context, ability.trigger.condition)
 			}
-			if ability.trigger.condition == triggerConditionClassMatch && ability.trigger.event != eventKindAttack {
-				return nil, fmt.Errorf("%s: class-match condition requires attack event", context)
+			if ability.trigger.condition != "" && ability.trigger.event != eventKindAttack {
+				return nil, fmt.Errorf("%s: trigger condition requires attack event", context)
 			}
 			if ability.trigger.event == eventKindDestroy {
 				if err := validateDeathModifierDefinition(ability.deathModifier); err != nil || len(ability.effects) != 0 {
@@ -1604,13 +1649,14 @@ func compileAbilityDefinitions(definition CardDefinition, authored []authoredAbi
 		}
 		bindings := make(map[resolutionBinding]cardSelectionSpec)
 		objectBindings := make(map[resolutionBinding]struct{})
+		qualifiedAttack := ability.kind == abilityKindTriggered && ability.trigger != nil && ability.trigger.event == eventKindAttack && ability.trigger.condition == triggerConditionQualifiedHumanAlly
 		for index, effect := range ability.effects {
 			field := fmt.Sprintf("effects[%d]", index)
 			switch effect.kind {
 			case effectKindDraw:
 				setupDraw := ability.kind == abilityKindTriggered && ability.trigger != nil && ability.trigger.event == eventKindSetup
-				if (ability.kind != abilityKindCardistry && ability.kind != abilityKindObject && !setupDraw) || effect.draw == nil || effect.damage != nil {
-					return nil, fmt.Errorf("%s: %s.draw payload is required only for Cardistry, Object, or setup trigger", context, field)
+				if (ability.kind != abilityKindCardistry && ability.kind != abilityKindObject && !setupDraw && !qualifiedAttack) || effect.draw == nil || effect.damage != nil {
+					return nil, fmt.Errorf("%s: %s.draw payload requires Cardistry, Object, setup or qualified attack trigger", context, field)
 				}
 				if effect.draw.amount <= 0 {
 					return nil, fmt.Errorf("%s: %s.draw.amount must be positive", context, field)
@@ -1667,8 +1713,11 @@ func compileAbilityDefinitions(definition CardDefinition, authored []authoredAbi
 					},
 				})
 			case effectKindChooseCard:
-				if ability.kind != abilityKindCardistry || effect.chooseCard == nil || effect.draw != nil || effect.damage != nil || effect.discard != nil || effect.copyAction != nil {
-					return nil, fmt.Errorf("%s: %s.choose_card payload is required only for Cardistry", context, field)
+				if (ability.kind != abilityKindCardistry && !qualifiedAttack) || effect.chooseCard == nil || effect.draw != nil || effect.damage != nil || effect.discard != nil || effect.copyAction != nil {
+					return nil, fmt.Errorf("%s: %s.choose_card payload requires Cardistry or qualified attack trigger", context, field)
+				}
+				if effect.chooseCard.canPass != qualifiedAttack {
+					return nil, fmt.Errorf("%s: %s.choose_card.can_pass unsupported", context, field)
 				}
 				if (effect.chooseCard.selection.Zone != cardZoneHand && effect.chooseCard.selection.Zone != cardZoneGraveyard && effect.chooseCard.selection.Zone != cardZoneMemory) || effect.chooseCard.binding == "" {
 					return nil, fmt.Errorf("%s: %s.choose_card requires supported zone and binding", context, field)
@@ -1701,8 +1750,8 @@ func compileAbilityDefinitions(definition CardDefinition, authored []authoredAbi
 					chooseObject: *effect.chooseObject,
 				})
 			case effectKindDiscard:
-				if ability.kind != abilityKindCardistry || effect.discard == nil || effect.draw != nil || effect.damage != nil || effect.chooseCard != nil || effect.copyAction != nil {
-					return nil, fmt.Errorf("%s: %s.discard payload is required only for Cardistry", context, field)
+				if (ability.kind != abilityKindCardistry && !qualifiedAttack) || effect.discard == nil || effect.draw != nil || effect.damage != nil || effect.chooseCard != nil || effect.copyAction != nil {
+					return nil, fmt.Errorf("%s: %s.discard payload requires Cardistry or qualified attack trigger", context, field)
 				}
 				if effect.discard.binding == "" {
 					return nil, fmt.Errorf("%s: %s.discard.binding must not be empty", context, field)
@@ -1743,7 +1792,7 @@ func compileAbilityDefinitions(definition CardDefinition, authored []authoredAbi
 					counter: *effect.counter,
 				})
 			case effectKindModifier:
-				if effect.modifier == nil || effect.modifier.duration != modifierDurationEndOfTurn || (ability.kind == abilityKindCardistry && (!isCardistryModifier(effect.modifier.modifier) || effect.modifier.requiresRetargetSuccess)) || (ability.kind == abilityKindAction && (!isActionModifier(effect.modifier.modifier) || (effect.modifier.requiresRetargetSuccess && (ability.target == nil || ability.target.kind != selectorRetargetableControlledSuitedAlly)))) || (ability.kind == abilityKindObject && (effect.modifier.requiresRetargetSuccess || !effect.modifier.modifier.GrantStealth)) || (ability.kind == abilityKindTriggered && (ability.trigger == nil || ability.trigger.event != eventKindCardistryActivated || effect.modifier.requiresRetargetSuccess || !isCardistryObserverModifier(effect.modifier.modifier))) || (ability.kind != abilityKindCardistry && ability.kind != abilityKindAction && ability.kind != abilityKindObject && ability.kind != abilityKindTriggered) {
+				if !validAbilityModifier(ability, effect.modifier) {
 					return nil, fmt.Errorf("%s: %s.modifier payload unsupported", context, field)
 				}
 				result.effects = append(result.effects, compiledEffect{
@@ -1807,7 +1856,7 @@ func compileAbilityDefinitions(definition CardDefinition, authored []authoredAbi
 				result.effects = append(result.effects, compiledEffect{
 					kind: effectKindPreventNonCombatDamage,
 				})
-			case effectKindRestGrantImmortality, effectKindSacrificeAllyPower, effectKindGrantTaunt:
+			case effectKindRestObject, effectKindSacrificeAllyPower, effectKindGrantTaunt:
 				if ability.kind != abilityKindTriggered || ability.trigger == nil || ability.trigger.event != eventKindEnter {
 					return nil, fmt.Errorf("%s: %s.kind requires enter trigger", context, field)
 				}
@@ -1824,6 +1873,9 @@ func compileAbilityDefinitions(definition CardDefinition, authored []authoredAbi
 		if ability.kind == abilityKindObject && !validObjectEffectSequence(result.effects) {
 			return nil, fmt.Errorf("%s: Object must pay optional rest then banish before its resolving effects", context)
 		}
+		if err := validateAbilityOperations(result.operations()); err != nil {
+			return nil, fmt.Errorf("%s: runtime operations: %w", context, err)
+		}
 		compiled = append(compiled, result)
 	}
 	for _, registered := range registeredAbilities {
@@ -1832,6 +1884,32 @@ func compileAbilityDefinitions(definition CardDefinition, authored []authoredAbi
 		}
 	}
 	return compiled, nil
+}
+
+// validAbilityModifier 限制各能力生命週期可提交的持續效果與到期時點。
+// 輸入為能力宣告與修正資料；輸出為是否合法，無副作用。
+func validAbilityModifier(ability authoredAbilityDefinition, modifier *modifierEffectDefinition) bool {
+	if modifier == nil {
+		return false
+	}
+	switch ability.kind {
+	case abilityKindCardistry:
+		return modifier.duration == modifierDurationEndOfTurn && !modifier.requiresRetargetSuccess && isCardistryModifier(modifier.modifier)
+	case abilityKindAction:
+		return modifier.duration == modifierDurationEndOfTurn && isActionModifier(modifier.modifier) && (!modifier.requiresRetargetSuccess || (ability.target != nil && ability.target.kind == selectorRetargetableControlledSuitedAlly))
+	case abilityKindObject:
+		return modifier.duration == modifierDurationEndOfTurn && !modifier.requiresRetargetSuccess && modifier.modifier.GrantStealth
+	case abilityKindTriggered:
+		if ability.trigger == nil || modifier.requiresRetargetSuccess {
+			return false
+		}
+		if ability.trigger.event == eventKindEnter {
+			return modifier.duration == modifierDurationEndOfNextTurn && isOtherControlledSuitedAllyModifier(modifier.modifier)
+		}
+		return ability.trigger.event == eventKindCardistryActivated && modifier.duration == modifierDurationEndOfTurn && isCardistryObserverModifier(modifier.modifier)
+	default:
+		return false
+	}
 }
 
 // validateObjectActivationCondition 限制目前支援集合的 Object 宣告條件為對手 Water 或 Wind Champion。
@@ -1908,7 +1986,7 @@ func validateStaticEffectDefinition(effect *staticEffectDefinition) error {
 			return fmt.Errorf("qualified Human predicate requires ability layer")
 		}
 		if !isQualifiedHumanStaticModifier(effect.modifier) {
-			return fmt.Errorf("qualified Human predicate requires Pride removal and granted On Attack")
+			return fmt.Errorf("qualified Human predicate requires Pride removal")
 		}
 	case staticPredicateOtherControlledSuitedAlly:
 		if effect.layer != effectLayerAbility {
@@ -1982,8 +2060,7 @@ func isCardistryModifier(modifier continuousModifier) bool {
 		!modifier.GrantStealth &&
 		!modifier.GrantTrueSight &&
 		modifier.SetPride == nil &&
-		!modifier.RemovePride &&
-		!modifier.GrantRedHareOnAttack
+		!modifier.RemovePride
 }
 
 // isCardistryObserverModifier 驗證 Cardistry 觸發效果只提供 +1 Power 與 true sight。
@@ -2000,8 +2077,7 @@ func isCardistryObserverModifier(modifier continuousModifier) bool {
 		!modifier.SwitchPowerLife &&
 		!modifier.GrantStealth &&
 		modifier.GrantTrueSight &&
-		!modifier.RemovePride &&
-		!modifier.GrantRedHareOnAttack
+		!modifier.RemovePride
 }
 
 // isActionModifier 驗證 Action 的暫時修正僅為 Power/Life 或 recovery prohibition，且不混入其他機制。
@@ -2018,8 +2094,7 @@ func isActionModifier(modifier continuousModifier) bool {
 		!modifier.GrantStealth &&
 		!modifier.GrantTrueSight &&
 		modifier.SetPride == nil &&
-		!modifier.RemovePride &&
-		!modifier.GrantRedHareOnAttack)
+		!modifier.RemovePride)
 }
 
 // isPrideStaticModifier 驗證 Pride static 只設定非負 Pride，不混入未支援的特徵修正。
@@ -2037,11 +2112,10 @@ func isPrideStaticModifier(modifier continuousModifier) bool {
 		!modifier.SwitchPowerLife &&
 		!modifier.GrantStealth &&
 		!modifier.GrantTrueSight &&
-		!modifier.RemovePride &&
-		!modifier.GrantRedHareOnAttack
+		!modifier.RemovePride
 }
 
-// isQualifiedHumanStaticModifier 驗證條件式 static 只移除 Pride 並授予對應的 On Attack ability。
+// isQualifiedHumanStaticModifier 驗證條件式 static 只移除 Pride。
 // 輸入為靜態能力的 modifier；輸出為是否符合 qualified Human 定義，副作用為零。
 func isQualifiedHumanStaticModifier(modifier continuousModifier) bool {
 	return modifier.SetPride == nil &&
@@ -2055,14 +2129,13 @@ func isQualifiedHumanStaticModifier(modifier continuousModifier) bool {
 		!modifier.SwitchPowerLife &&
 		!modifier.GrantStealth &&
 		!modifier.GrantTrueSight &&
-		modifier.RemovePride &&
-		modifier.GrantRedHareOnAttack
+		modifier.RemovePride
 }
 
 // isOtherControlledSuitedAllyModifier 驗證 Verita 靜態能力只授予 Immortality。
 // 輸入為連續效果修正；輸出為是否符合已支援的修正形狀，副作用為零。
 func isOtherControlledSuitedAllyModifier(modifier continuousModifier) bool {
-	return modifier.SetPride == nil && modifier.SetPower == nil && modifier.SetLife == nil && modifier.PowerDelta == 0 && modifier.LifeDelta == 0 && modifier.ReserveCostDelta == 0 && modifier.GrantImmortality && !modifier.ProhibitRecover && !modifier.SwitchPowerLife && !modifier.GrantStealth && !modifier.GrantTrueSight && !modifier.RemovePride && !modifier.GrantRedHareOnAttack
+	return modifier.SetPride == nil && modifier.SetPower == nil && modifier.SetLife == nil && modifier.PowerDelta == 0 && modifier.LifeDelta == 0 && modifier.ReserveCostDelta == 0 && modifier.GrantImmortality && !modifier.ProhibitRecover && !modifier.SwitchPowerLife && !modifier.GrantStealth && !modifier.GrantTrueSight && !modifier.RemovePride
 }
 
 // isClassBonusStaticModifier 驗證 Weapon 職業加成只提供 +1 Power，Bulwark 可同時增加 2 點 wield Reserve 費用。
@@ -2079,8 +2152,7 @@ func isClassBonusStaticModifier(modifier continuousModifier) bool {
 		!modifier.SwitchPowerLife &&
 		!modifier.GrantStealth &&
 		!modifier.GrantTrueSight &&
-		!modifier.RemovePride &&
-		!modifier.GrantRedHareOnAttack
+		!modifier.RemovePride
 }
 
 // isArthurRestedAlliesModifier 驗證 Arthur 的 static 只向其他受控 Ally 提供 +1 Power。
@@ -2092,7 +2164,7 @@ func isArthurRestedAlliesModifier(modifier continuousModifier) bool {
 // isNoireStealthModifier 驗證 Noire 的 static 只授予 Stealth。
 // 輸入為 continuous modifier；輸出為是否符合 Noire 的已支援 payload，副作用為零。
 func isNoireStealthModifier(modifier continuousModifier) bool {
-	return modifier.SetPride == nil && modifier.SetPower == nil && modifier.SetLife == nil && modifier.PowerDelta == 0 && modifier.LifeDelta == 0 && modifier.ReserveCostDelta == 0 && !modifier.GrantImmortality && !modifier.ProhibitRecover && !modifier.SwitchPowerLife && modifier.GrantStealth && !modifier.GrantTrueSight && !modifier.RemovePride && !modifier.GrantRedHareOnAttack
+	return modifier.SetPride == nil && modifier.SetPower == nil && modifier.SetLife == nil && modifier.PowerDelta == 0 && modifier.LifeDelta == 0 && modifier.ReserveCostDelta == 0 && !modifier.GrantImmortality && !modifier.ProhibitRecover && !modifier.SwitchPowerLife && modifier.GrantStealth && !modifier.GrantTrueSight && !modifier.RemovePride
 }
 
 // isHeatedVengeanceModifier 驗證 Heated Vengeance 的 static 只提供 +3 Power。
@@ -2202,6 +2274,7 @@ func (ability compiledAbilityDefinition) operations() []effectOperation {
 				Kind:          effectOperationChoose,
 				CardSelection: effect.chooseCard.selection,
 				Binding:       effect.chooseCard.binding,
+				CanPass:       effect.chooseCard.canPass,
 			})
 		case effectKindChooseObject:
 			operations = append(operations, effectOperation{
@@ -2228,13 +2301,17 @@ func (ability compiledAbilityDefinition) operations() []effectOperation {
 				Value:         &amount,
 			})
 		case effectKindModifier:
+			layer := effectLayerModifier
+			if effect.modifier.duration == modifierDurationEndOfNextTurn {
+				layer = effectLayerAbility
+			}
 			operations = append(operations, effectOperation{
 				Kind:                    effectOperationContinuousModifier,
 				Duration:                effect.modifier.duration,
 				RequiresRetargetSuccess: effect.modifier.requiresRetargetSuccess,
 				ContinuousEffect: continuousEffect{
 					Scope:     effectScopeObject,
-					Layer:     effectLayerModifier,
+					Layer:     layer,
 					PowerLife: powerLifeModify,
 					Modifier:  effect.modifier.modifier,
 				},
@@ -2270,9 +2347,9 @@ func (ability compiledAbilityDefinition) operations() []effectOperation {
 			operations = append(operations, effectOperation{
 				Kind: effectOperationPreventNonCombatDamage,
 			})
-		case effectKindRestGrantImmortality:
+		case effectKindRestObject:
 			operations = append(operations, effectOperation{
-				Kind: effectOperationRestGrantImmortality,
+				Kind: effectOperationRestObject,
 			})
 		case effectKindSacrificeAllyPower:
 			operations = append(operations, effectOperation{

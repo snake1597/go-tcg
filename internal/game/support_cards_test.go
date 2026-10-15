@@ -1010,8 +1010,8 @@ func TestRedHarePermissionAndGrantedAttackAbilityUseDerivedCharacteristics(t *te
 			"ALLY",
 		},
 	}
-	if game.canAttackWith(player, redHare) || game.characteristicsFor(redHare).GrantedOnAttack {
-		t.Fatal("Red Hare gained permission or its granted ability without a qualifying Human ally")
+	if game.canAttackWith(player, redHare) {
+		t.Fatal("Red Hare gained attack permission without a qualifying Human ally")
 	}
 	game.advanceKnowledgeRevision()
 	view, err := game.PlayerView(player)
@@ -1034,8 +1034,8 @@ func TestRedHarePermissionAndGrantedAttackAbilityUseDerivedCharacteristics(t *te
 			"UNIQUE",
 		},
 	}
-	if !game.canAttackWith(player, redHare) || game.characteristicsFor(redHare).Pride != 0 || !game.characteristicsFor(redHare).GrantedOnAttack {
-		t.Fatalf("Red Hare characteristics = %#v, want removed Pride and granted On Attack", game.characteristicsFor(redHare))
+	if !game.canAttackWith(player, redHare) || game.characteristicsFor(redHare).Pride != 0 {
+		t.Fatalf("Red Hare characteristics = %#v, want removed Pride", game.characteristicsFor(redHare))
 	}
 	game.advanceKnowledgeRevision()
 	view, err = game.PlayerView(player)
@@ -1072,8 +1072,8 @@ func TestRedHarePermissionAndGrantedAttackAbilityUseDerivedCharacteristics(t *te
 		t.Fatalf("On Attack triggers without discard options = %#v, want none", got)
 	}
 	delete(game.state.Objects, duchess)
-	if game.canAttackWith(player, redHare) || game.characteristicsFor(redHare).GrantedOnAttack {
-		t.Fatal("Red Hare retained removed Pride or granted ability after source left")
+	if game.canAttackWith(player, redHare) {
+		t.Fatal("Red Hare retained removed Pride after source left")
 	}
 	game.state.Objects[duchess] = fieldObject{
 		ID:    duchess,
@@ -1093,7 +1093,7 @@ func TestRedHarePermissionAndGrantedAttackAbilityUseDerivedCharacteristics(t *te
 			"ALLY",
 		},
 	}
-	if !game.canAttackWith(player, redHare) || !game.characteristicsFor(redHare).GrantedOnAttack {
-		t.Fatal("re-entered Red Hare did not receive fresh derived permission and ability")
+	if !game.canAttackWith(player, redHare) {
+		t.Fatal("re-entered Red Hare did not receive fresh attack permission")
 	}
 }

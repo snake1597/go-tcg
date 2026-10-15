@@ -34,19 +34,18 @@ const (
 )
 
 type continuousModifier struct {
-	SetPower             *int `json:"set_power,omitempty"`
-	SetLife              *int `json:"set_life,omitempty"`
-	PowerDelta           int  `json:"power_delta,omitempty"`
-	LifeDelta            int  `json:"life_delta,omitempty"`
-	ReserveCostDelta     int  `json:"reserve_cost_delta,omitempty"`
-	GrantImmortality     bool `json:"grant_immortality,omitempty"`
-	ProhibitRecover      bool `json:"prohibit_recover,omitempty"`
-	SwitchPowerLife      bool `json:"switch_power_life,omitempty"`
-	GrantStealth         bool `json:"grant_stealth,omitempty"`
-	GrantTrueSight       bool `json:"grant_true_sight,omitempty"`
-	SetPride             *int `json:"set_pride,omitempty"`
-	RemovePride          bool `json:"remove_pride,omitempty"`
-	GrantRedHareOnAttack bool `json:"grant_red_hare_on_attack,omitempty"`
+	SetPower         *int `json:"set_power,omitempty"`
+	SetLife          *int `json:"set_life,omitempty"`
+	PowerDelta       int  `json:"power_delta,omitempty"`
+	LifeDelta        int  `json:"life_delta,omitempty"`
+	ReserveCostDelta int  `json:"reserve_cost_delta,omitempty"`
+	GrantImmortality bool `json:"grant_immortality,omitempty"`
+	ProhibitRecover  bool `json:"prohibit_recover,omitempty"`
+	SwitchPowerLife  bool `json:"switch_power_life,omitempty"`
+	GrantStealth     bool `json:"grant_stealth,omitempty"`
+	GrantTrueSight   bool `json:"grant_true_sight,omitempty"`
+	SetPride         *int `json:"set_pride,omitempty"`
+	RemovePride      bool `json:"remove_pride,omitempty"`
 }
 
 // continuousEffect 保存可序列化的持續效果資料。
@@ -76,7 +75,6 @@ type characteristics struct {
 	RecoverProhibited bool
 	Stealth           bool
 	TrueSight         bool
-	GrantedOnAttack   bool
 }
 
 // characteristicsFor 從物件對應牌的基礎值計算目前特性，不改寫牌本身。
@@ -153,7 +151,6 @@ func applyContinuousModifier(result *characteristics, modifier continuousModifie
 	if modifier.RemovePride {
 		result.Pride = 0
 	}
-	result.GrantedOnAttack = result.GrantedOnAttack || modifier.GrantRedHareOnAttack
 	if modifier.SwitchPowerLife {
 		result.Power, result.Life = result.Life, result.Power
 	}

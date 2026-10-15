@@ -589,8 +589,8 @@ func TestCompileVeritaDefinitions(t *testing.T) {
 	}
 }
 
-// TestCompileRedHareStaticDefinitions 驗證 Red Hare 將 Pride 的攻擊限制與條件解除定義為靜態能力。
-// 輸入為 Red Hare 的卡牌與牌面；輸出為具 predicate、layer、sublayer、modifier、duration 及來源存在條件的編譯定義，副作用為零。
+// TestCompileRedHareStaticDefinitions 驗證 Red Hare 的 Pride 與條件式攻擊能力各有已編譯 Slot。
+// 輸入為 Red Hare 的卡牌與牌面；輸出為兩個 static 與一個 triggered 定義，副作用為零。
 func TestCompileRedHareStaticDefinitions(t *testing.T) {
 	definition := CardDefinition{
 		id: redHareCardID,
@@ -605,10 +605,10 @@ func TestCompileRedHareStaticDefinitions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("compileAbilityDefinitions() error = %v", err)
 	}
-	if len(abilities) != 2 {
-		t.Fatalf("compiled abilities = %#v, want two static abilities", abilities)
+	if len(abilities) != 3 {
+		t.Fatalf("compiled abilities = %#v, want two static and one triggered ability", abilities)
 	}
-	for _, ability := range abilities {
+	for _, ability := range abilities[:2] {
 		if ability.kind != abilityKindStatic || ability.static == nil {
 			t.Fatalf("compiled ability = %#v, want static definition", ability)
 		}
@@ -619,8 +619,15 @@ func TestCompileRedHareStaticDefinitions(t *testing.T) {
 	if abilities[0].static.modifier.SetPride == nil || *abilities[0].static.modifier.SetPride != 3 {
 		t.Fatalf("Pride modifier = %#v, want Pride 3", abilities[0].static.modifier)
 	}
-	if !abilities[1].static.modifier.RemovePride || !abilities[1].static.modifier.GrantRedHareOnAttack {
-		t.Fatalf("qualified Human modifier = %#v, want Pride removal and granted On Attack", abilities[1].static.modifier)
+	if !abilities[1].static.modifier.RemovePride {
+		t.Fatalf("qualified Human modifier = %#v, want Pride removal", abilities[1].static.modifier)
+	}
+	if abilities[2].kind != abilityKindTriggered || abilities[2].trigger == nil || abilities[2].trigger.condition != triggerConditionQualifiedHumanAlly {
+		t.Fatalf("qualified Human trigger = %#v, want compiled attack trigger", abilities[2])
+	}
+	operations := abilities[2].operations()
+	if len(operations) != 3 || operations[0].Kind != effectOperationChoose || !operations[0].CanPass || operations[1].Kind != effectOperationDiscard || operations[2].Kind != effectOperationDraw {
+		t.Fatalf("qualified Human operations = %#v, want optional discard then draw", operations)
 	}
 	invalid := redHareAbilities()
 	invalid[0].static.layer = effectLayerModifier

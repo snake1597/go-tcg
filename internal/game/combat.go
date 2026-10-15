@@ -226,6 +226,9 @@ func (g *Game) onAttackTriggers(player *model.Player, attacker objectID) []effec
 		if abilityDefinition.trigger.condition == triggerConditionClassMatch && !g.championHasClass(player, card.Classes) {
 			continue
 		}
+		if abilityDefinition.trigger.condition == triggerConditionQualifiedHumanAlly && (!g.controlsQualifiedHumanAlly(player, attacker) || len(g.state.Zones[player.UID].Hand) == 0) {
+			continue
+		}
 		champion, championExists := g.state.Champions[player.UID]
 		if !championExists {
 			continue
@@ -261,39 +264,7 @@ func (g *Game) onAttackTriggers(player *model.Player, attacker objectID) []effec
 			},
 		}
 	}
-	if !g.characteristicsFor(attacker).GrantedOnAttack || len(g.state.Zones[player.UID].Hand) == 0 {
-		return nil
-	}
-	ability := g.newAbilityInstance(
-		player,
-		card.ID,
-		"",
-		[]effectOperation{
-			{
-				Kind: effectOperationChoose,
-				CardSelection: cardSelectionSpec{
-					Zone: cardZoneHand,
-				},
-				CanPass: true,
-			},
-			{
-				Kind: effectOperationDiscard,
-			},
-			{
-				Kind:   effectOperationDraw,
-				Amount: 1,
-			},
-		},
-	)
-	return []effectStackItem{
-		{
-			Kind:       effectStackAbility,
-			Controller: player,
-			Source:     card.ID,
-			SourceLKI:  card.ID,
-			Ability:    &ability,
-		},
-	}
+	return nil
 }
 
 // submitWieldChoice 以宣告交易提交已選擇的 Wield 目標與 Memory 付款。

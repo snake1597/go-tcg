@@ -165,7 +165,7 @@ func isSupportedOperation(operation effectOperationKind) bool {
 		effectOperationDiscard,
 		effectOperationDeploy,
 		effectOperationPutAllyOnField,
-		effectOperationRestGrantImmortality,
+		effectOperationRestObject,
 		effectOperationCopyAction,
 		effectOperationSacrifice,
 		effectOperationRetargetAttack,

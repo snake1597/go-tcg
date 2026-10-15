@@ -242,6 +242,39 @@ func TestDuchessThornesRestCostRejectsRestedSource(t *testing.T) {
 	}
 }
 
+// TestObjectAbilityHidesUnpayableSource 驗證 Player View 與宣告共用來源擁有權檢查。
+// 輸入為控制者持有但 Card Instance 屬於對手的 Object；輸出為不可啟動且不列出能力，副作用僅建立測試狀態。
+func TestObjectAbilityHidesUnpayableSource(t *testing.T) {
+	game := newActionGame(t)
+	player := model.PlayerOne
+	card := findCard(t, game, player, grandCrusadersRingCardID)
+	source := objectID("regalia:unpayable-ring")
+	game.state.Objects[source] = fieldObject{
+		ID:    source,
+		Card:  card,
+		Owner: player,
+		Types: []string{
+			"ITEM",
+		},
+	}
+	instance := game.state.Cards[card]
+	instance.Owner = model.PlayerTwo
+	game.state.Cards[card] = instance
+	if game.canActivateObjectAbility(player, source) {
+		t.Fatal("canActivateObjectAbility() = true for an unpayable source")
+	}
+	game.advanceKnowledgeRevision()
+	view, err := game.PlayerView(player)
+	if err != nil {
+		t.Fatalf("PlayerView() error = %v", err)
+	}
+	for _, action := range view.LegalActions {
+		if action.CardName == "Grand Crusader's Ring" {
+			t.Fatalf("unpayable Object exposed ability %#v", action)
+		}
+	}
+}
+
 // TestDuchessThornesActivatedSlotUsesPlayerViewAndAbilityStack 驗證 rest、banish 與折扣依共用 Object 生命週期執行。
 // 輸入為 awake Duchess's Thornes；輸出為穩定 Slot 與結算後折扣，副作用為放逐來源並推進 Effects Stack。
 func TestDuchessThornesActivatedSlotUsesPlayerViewAndAbilityStack(t *testing.T) {

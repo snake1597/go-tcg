@@ -41,12 +41,12 @@ const (
 	effectOperationDiscard                effectOperationKind = "discard"
 	effectOperationDeploy                 effectOperationKind = "deploy"
 	// effectOperationPutAllyOnField 以通用 ability runtime 結算被 play 的 Ally source。
-	effectOperationPutAllyOnField       effectOperationKind = "put_ally_on_field"
-	effectOperationRestGrantImmortality effectOperationKind = "rest_grant_immortality"
-	effectOperationCopyAction           effectOperationKind = "copy_action"
-	effectOperationSacrifice            effectOperationKind = "sacrifice"
-	effectOperationRetargetAttack       effectOperationKind = "retarget_attack"
-	effectOperationGrantTaunt           effectOperationKind = "grant_taunt"
+	effectOperationPutAllyOnField effectOperationKind = "put_ally_on_field"
+	effectOperationRestObject     effectOperationKind = "rest_object"
+	effectOperationCopyAction     effectOperationKind = "copy_action"
+	effectOperationSacrifice      effectOperationKind = "sacrifice"
+	effectOperationRetargetAttack effectOperationKind = "retarget_attack"
+	effectOperationGrantTaunt     effectOperationKind = "grant_taunt"
 )
 
 // effectOperation 只保存可序列化的操作資料，讓能力與待選狀態可以重播。
@@ -286,8 +286,11 @@ func (g *Game) resolveAbility(instance abilityInstance) {
 			g.deployAlly(instance.Controller, card)
 		case effectOperationPutAllyOnField:
 			g.resolveAllyEffectSource(instance.Controller, instance.Source)
-		case effectOperationRestGrantImmortality:
-			g.restAndGrantTemporaryImmortality(target)
+		case effectOperationRestObject:
+			if object, exists := g.state.Objects[target]; exists {
+				object.Rested = true
+				g.state.Objects[target] = object
+			}
 		case effectOperationGrantTaunt:
 			g.grantTemporaryTaunt(instance.Controller, instance.Source)
 		case effectOperationMoveSourceToGraveyard:

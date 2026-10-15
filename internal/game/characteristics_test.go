@@ -138,8 +138,15 @@ func TestArthurImmortalityRestsArthurForTheCurrentTurn(t *testing.T) {
 	arthur.Definition = arthurYoungHeirCardID
 	game.state.Cards[card] = arthur
 	id := objectID("arthur")
-	game.state.Objects[id] = fieldObject{ID: id, Card: card, Owner: model.PlayerOne}
-	game.restAndGrantTemporaryImmortality(id)
+	game.state.Objects[id] = fieldObject{
+		ID:    id,
+		Card:  card,
+		Owner: model.PlayerOne,
+		Types: []string{
+			"ALLY",
+		},
+	}
+	resolveArthurEnterForTest(t, game, card, id)
 	object := game.state.Objects[id]
 	if !object.Rested || !game.isImmortal(id) {
 		t.Fatalf("Arthur state = %#v, want rested immortality through the owner's next turn", object)
@@ -208,8 +215,11 @@ func TestArthurImmortalityExpiresAtBeginningOfOwnersNextTurn(t *testing.T) {
 		ID:    id,
 		Card:  card,
 		Owner: model.PlayerOne,
+		Types: []string{
+			"ALLY",
+		},
 	}
-	game.restAndGrantTemporaryImmortality(id)
+	resolveArthurEnterForTest(t, game, card, id)
 	game.state.Scheduler.TurnNumber++
 	game.expireTimedChampionEffects()
 	if !game.isImmortal(id) {
@@ -220,6 +230,22 @@ func TestArthurImmortalityExpiresAtBeginningOfOwnersNextTurn(t *testing.T) {
 	if game.isImmortal(id) {
 		t.Fatal("Arthur retained immortality at the beginning of the owner's next turn")
 	}
+}
+
+// resolveArthurEnterForTest 使用正式編譯定義結算 Arthur 進場操作。
+// 輸入為測試、對局、來源卡與物件；無輸出，副作用為按能力操作更新測試對局狀態。
+func resolveArthurEnterForTest(t *testing.T, game *Game, card cardInstanceID, target objectID) {
+	t.Helper()
+	abilities := game.compiledTriggeredAbilities(card, eventKindEnter)
+	if len(abilities) == 0 {
+		t.Fatal("Arthur has no compiled enter ability")
+	}
+	game.resolveAbility(game.newAbilityInstance(
+		model.PlayerOne,
+		card,
+		target,
+		abilities[0].operations(),
+	))
 }
 
 func TestZeroImmortalityDurationIsNotActive(t *testing.T) {

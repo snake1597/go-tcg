@@ -73,7 +73,7 @@ func (g *Game) canActivateObjectAbility(player *model.Player, source objectID) b
 	}
 	if ability, exists := g.compiledObject(object.Card); exists {
 		operations := ability.operations()
-		if len(operations) > 0 && operations[0].Kind == effectOperationRestSource && object.Rested {
+		if _, err := g.objectAbilityCostPrefix(player, source, operations); err != nil {
 			return false
 		}
 		return g.objectAbilityCanBeDeclared(player, ability)
@@ -110,12 +110,16 @@ func (g *Game) opponentControlsElementChampion(player *model.Player, element str
 	return false
 }
 
-// payObjectAbilityCosts 先完整驗證 Object 的可選 rest 與必要 banish 費用，再原子支付放逐費用。
-// 輸入為控制者、場上來源與完整 operations；輸出為第一個結算 operation 索引或錯誤，成功時移除並放逐來源，失敗時不改變狀態。
-func (g *Game) payObjectAbilityCosts(player *model.Player, source objectID, operations []effectOperation) (int, error) {
+// objectAbilityCostPrefix 驗證來源擁有權、可選 rest 與必要 banish，供行動查詢及付款共用。
+// 輸入為控制者、場上來源與完整 operations；輸出為第一個結算 operation 索引或錯誤，無副作用。
+func (g *Game) objectAbilityCostPrefix(player *model.Player, source objectID, operations []effectOperation) (int, error) {
 	object, exists := g.state.Objects[source]
 	if !exists || !samePlayer(object.Owner, player) {
 		return 0, fmt.Errorf("invalid object ability")
+	}
+	card, exists := g.state.Cards[object.Card]
+	if !exists || !samePlayer(card.Owner, object.Owner) {
+		return 0, fmt.Errorf("object source card is not owned by object controller")
 	}
 	resolutionStart := 0
 	if len(operations) > 0 && operations[0].Kind == effectOperationRestSource {
@@ -127,10 +131,20 @@ func (g *Game) payObjectAbilityCosts(player *model.Player, source objectID, oper
 	if resolutionStart >= len(operations)-1 || operations[resolutionStart].Kind != effectOperationBanishSource {
 		return 0, fmt.Errorf("object source banish cost is missing")
 	}
+	return resolutionStart + 1, nil
+}
+
+// payObjectAbilityCosts 驗證 Object 的共通費用前綴後，原子放逐來源。
+// 輸入為控制者、場上來源與完整 operations；輸出為第一個結算 operation 索引或錯誤，成功時更新場上物件與放逐區，失敗時不改變狀態。
+func (g *Game) payObjectAbilityCosts(player *model.Player, source objectID, operations []effectOperation) (int, error) {
+	resolutionStart, err := g.objectAbilityCostPrefix(player, source, operations)
+	if err != nil {
+		return 0, err
+	}
 	if _, err := g.commitObjectAbilityBanishment(player, source); err != nil {
 		return 0, err
 	}
-	return resolutionStart + 1, nil
+	return resolutionStart, nil
 }
 
 // cardistryObserverTriggers 由場上來源的 triggered definitions 建立 Ally Cardistry 觀察者能力。
