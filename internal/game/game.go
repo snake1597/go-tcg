@@ -10,11 +10,12 @@ import (
 )
 
 type Game struct {
-	versions    Versions
-	players     []*model.Player
-	definitions map[CardID]CardDefinition
-	state       gameState
-	replay      Replay
+	versions                  Versions
+	players                   []*model.Player
+	definitions               map[CardID]CardDefinition
+	state                     gameState
+	replay                    Replay
+	actionDeclarationSnapshot *actionDeclarationSnapshot
 }
 
 // NewGame 建立引擎的空白狀態並固定亂數種子與版本。
@@ -96,6 +97,12 @@ func (g *Game) Submit(player *model.Player, input Input) error {
 	playKnowledge := g.getPlayerKnowledge(player)
 
 	kind, exists := playKnowledge.Actions[input.Action]
+	if g.state.Knowledge.Declaration != nil && g.state.Knowledge.Choice != nil && g.state.Knowledge.Choice.CanPass && exists && kind == constants.ActionPass {
+		if err := g.cancelActionDeclaration(player); err != nil {
+			return fmt.Errorf("cancel action declaration: %w", err)
+		}
+		return nil
+	}
 	if g.state.Knowledge.AlternativeCost != nil && g.state.Knowledge.Choice != nil && g.state.Knowledge.Choice.CanPass && exists && kind == constants.ActionPass {
 		g.state.Knowledge.AlternativeCost = nil
 		g.state.Knowledge.Choice = nil

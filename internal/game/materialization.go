@@ -70,6 +70,20 @@ func (g *Game) canMaterializeChampionLevelUp(player *model.Player, candidate car
 // materialize 驗證玩家對 Material Deck 牌的宣告，並以通用 Memory 付款與 Stack 建立交由付款流程處理。
 // 輸入為玩家、其公開的 materialization 牌與非隨機付款 handles；輸出為驗證或付款錯誤；成功時會改變區域與 Stack。
 func (g *Game) materialize(player *model.Player, card cardInstanceID, memoryPayment []ViewHandle) error {
+	return g.commitDeclarationTransaction(
+		func() error {
+			return g.materializeTransaction(
+				player,
+				card,
+				memoryPayment,
+			)
+		},
+	)
+}
+
+// materializeTransaction 在候選狀態中驗證 Material Deck 來源與 Memory Cost，再建立 materialization Stack Item。
+// 輸入為玩家、其公開的 materialization 牌與非隨機付款 handles；輸出為驗證或付款錯誤；成功時只修改目前的候選權威狀態。
+func (g *Game) materializeTransaction(player *model.Player, card cardInstanceID, memoryPayment []ViewHandle) error {
 	if !g.canMaterialize(
 		player,
 		card,

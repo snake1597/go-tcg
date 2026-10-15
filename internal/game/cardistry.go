@@ -98,6 +98,20 @@ func (g *Game) cardistryCost(player *model.Player, baseCost int, reduction abili
 // activateCardistry 宣告指定物件的 Cardistry，並以通用 Memory 付款來源支付其費用。
 // 輸入為控制者、來源物件與非隨機 Memory 付款 handles；輸出為啟動錯誤或 nil，成功時推入能力並授予行動機會。
 func (g *Game) activateCardistry(player *model.Player, source objectID, memoryPayment []ViewHandle) error {
+	return g.commitDeclarationTransaction(
+		func() error {
+			return g.activateCardistryTransaction(
+				player,
+				source,
+				memoryPayment,
+			)
+		},
+	)
+}
+
+// activateCardistryTransaction 在候選狀態中驗證 Cardistry、支付 Memory Cost 並建立 Ability Instance。
+// 輸入為控制者、來源物件與非隨機 Memory 付款 handles；輸出為啟動錯誤或 nil；成功時只修改目前的候選權威狀態。
+func (g *Game) activateCardistryTransaction(player *model.Player, source objectID, memoryPayment []ViewHandle) error {
 	if !g.canActivateCardistry(player, source) {
 		return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, source)
 	}
@@ -112,7 +126,7 @@ func (g *Game) activateCardistry(player *model.Player, source objectID, memoryPa
 		"banish-floating-memory",
 		"banish-memory",
 	); err != nil {
-		return err
+		return fmt.Errorf("pay memory cost: %w", err)
 	}
 	ability, compiled := g.compiledCardistry(object.Card)
 	if !compiled {

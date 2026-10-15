@@ -1,6 +1,7 @@
 package game
 
 import (
+	"reflect"
 	"testing"
 
 	"go-tcg/internal/constants"
@@ -274,6 +275,49 @@ func TestAllyActivationSourceLeavingEffectsStackDoesNotRestoreCosts(t *testing.T
 	}
 }
 
+// TestAllyActivationRejectsDuplicateReserveWithoutMutation 驗證 Ally 的重複 Reserve handle 會在宣告交易提交前被拒絕。
+// 輸入為 Red Hare activation 與重複的公開 Reserve handle；輸出為錯誤及相同 state hash、replay、來源區域與 Stack；副作用為零。
+func TestAllyActivationRejectsDuplicateReserveWithoutMutation(t *testing.T) {
+	game := newActionGameWithSource(t, redHareCardID)
+	player := model.PlayerOne
+	view, err := game.PlayerView(player)
+	if err != nil {
+		t.Fatalf("PlayerView() error = %v", err)
+	}
+	action := actionByCardName(t, view, "Red Hare, Unrivaled Stallion")
+	if action.ReserveCost < 2 || len(action.ReserveOptions) < 1 {
+		t.Fatalf("action = %#v, want Reserve cost at least two and one option", action)
+	}
+	source := game.getPlayerKnowledge(player).Activations[action.Handle].Card
+	beforeHash := game.StateHash()
+	beforeReplay := game.Replay()
+	if err := game.Submit(
+		player,
+		Input{
+			Revision: view.Revision,
+			Action:   action.Handle,
+			Reserve: []ViewHandle{
+				action.ReserveOptions[0].Handle,
+				action.ReserveOptions[0].Handle,
+			},
+		},
+	); err == nil {
+		t.Fatal("Submit() error = nil, want duplicate Reserve rejection")
+	}
+	if got := game.StateHash(); got != beforeHash {
+		t.Fatalf("StateHash() = %q, want unchanged %q", got, beforeHash)
+	}
+	if got := game.Replay(); len(got.Steps) != len(beforeReplay.Steps) {
+		t.Fatalf("Replay().Steps = %#v, want %#v", got.Steps, beforeReplay.Steps)
+	}
+	if !containsCard(game.state.Zones[player.UID].Hand, source) {
+		t.Fatalf("Hand = %#v, want Ally source %q retained", game.state.Zones[player.UID].Hand, source)
+	}
+	if len(game.state.EffectSources) != 0 || len(game.state.EffectsStack) != 0 {
+		t.Fatalf("sources = %#v, stack = %#v; want no committed Ally activation", game.state.EffectSources, game.state.EffectsStack)
+	}
+}
+
 func TestStraightFlareCountsDistinctPrintedSuitedReserveCosts(t *testing.T) {
 	game := newActionGameWithSource(t, straightFlareCardID)
 	player := model.PlayerOne
@@ -409,6 +453,118 @@ func TestActionSacrificeCostRejectsInvalidWeaponWithoutMutation(t *testing.T) {
 	}
 	if got := game.StateHash(); got != before {
 		t.Fatalf("StateHash() = %q, want unchanged %q", got, before)
+	}
+}
+
+// TestActionDeclarationCancellationRestoresAuthoritativeState 驗證取消尚未完成的 Action 宣告等同未採取行動。
+// 輸入為 Blazing Throw 宣告與 Player View 提供的 Pass；輸出為恢復宣告前的 state hash；副作用為不消耗 PRNG、不新增事件、觸發或 replay。
+func TestActionDeclarationCancellationRestoresAuthoritativeState(t *testing.T) {
+	game := newActionGame(t)
+	player := model.PlayerOne
+	view, err := game.PlayerView(player)
+	if err != nil {
+		t.Fatalf("PlayerView() error = %v", err)
+	}
+	action := actionByCardName(t, view, "Blazing Throw")
+	beforeHash := game.StateHash()
+	beforePRNG := game.state.PRNG
+	beforeEventCount := len(game.state.Events)
+	beforeReplayCount := len(game.Replay().Steps)
+	if err := game.Submit(
+		player,
+		Input{
+			Revision: view.Revision,
+			Action:   action.Handle,
+			Reserve:  reserveHandles(action),
+		},
+	); err != nil {
+		t.Fatalf("Submit() declaration error = %v", err)
+	}
+	cancellingView, err := game.PlayerView(player)
+	if err != nil {
+		t.Fatalf("PlayerView() declaration error = %v", err)
+	}
+	if cancellingView.PendingChoice == nil || !cancellingView.PendingChoice.CanPass {
+		t.Fatalf("PendingChoice = %#v, want cancellable declaration", cancellingView.PendingChoice)
+	}
+	pass := actionByKind(t, cancellingView, constants.ActionPass)
+	if err := game.Submit(
+		player,
+		Input{
+			Revision: cancellingView.Revision,
+			Action:   pass.Handle,
+		},
+	); err != nil {
+		t.Fatalf("Submit() cancellation error = %v", err)
+	}
+	if got := game.StateHash(); got != beforeHash {
+		t.Fatalf("StateHash() = %q, want restored %q", got, beforeHash)
+	}
+	if game.state.PRNG != beforePRNG || len(game.state.Events) != beforeEventCount || len(game.Replay().Steps) != beforeReplayCount {
+		t.Fatalf("cancelled declaration changed PRNG, events, or replay")
+	}
+	afterView, err := game.PlayerView(player)
+	if err != nil {
+		t.Fatalf("PlayerView() after cancellation error = %v", err)
+	}
+	if !reflect.DeepEqual(afterView, view) {
+		t.Fatalf("PlayerView() after cancellation = %#v, want %#v", afterView, view)
+	}
+	if err := game.Replay().Verify(); err != nil {
+		t.Fatalf("Replay().Verify() after cancellation error = %v", err)
+	}
+}
+
+// TestActionDeclarationCancellationAfterTargetRestoresAuthoritativeState 驗證選完目標後仍可放棄含額外費用的 Action 宣告。
+// 輸入為已選 Champion 目標、尚待選 Weapon 的 Blazing Throw 與 Pass；輸出為宣告前 state hash；副作用為不保留任何宣告 replay 或付款。
+func TestActionDeclarationCancellationAfterTargetRestoresAuthoritativeState(t *testing.T) {
+	game := newActionGame(t)
+	player := model.PlayerOne
+	view, err := game.PlayerView(player)
+	if err != nil {
+		t.Fatalf("PlayerView() error = %v", err)
+	}
+	action := actionByCardName(t, view, "Blazing Throw")
+	beforeHash := game.StateHash()
+	beforeReplayCount := len(game.Replay().Steps)
+	if err := game.Submit(
+		player,
+		Input{
+			Revision: view.Revision,
+			Action:   action.Handle,
+			Reserve:  reserveHandles(action),
+		},
+	); err != nil {
+		t.Fatalf("Submit() declaration error = %v", err)
+	}
+	selectPendingChoiceSubject(
+		t,
+		game,
+		player,
+		entityID("champion:"+model.PlayerTwo.UID),
+	)
+	cancellingView, err := game.PlayerView(player)
+	if err != nil {
+		t.Fatalf("PlayerView() Weapon choice error = %v", err)
+	}
+	if cancellingView.PendingChoice == nil || !cancellingView.PendingChoice.CanPass {
+		t.Fatalf("PendingChoice = %#v, want cancellable Weapon choice", cancellingView.PendingChoice)
+	}
+	pass := actionByKind(t, cancellingView, constants.ActionPass)
+	if err := game.Submit(
+		player,
+		Input{
+			Revision: cancellingView.Revision,
+			Action:   pass.Handle,
+		},
+	); err != nil {
+		t.Fatalf("Submit() cancellation error = %v", err)
+	}
+	if got := game.StateHash(); got != beforeHash {
+		t.Fatalf("StateHash() = %q, want restored %q", got, beforeHash)
+	}
+	if len(game.Replay().Steps) != beforeReplayCount {
+		t.Fatalf("Replay().Steps = %#v, want declaration steps discarded", game.Replay().Steps)
 	}
 }
 

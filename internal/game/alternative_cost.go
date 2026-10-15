@@ -126,7 +126,7 @@ func (g *Game) commitAlternativeCost(declaration *alternativeCostDeclaration) er
 	index := cardIndex(zones.Hand, declaration.Source)
 	zones.Hand = append([]cardInstanceID(nil), zones.Hand...)
 	zones.Hand = removeCardAt(zones.Hand, index)
-	return g.commitAllyActivationTransaction(
+	return g.queueAllyActivationTransaction(
 		declaration.Controller,
 		declaration.Source,
 		zones,

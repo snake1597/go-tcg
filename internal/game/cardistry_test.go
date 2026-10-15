@@ -280,20 +280,36 @@ func TestCardistryInvalidMemoryPaymentDoesNotChangeState(t *testing.T) {
 	game.grantCardTracking(player, entityID(notFloatingMemory))
 	fillMemory(t, game, player, 9, notFloatingMemory)
 	game.advanceKnowledgeRevision()
+	view, err := game.PlayerView(player)
+	if err != nil {
+		t.Fatalf("PlayerView() error = %v", err)
+	}
+	action := cardistryAction(t, game, player)
 	before := game.StateHash()
+	beforeReplay := game.Replay()
+	beforeEventCount := len(game.state.Events)
 
-	err := game.activateCardistry(
+	err = game.Submit(
 		player,
-		cardistrySource(t, game, player),
-		[]ViewHandle{
-			game.getPlayerKnowledge(player).Cards[entityID(notFloatingMemory)],
+		Input{
+			Revision: view.Revision,
+			Action:   action,
+			MemoryPayment: []ViewHandle{
+				game.getPlayerKnowledge(player).Cards[entityID(notFloatingMemory)],
+			},
 		},
 	)
 	if err == nil {
-		t.Fatal("activateCardistry() error = nil, want invalid Floating Memory")
+		t.Fatal("Submit() error = nil, want invalid Floating Memory")
 	}
 	if got := game.StateHash(); got != before {
 		t.Fatalf("StateHash() = %q, want unchanged %q", got, before)
+	}
+	if got := game.Replay(); len(got.Steps) != len(beforeReplay.Steps) {
+		t.Fatalf("Replay().Steps = %#v, want %#v", got.Steps, beforeReplay.Steps)
+	}
+	if len(game.state.Events) != beforeEventCount || len(game.state.EffectsStack) != 0 {
+		t.Fatalf("events = %#v, stack = %#v; want no committed Cardistry activation", game.state.Events, game.state.EffectsStack)
 	}
 }
 
@@ -948,7 +964,7 @@ func TestDuchessCopiedActionFizzlesAfterTargetLeaves(t *testing.T) {
 	if len(replay.Steps) == 0 || replay.Steps[len(replay.Steps)-1].StateHash != game.StateHash() {
 		t.Fatalf("final replay hash = %#v, want %q", replay.Steps, game.StateHash())
 	}
-	const wantStateHash = "2077dba2aa9299de91656a98800283c4a39005d73f984b3999704a41c0ddd912"
+	const wantStateHash = "4094da796dc1fa86c69e0990db9d14fbb1f6beabc218c292de3bf308a9865f86"
 	if got := game.StateHash(); got != wantStateHash {
 		t.Fatalf("StateHash() = %q, want conserved Duchess fizzle state %q", got, wantStateHash)
 	}

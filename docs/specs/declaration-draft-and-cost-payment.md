@@ -59,6 +59,8 @@ Vue 每次只回答目前步驟。引擎驗證選擇、更新隔離候選狀態�
 
 規則仍允許撤回時，Cancel 丟棄整個 draft。取消不建立事件、Replay step、trigger、KnowledgeState 變更或正式 PRNG 消耗。
 
+目前 Go 引擎尚未提供獨立 Draft RPC；票證 09 的窄版 Action 付款流程暫以宣告期間 Player View 提供的 `Pass` 取消，並以非 canonical snapshot 還原宣告前的 revision、KnowledgeState、View Handle 狀態與 replay 邊界。來源卡與 Reserve 付款卡留在原區域，且不消耗正式 PRNG、不建立事件或 trigger。此段描述現況，不改變本規格其餘章節對完整 Declaration Draft 邊界的目標要求。
+
 ### 提交草稿
 
 Confirm 會重新驗證 actor、base revision、所有選擇、cost snapshot 與最終合法性。成功時一次提交候選狀態、正式 PRNG cursor、事件與 trigger；失敗時整份丟棄且正式狀態不變。
@@ -83,7 +85,7 @@ const (
 
 引擎只回傳當前步驟及該步驟合法選項。正常順序是 `Parameters → Modes → Targets → Pay Cost → Confirm`，未需要的步驟省略。若付款依法新增模式或目標，引擎依規則回到新增步驟，但不得重算已固定的 cost。
 
-`PendingChoice` 只用於正式規則流程已提交後、效果結算或其他無法自行前進的外部決定；尚未提交的 Declaration Draft 不冒充正式 `PendingChoice`。
+完整 Draft 協定中的 `PendingChoice` 只用於正式規則流程已提交後、效果結算或其他無法自行前進的外部決定；尚未提交的 Declaration Draft 不冒充正式 `PendingChoice`。票證 09 的窄版 `Submit` Action adapter 是目前尚未拆出 Draft RPC 的既有例外，導入完整協定時必須移除。
 
 ## Pay Cost View
 

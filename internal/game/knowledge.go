@@ -200,7 +200,7 @@ func (g *Game) refreshLegalActions() {
 				actions[handle] = constants.ActionSkipMaterialize
 			}
 		}
-		if g.state.Knowledge.Choice != nil && ((g.state.ResolutionFrame != nil && g.state.ResolutionFrame.CanPass && samePlayer(g.state.ResolutionFrame.Instance.Controller, player)) || (g.state.Knowledge.AlternativeCost != nil && g.state.Knowledge.Choice.CanPass && samePlayer(g.state.Knowledge.AlternativeCost.Controller, player))) {
+		if g.state.Knowledge.Choice != nil && ((g.state.ResolutionFrame != nil && g.state.ResolutionFrame.CanPass && samePlayer(g.state.ResolutionFrame.Instance.Controller, player)) || (g.state.Knowledge.AlternativeCost != nil && g.state.Knowledge.Choice.CanPass && samePlayer(g.state.Knowledge.AlternativeCost.Controller, player)) || (g.state.Knowledge.Declaration != nil && g.state.Knowledge.Choice.CanPass && samePlayer(g.state.Knowledge.Declaration.Controller, player))) {
 			handle := g.newViewHandle(
 				player,
 				constants.ViewHandleSubjectActionPass,

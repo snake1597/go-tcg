@@ -36,6 +36,16 @@ type actionDeclaration struct {
 	Stage    declarationStage `json:"stage"`
 }
 
+// actionDeclarationSnapshot 保存開始 Action 宣告前、宣告流程可能修改的權威欄位與 replay 邊界。
+// 取消時只還原這些欄位，避免覆蓋宣告期間不可能改動的區域與物件狀態。
+type actionDeclarationSnapshot struct {
+	Revision    uint64
+	Knowledge   knowledgeState
+	Entities    map[entityID]knowledgeEntity
+	NextHandle  uint64
+	ReplaySteps int
+}
+
 func (g *Game) legalActionCards(player *model.Player) []cardInstanceID {
 	if g.state.Knowledge.Declaration != nil {
 		return nil
@@ -99,6 +109,7 @@ func (g *Game) beginActionDeclaration(player *model.Player, card cardInstanceID,
 	if err != nil {
 		return fmt.Errorf("reserve action cards: %w", err)
 	}
+	g.captureActionDeclarationSnapshot()
 	g.state.Knowledge.Declaration = &actionDeclaration{
 		Controller: player,
 		Source:     card,
@@ -106,6 +117,40 @@ func (g *Game) beginActionDeclaration(player *model.Player, card cardInstanceID,
 		Stage:      declarationTarget,
 	}
 	g.setDeclarationChoice(player, targets)
+	g.state.Knowledge.Choice.CanPass = true
+	return nil
+}
+
+// captureActionDeclarationSnapshot 保存開始宣告前的 revision、Knowledge、handle 與 replay 邊界。
+// 無輸入與輸出；副作用為建立非權威取消快照，不改變 canonical Game State。
+func (g *Game) captureActionDeclarationSnapshot() {
+	state := cloneGameState(
+		g.state,
+	)
+	g.actionDeclarationSnapshot = &actionDeclarationSnapshot{
+		Revision:    state.Revision,
+		Knowledge:   state.Knowledge,
+		Entities:    state.Entities,
+		NextHandle:  state.NextHandle,
+		ReplaySteps: len(g.replay.Steps),
+	}
+}
+
+// cancelActionDeclaration 放棄尚未提交的 Action 宣告並保留來源與 Reserve 付款卡的原區域。
+// 輸入為取消玩家；輸出為錯誤或 nil；成功時清除暫存宣告與選擇，且不建立來源卡或 Stack Item。
+func (g *Game) cancelActionDeclaration(player *model.Player) error {
+	declaration := g.state.Knowledge.Declaration
+	choice := g.state.Knowledge.Choice
+	snapshot := g.actionDeclarationSnapshot
+	if declaration == nil || choice == nil || snapshot == nil || !choice.CanPass || !samePlayer(declaration.Controller, player) || !samePlayer(choice.Actor, player) {
+		return fmt.Errorf("%w", tcgErrors.ErrInvalidViewHandle)
+	}
+	g.state.Revision = snapshot.Revision
+	g.state.Knowledge = snapshot.Knowledge
+	g.state.Entities = snapshot.Entities
+	g.state.NextHandle = snapshot.NextHandle
+	g.replay.Steps = g.replay.Steps[:snapshot.ReplaySteps]
+	g.actionDeclarationSnapshot = nil
 	return nil
 }
 
@@ -147,6 +192,20 @@ func (g *Game) reserveCardForHandle(player *model.Player, handle ViewHandle) (ca
 // commitAllyActivation 將手牌中的 Ally 與明確選定的 Reserve 手牌原子地移到 Effects Stack 與 Memory。
 // 輸入為控制者、Ally 卡牌與 Player View Reserve handles；輸出為提交錯誤，副作用為成功時建立可回應的 activation 並授予控制者 Opportunity。
 func (g *Game) commitAllyActivation(player *model.Player, card cardInstanceID, reserve []ViewHandle) error {
+	return g.commitDeclarationTransaction(
+		func() error {
+			return g.commitAllyActivationTransaction(
+				player,
+				card,
+				reserve,
+			)
+		},
+	)
+}
+
+// commitAllyActivationTransaction 驗證 Ally 的來源與 Reserve 付款，並在候選狀態中建立來源卡及 activation Stack Item。
+// 輸入為控制者、Ally 卡牌與 Player View Reserve handles；輸出為驗證或提交錯誤；成功時只修改目前的候選權威狀態。
+func (g *Game) commitAllyActivationTransaction(player *model.Player, card cardInstanceID, reserve []ViewHandle) error {
 	if !g.canActivateAction(player, card) {
 		return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, card)
 	}
@@ -155,29 +214,24 @@ func (g *Game) commitAllyActivation(player *model.Player, card cardInstanceID, r
 		return fmt.Errorf("reserve Ally cards: %w", err)
 	}
 	zones := g.state.Zones[player.UID]
-	index := cardIndex(zones.Hand, card)
-	if index < 0 {
-		return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, card)
+	zones, err = applyReservePayment(
+		zones,
+		card,
+		reserved,
+	)
+	if err != nil {
+		return fmt.Errorf("apply Ally Reserve payment: %w", err)
 	}
-	zones.Hand = removeCardAt(zones.Hand, index)
-	for _, payment := range reserved {
-		paymentIndex := cardIndex(zones.Hand, payment)
-		if paymentIndex < 0 {
-			return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, payment)
-		}
-		zones.Hand = removeCardAt(zones.Hand, paymentIndex)
-		zones.Memory = append(zones.Memory, payment)
-	}
-	return g.commitAllyActivationTransaction(
+	return g.queueAllyActivationTransaction(
 		player,
 		card,
 		zones,
 	)
 }
 
-// commitAllyActivationTransaction 提交已驗證的 Ally 付款與來源移動，並只建立一次 Ability Instance。
+// queueAllyActivationTransaction 寫入已驗證的 Ally 付款與來源移動，並只建立一次 Ability Instance。
 // 輸入為控制者、來源卡與已移除來源及套用付款的區域快照；輸出為提交錯誤或 nil，副作用為更新區域、Effects Stack 與 Opportunity。
-func (g *Game) commitAllyActivationTransaction(player *model.Player, card cardInstanceID, zones playerZones) error {
+func (g *Game) queueAllyActivationTransaction(player *model.Player, card cardInstanceID, zones playerZones) error {
 	g.state.Zones[player.UID] = zones
 	g.queueAllyActivation(player, card)
 	return nil
@@ -223,6 +277,7 @@ func (g *Game) submitActionDeclarationChoice(player *model.Player, subject entit
 			declaration.Stage = declarationWeapon
 			costTargets := g.actionCostTargets(player, *ability.cost)
 			g.setDeclarationChoice(player, costTargets)
+			g.state.Knowledge.Choice.CanPass = true
 			return nil
 		}
 		return g.commitActionDeclaration()
@@ -269,23 +324,32 @@ func (g *Game) setDeclarationChoice(player *model.Player, subjects []objectID) {
 // commitActionDeclaration 在目標、來源手牌與 reserve 選擇仍有效時，將來源與保留牌移出手牌。
 // 保留牌移入 Memory，來源與能力入堆疊，並清除宣告及待選項目後授予控制者行動機會。
 func (g *Game) commitActionDeclaration() error {
+	err := g.commitDeclarationTransaction(
+		func() error {
+			return g.commitActionDeclarationTransaction()
+		},
+	)
+	if err != nil {
+		return fmt.Errorf("commit Action declaration: %w", err)
+	}
+	g.actionDeclarationSnapshot = nil
+	return nil
+}
+
+// commitActionDeclarationTransaction 在候選狀態中重新驗證已選目標、Reserve 與額外費用，並建立 Action 來源與 Stack Item。
+// 輸入取自目前 Action 宣告；輸出為提交錯誤或 nil；成功時只修改目前的候選權威狀態。
+func (g *Game) commitActionDeclarationTransaction() error {
 	declaration := g.state.Knowledge.Declaration
 	if declaration == nil || !g.canCommitActionDeclaration(declaration) {
 		return fmt.Errorf("%w", tcgErrors.ErrInvalidViewHandle)
 	}
-	zones := g.state.Zones[declaration.Controller.UID]
-	sourceIndex := cardIndex(zones.Hand, declaration.Source)
-	if sourceIndex < 0 {
-		return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, declaration.Source)
-	}
-	zones.Hand = removeCardAt(zones.Hand, sourceIndex)
-	for _, reserved := range declaration.Reserved {
-		reservedIndex := cardIndex(zones.Hand, reserved)
-		if reservedIndex < 0 {
-			return fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, reserved)
-		}
-		zones.Hand = removeCardAt(zones.Hand, reservedIndex)
-		zones.Memory = append(zones.Memory, reserved)
+	zones, err := applyReservePayment(
+		g.state.Zones[declaration.Controller.UID],
+		declaration.Source,
+		declaration.Reserved,
+	)
+	if err != nil {
+		return fmt.Errorf("apply Action Reserve payment: %w", err)
 	}
 	g.state.Zones[declaration.Controller.UID] = zones
 	if ability, exists := g.compiledAction(declaration.Source); exists && ability.cost != nil {
@@ -299,6 +363,44 @@ func (g *Game) commitActionDeclaration() error {
 	g.state.Knowledge.Declaration = nil
 	g.grantOpportunity(declaration.Controller)
 	return nil
+}
+
+// applyReservePayment 先驗證來源卡與所有付款卡皆仍在 Hand，再一次產生來源移除且付款卡移入 Memory 的區域結果。
+// 輸入為原區域、來源卡及已選付款卡；輸出為新的區域值或驗證錯誤；不修改傳入切片或權威 Game State。
+func applyReservePayment(zones playerZones, source cardInstanceID, payments []cardInstanceID) (playerZones, error) {
+	if cardIndex(zones.Hand, source) < 0 {
+		return playerZones{}, fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, source)
+	}
+	seen := make(map[cardInstanceID]bool, len(payments))
+	for _, payment := range payments {
+		if payment == source || seen[payment] || cardIndex(zones.Hand, payment) < 0 {
+			return playerZones{}, fmt.Errorf("%w %q", tcgErrors.ErrInvalidViewHandle, payment)
+		}
+		seen[payment] = true
+	}
+	zones.Hand = append(
+		[]cardInstanceID(nil),
+		zones.Hand...,
+	)
+	zones.Memory = append(
+		[]cardInstanceID(nil),
+		zones.Memory...,
+	)
+	zones.Hand = removeCardAt(
+		zones.Hand,
+		cardIndex(zones.Hand, source),
+	)
+	for _, payment := range payments {
+		zones.Hand = removeCardAt(
+			zones.Hand,
+			cardIndex(zones.Hand, payment),
+		)
+		zones.Memory = append(
+			zones.Memory,
+			payment,
+		)
+	}
+	return zones, nil
 }
 
 func (g *Game) canCommitActionDeclaration(declaration *actionDeclaration) bool {
